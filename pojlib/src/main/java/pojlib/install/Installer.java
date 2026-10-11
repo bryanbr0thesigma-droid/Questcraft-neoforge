@@ -90,7 +90,7 @@ public class Installer {
         return classpath.toString();
     }
 
-    //Only works on minecraft, not fabric, quilt, etc...
+    //Only works on minecraft, not fabric, neoforge, etc...
     //Will only download asset if it is missing
     public static String installAssets(VersionInfo minecraftVersionInfo, String gameDir, Activity activity, MinecraftInstances.Instance instance) throws IOException {
         Logger.getInstance().appendToLog("Downloading assets");
@@ -116,6 +116,9 @@ public class Installer {
         FileUtils.writeByteArrayToFile(new File(instance.gameDir + "/config/immediatelyfast.json"), FileUtil.loadFromAssetToByte(activity, "immediatelyfast.json"));
         FileUtils.writeByteArrayToFile(new File(instance.gameDir + "/config/moreculling.toml"), FileUtil.loadFromAssetToByte(activity,"moreculling.toml"));
         FileUtils.writeByteArrayToFile(new File(instance.gameDir + "/config/modernfix-mixins.properties"), FileUtil.loadFromAssetToByte(activity,"modernfix-mixins.properties"));
+        if (instance.isNeoForge()) {
+            FileUtils.writeByteArrayToFile(new File(instance.gameDir + "/config/fml.toml"), FileUtil.loadFromAssetToByte(activity, "fml.toml"));
+        }
         FileUtils.writeByteArrayToFile(new File(instance.gameDir + "/options.txt"), FileUtil.loadFromAssetToByte(activity, "options.txt"));
         FileUtils.writeByteArrayToFile(new File(instance.gameDir + "/optionsviveprofiles.txt"), FileUtil.loadFromAssetToByte(activity, "optionsviveprofiles.txt"));
         FileUtils.writeByteArrayToFile(new File(instance.gameDir + "/servers.dat"), FileUtil.loadFromAssetToByte(activity, "servers.dat"));

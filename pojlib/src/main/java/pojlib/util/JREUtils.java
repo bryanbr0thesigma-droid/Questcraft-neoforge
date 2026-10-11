@@ -138,10 +138,14 @@ public class JREUtils {
     }
 
     public static void setJavaEnvironment(Activity activity, MinecraftInstances.Instance instance) throws Throwable {
+        setJavaEnvironment(activity, instance.gameDir);
+    }
+
+    public static void setJavaEnvironment(Context activity, String home) throws Throwable {
         Map<String, String> envMap = new ArrayMap<>();
         envMap.put("POJLIB_NATIVEDIR", activity.getApplicationInfo().nativeLibraryDir);
         envMap.put("JAVA_HOME", activity.getFilesDir() + "/runtimes/JRE-22");
-        envMap.put("HOME", instance.gameDir);
+        envMap.put("HOME", home);
         envMap.put("TMPDIR", activity.getCacheDir().getAbsolutePath());
         envMap.put("VR_MODEL", API.model);
         envMap.put("POJLIB_RENDERER", "regal");
@@ -220,6 +224,45 @@ public class JREUtils {
         int exitCode = VMLauncher.launchJVM(userArgs.toArray(new String[0]));
         Logger.getInstance().appendToLog("Java Exit code: " + exitCode);
         return exitCode;
+    }
+
+    /**
+     * Runs a java program (for example a mod loader installer) to completion in a JVM without any of the graphics
+     * setup the game needs. A JVM can only be created once per process, so this has to be called from a process
+     * that is not going to launch the game, see {@link pojlib.install.NeoForgeInstallService}.
+     *
+     * @param ctx         The application context
+     * @param programArgs What goes after {@code java}, for example {@code -jar installer.jar --install-client dir}
+     * @param workDir     Working directory and user home of the program
+     * @return The exit code of the program. Note that a program calling {@code System.exit} ends the process instead.
+     */
+    public static int launchInstallerVM(Context ctx, List<String> programArgs, String workDir) throws Throwable {
+        relocateLibPath(ctx);
+        setJavaEnvironment(ctx, workDir);
+
+        List<String> args = new ArrayList<>(Arrays.asList(
+                "java",
+                "-Djava.home=" + new File(ctx.getFilesDir(), "runtimes/JRE-22"),
+                "-Djava.io.tmpdir=" + ctx.getCacheDir().getAbsolutePath(),
+                "-Duser.home=" + workDir,
+                "-Dos.name=Linux",
+                "-Dos.version=Android-" + Build.VERSION.RELEASE,
+                "-Djava.library.path=" + ctx.getApplicationInfo().nativeLibraryDir,
+                "-Djava.awt.headless=true",
+                "-Xms256M",
+                "-Xmx1536M",
+                "-XX:+UseSerialGC",
+                "-XX:+UnlockExperimentalVMOptions",
+                "-XX:+AllowUserSignalHandlers",
+                "-XX:+UnlockDiagnosticVMOptions",
+                "-XX:-ImplicitNullChecks"
+        ));
+        args.addAll(programArgs);
+
+        runtimeDir = ctx.getFilesDir() + "/runtimes/JRE-22";
+        initJavaRuntime();
+        chdir(workDir);
+        return VMLauncher.launchJVM(args.toArray(new String[0]));
     }
 
     /**

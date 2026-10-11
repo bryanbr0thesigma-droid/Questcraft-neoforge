@@ -14,12 +14,20 @@ import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
 
 import pojlib.account.MinecraftAccount;
 import pojlib.install.FabricMeta;
 import pojlib.install.Installer;
+import pojlib.install.LaunchArguments;
 import pojlib.install.MinecraftMeta;
+import pojlib.install.NeoForgeInstaller;
+import pojlib.install.NeoForgeMeta;
 import pojlib.install.QuiltMeta;
 import pojlib.install.VersionInfo;
 import pojlib.util.Constants;
@@ -33,8 +41,16 @@ import pojlib.util.VLoader;
 import pojlib.util.json.ModrinthIndexJson;
 
 public class InstanceHandler {
+    // Fabric instances (created before the NeoForge port) keep getting their mods from upstream
     public static final String MODS = "https://raw.githubusercontent.com/QuestCraftPlusPlus/Pojlib/Testing/mods.json";
     public static final String DEV_MODS = "https://raw.githubusercontent.com/QuestCraftPlusPlus/Pojlib/Testing/devmods.json";
+    public static final String NEOFORGE_MODS = Constants.PORT_RAW_URL + "/pojlib/mods-neoforge.json";
+    public static final String NEOFORGE_DEV_MODS = Constants.PORT_RAW_URL + "/pojlib/devmods-neoforge.json";
+
+    public static String modsUrl(boolean developerMods, boolean neoForge) {
+        if (neoForge) return developerMods ? NEOFORGE_DEV_MODS : NEOFORGE_MODS;
+        return developerMods ? DEV_MODS : MODS;
+    }
 
     public static MinecraftInstances.Instance create(Activity activity, MinecraftInstances instances, String instanceName, String userHome, ModLoader modLoader, String mrpackFilePath, String imageURL) {
         File mrpackJson = new File(Constants.USER_HOME + "/instances/" + instanceName.toLowerCase(Locale.ROOT).replaceAll(" ", "_") + "/setup/modrinth.index.json");
@@ -46,6 +62,11 @@ public class InstanceHandler {
         ModrinthIndexJson index = GsonUtils.jsonFileToObject(mrpackJson.getAbsolutePath(), ModrinthIndexJson.class);
         if(index == null) {
             Logger.getInstance().appendToLog("Couldn't install the modpack with path " + mrpackJson.getAbsolutePath());
+            return null;
+        }
+
+        if (modLoader == ModLoader.NeoForge && index.dependencies.neoForge == null) {
+            Logger.getInstance().appendToLog("This modpack is not for NeoForge, its mods would not load. Pick a NeoForge modpack.");
             return null;
         }
 
@@ -140,6 +161,14 @@ public class InstanceHandler {
         instance.gameDir = Constants.USER_HOME + "/instances/" + instanceName.toLowerCase(Locale.ROOT).replaceAll(" ", "_");
         instance.defaultMods = useDefaultMods;
 
+        instance.modLoader = modLoader.name().toLowerCase(Locale.ROOT);
+
+        if (modLoader == ModLoader.NeoForge && !NeoForgeMeta.isSupported(minecraftVersion)) {
+            Logger.getInstance().appendToLog("NeoForge does not exist for Minecraft " + minecraftVersion + " (it starts at 1.20.2)");
+            API.finishedDownloading = true;
+            return null;
+        }
+
         File gameDirFile = new File(instance.gameDir);
         if(!gameDirFile.exists()) {
             gameDirFile.mkdirs();
@@ -163,7 +192,10 @@ public class InstanceHandler {
 
         VersionInfo minecraftVersionInfo = MinecraftMeta.getVersionInfo(minecraftVersion);
         instance.versionType = minecraftVersionInfo.type;
-        instance.mainClass = modLoaderVersionInfo.mainClass;
+        // NeoForge only knows its main class once the installer has run
+        if (modLoaderVersionInfo != null) {
+            instance.mainClass = modLoaderVersionInfo.mainClass;
+        }
 
         // Install minecraft
         VersionInfo finalModLoaderVersionInfo = modLoaderVersionInfo;
@@ -179,15 +211,40 @@ public class InstanceHandler {
         new Thread(() -> {
             try {
                 String clientClasspath = Installer.installClient(minecraftVersionInfo, gameDir);
-                String minecraftClasspath = Installer.installLibraries(minecraftVersionInfo, gameDir);
-                String modLoaderClasspath = Installer.installLibraries(finalModLoaderVersionInfo, gameDir);
                 String lwjgl = UnityPlayerActivity.installLWJGL(activity);
 
-                instance.classpath = clientClasspath + File.pathSeparator + minecraftClasspath + File.pathSeparator + modLoaderClasspath + File.pathSeparator + lwjgl;
+                if (modLoader == ModLoader.NeoForge) {
+                    // vanilla and NeoForge are one version for the launch, NeoForge's libraries replace vanilla's
+                    VersionInfo neoForge = NeoForgeInstaller.install(activity, minecraftVersionInfo, gameDir);
+                    String libraries = Installer.installLibraries(neoForge, gameDir);
+
+                    instance.mainClass = neoForge.mainClass;
+                    instance.classpath = joinClasspath(libraries, clientClasspath, lwjgl);
+                    Map<String, String> variables = new HashMap<>();
+                    variables.put("library_directory", new File(gameDir, "libraries").getAbsolutePath());
+                    variables.put("classpath_separator", File.pathSeparator);
+                    variables.put("version_name", minecraftVersion);
+                    variables.put("launcher_name", "QuestCraft");
+                    variables.put("launcher_version", "1");
+                    instance.loaderJvmArgs = LaunchArguments.resolve(neoForge.arguments.jvm, variables).toArray(new String[0]);
+                    instance.loaderGameArgs = LaunchArguments.resolve(neoForge.arguments.game, variables).toArray(new String[0]);
+                } else {
+                    String minecraftClasspath = Installer.installLibraries(minecraftVersionInfo, gameDir);
+                    String modLoaderClasspath = Installer.installLibraries(finalModLoaderVersionInfo, gameDir);
+
+                    instance.classpath = clientClasspath + File.pathSeparator + minecraftClasspath + File.pathSeparator + modLoaderClasspath + File.pathSeparator + lwjgl;
+                }
 
                 instance.assetsDir = Installer.installAssets(minecraftVersionInfo, gameDir, activity, instance);
             } catch (IOException e) {
                 e.printStackTrace();
+                if (modLoader == ModLoader.NeoForge) {
+                    // an instance without a classpath can not be launched, so do not keep it around
+                    Logger.getInstance().appendToLog("Could not create the instance: " + e.getMessage());
+                    instances.instances = Arrays.stream(instances.instances).filter(i -> i != instance).toArray(MinecraftInstances.Instance[]::new);
+                    API.finishedDownloading = true;
+                    return;
+                }
             }
             instance.assetIndex = minecraftVersionInfo.assetIndex.id;
 
@@ -200,6 +257,16 @@ public class InstanceHandler {
         }).start();
 
         return instance;
+    }
+
+    // Joins classpath strings, leaving out entries that are in there more than once.
+    // A jar twice on the classpath would be two modules with the same packages for NeoForge's module layer.
+    static String joinClasspath(String... classpaths) {
+        Set<String> entries = new LinkedHashSet<>();
+        for (String classpath : classpaths) {
+            entries.addAll(Arrays.asList(classpath.split(File.pathSeparator)));
+        }
+        return String.join(File.pathSeparator, entries);
     }
 
     // Load an instance from json

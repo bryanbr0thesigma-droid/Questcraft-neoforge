@@ -14,6 +14,14 @@ public class Constants {
 
     public static String QUILT_META_URL = "https://meta.quiltmc.org/v3";
 
+    public static String NEOFORGE_MAVEN_URL = "https://maven.neoforged.net/releases";
+
+    // Where this port hosts the files the launcher downloads at runtime (mod lists, supported versions).
+    // TODO: point this at the default branch once the port is merged, the repo has no main yet.
+    public static String PORT_RAW_URL = "https://raw.githubusercontent.com/bryanbr0thesigma-droid/Questcraft-neoforge/claude/fervent-mayer-8idkzr";
+
+    public static String NEOFORGE_API_URL = "https://maven.neoforged.net/api/maven";
+
     public static String OAUTH_TOKEN_URL = "https://login.live.com/oauth20_token.srf";
 
     public static String XBL_AUTH_URL = "https://user.auth.xboxlive.com/user/authenticate";
