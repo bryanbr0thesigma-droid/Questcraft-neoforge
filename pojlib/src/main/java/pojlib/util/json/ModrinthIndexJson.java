@@ -21,5 +21,7 @@ public class ModrinthIndexJson {
         public String fabricLoader;
         @SerializedName("neoforge")
         public String neoForge;
+        @SerializedName("quilt-loader")
+        public String quiltLoader;
     }
 }

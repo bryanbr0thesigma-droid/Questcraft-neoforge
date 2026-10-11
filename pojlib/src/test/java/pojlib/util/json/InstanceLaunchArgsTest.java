@@ -42,9 +42,19 @@ class InstanceLaunchArgsTest {
     }
 
     @Test
+    void anInstanceReportsWhatTheLauncherShowsAndSearches() {
+        assertEquals("Quilt", instance("quilt").loaderName());
+        assertEquals("Fabric", instance(null).loaderName());
+        assertEquals(java.util.Arrays.asList("quilt", "fabric"), java.util.Arrays.asList(instance("quilt").modrinthCategories()));
+        assertEquals(java.util.Arrays.asList("neoforge"), java.util.Arrays.asList(instance("neoforge").modrinthCategories()));
+        assertFalse(instance("quilt").isNeoForge());
+    }
+
+    @Test
     void theModListSnapshotIsPerLoader() {
         assertTrue(instance("fabric").modsSnapshotPath().endsWith("/mods.json"));
         assertTrue(instance("neoforge").modsSnapshotPath().endsWith("/mods-neoforge.json"));
+        assertTrue(instance("quilt").modsSnapshotPath().endsWith("/mods-quilt.json"));
     }
 
     @Test

@@ -92,6 +92,16 @@ public class MinecraftInstances {
             return ModLoader.fromStored(modLoader);
         }
 
+        /** Shown in the launcher next to the version. */
+        public String loaderName() {
+            return loader().displayName;
+        }
+
+        /** The Modrinth categories whose mods load in this instance. */
+        public String[] modrinthCategories() {
+            return loader().getModrinthCategories();
+        }
+
         public boolean isNeoForge() {
             return loader() == ModLoader.NEOFORGE;
         }

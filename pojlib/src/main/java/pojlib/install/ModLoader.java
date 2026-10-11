@@ -12,31 +12,53 @@ import pojlib.util.Constants;
  * mod list and list of supported Minecraft versions are hosted. To add a loader, add a constant here, an install
  * branch in {@code InstanceHandler.create} and its launch arguments; the launcher's loader toggle, the version
  * lists and the Mod Manager pick it up from here.
+ * <p>
+ * Quilt loads Fabric mods, so it shares Fabric's mod list and accepts mods from the Fabric category on Modrinth,
+ * but is its own loader everywhere else (install, instances, version list, mod list snapshot).
  */
 public enum ModLoader {
     FABRIC("fabric", "Fabric",
             Constants.UPSTREAM_RAW_URL + "/mods.json",
             Constants.UPSTREAM_RAW_URL + "/devmods.json",
-            Constants.UPSTREAM_RAW_URL + "/supportedVersions.json"),
+            Constants.UPSTREAM_RAW_URL + "/supportedVersions.json",
+            "fabric"),
     NEOFORGE("neoforge", "NeoForge",
             Constants.PORT_RAW_URL + "/pojlib/mods-neoforge.json",
             Constants.PORT_RAW_URL + "/pojlib/devmods-neoforge.json",
-            Constants.PORT_RAW_URL + "/pojlib/supportedVersions.json");
+            Constants.PORT_RAW_URL + "/pojlib/supportedVersions.json",
+            "neoforge"),
+    // Fabric's mod list, but only the versions Quilt was tested on
+    QUILT("quilt", "Quilt",
+            Constants.UPSTREAM_RAW_URL + "/mods.json",
+            Constants.UPSTREAM_RAW_URL + "/devmods.json",
+            Constants.PORT_RAW_URL + "/pojlib/supportedVersions-quilt.json",
+            "quilt", "fabric");
 
-    /** Stored in instances.json and used as the Modrinth category: lower case. */
+    /** Stored in instances.json and the Modrinth category of the loader itself: lower case. */
     public final String id;
     /** Shown in the launcher, and what the launcher passes to {@code createNewInstance}. */
     public final String displayName;
     private final String modsUrl;
     private final String devModsUrl;
     private final String supportedVersionsUrl;
+    private final String[] modrinthCategories;
 
-    ModLoader(String id, String displayName, String modsUrl, String devModsUrl, String supportedVersionsUrl) {
+    ModLoader(String id, String displayName, String modsUrl, String devModsUrl, String supportedVersionsUrl,
+              String... modrinthCategories) {
         this.id = id;
         this.displayName = displayName;
         this.modsUrl = modsUrl;
         this.devModsUrl = devModsUrl;
         this.supportedVersionsUrl = supportedVersionsUrl;
+        this.modrinthCategories = modrinthCategories;
+    }
+
+    /**
+     * The Modrinth loader categories whose mods and modpacks load with this loader, most specific first
+     * (Quilt runs its own and Fabric mods).
+     */
+    public String[] getModrinthCategories() {
+        return modrinthCategories.clone();
     }
 
     public String getModsUrl(boolean developerMods) {

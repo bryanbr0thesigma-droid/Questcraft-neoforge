@@ -34,6 +34,7 @@ import pojlib.install.MinecraftMeta;
 import pojlib.install.ModLoader;
 import pojlib.install.NeoForgeInstaller;
 import pojlib.install.NeoForgeMeta;
+import pojlib.install.QuiltMeta;
 import pojlib.install.VersionInfo;
 import pojlib.util.Constants;
 import pojlib.util.FileUtil;
@@ -67,7 +68,13 @@ public class InstanceHandler {
             return null;
         }
         // a modpack is for one loader, its mods would not load in an instance of another
-        boolean packMatches = loader == ModLoader.NEOFORGE ? index.dependencies.neoForge != null : index.dependencies.fabricLoader != null;
+        boolean packMatches;
+        switch (loader) {
+            case NEOFORGE: packMatches = index.dependencies.neoForge != null; break;
+            // Quilt runs Fabric modpacks too
+            case QUILT: packMatches = index.dependencies.quiltLoader != null || index.dependencies.fabricLoader != null; break;
+            default: packMatches = index.dependencies.fabricLoader != null;
+        }
         if (!packMatches) {
             Logger.getInstance().appendToLog("This modpack is not for " + loader.displayName + ", its mods would not load. Pick a " + loader.displayName + " modpack.");
             return null;
@@ -173,6 +180,12 @@ public class InstanceHandler {
                 FabricMeta.FabricVersion fabricVersion = FabricMeta.getLatestVersion();
                 assert fabricVersion != null;
                 modLoaderVersionInfo = FabricMeta.getVersionInfo(fabricVersion, minecraftVersion);
+                break;
+            }
+            case QUILT: {
+                QuiltMeta.QuiltVersion quiltVersion = QuiltMeta.getLatestVersion();
+                assert quiltVersion != null;
+                modLoaderVersionInfo = QuiltMeta.getVersionInfo(quiltVersion, minecraftVersion);
                 break;
             }
             case NEOFORGE: {

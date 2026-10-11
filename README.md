@@ -1,6 +1,6 @@
 # QuestCraft for NeoForge
 
-A port of [QuestCraft](https://github.com/QuestCraftPlusPlus/QuestCraft) (Minecraft: Java Edition in VR on Meta Quest and other standalone headsets) from the **Fabric** mod loader to **NeoForge**. The launcher has a **loader toggle** between the two, and NeoForge is the default.
+A port of [QuestCraft](https://github.com/QuestCraftPlusPlus/QuestCraft) (Minecraft: Java Edition in VR on Meta Quest and other standalone headsets) from the **Fabric** mod loader to **NeoForge**. The launcher has a **loader toggle** between **Fabric**, **NeoForge** and **Quilt**, and NeoForge is the default.
 
 ![QC](/QCSimple3.jpg)
 
@@ -14,20 +14,31 @@ QuestCraft itself is not a mod. It is a launcher app (a Unity project that calls
 
 ## Supported Minecraft versions
 
-**1.20.4, 1.20.6, 1.21.1, 1.21.4, 1.21.5, 1.21.8 and 1.21.11.** NeoForge only exists from Minecraft 1.20.2 (older versions only have Forge), so QuestCraft's 1.19.x and 1.20.1 cannot be ported.
+**NeoForge: 1.20.4, 1.20.6, 1.21.1, 1.21.4, 1.21.5, 1.21.8 and 1.21.11.** NeoForge only exists from Minecraft 1.20.2 (older versions only have Forge), so QuestCraft's 1.19.x and 1.20.1 cannot be ported to it.
 
-Left out: **1.21.10**. Upstream QuestCraft ships it, but the fork's `OpenXR-1.21.10` branch does not compile its shared module in this setup even when built exactly as shipped (Fabric only; the Minecraft classes never reach the compiler), so there is no working source to start from. (1.21.11 is newer and does not depend on it, see below.)
+**Quilt: every version QuestCraft's Fabric list has** (1.19.2, 1.19.4, 1.20.1, 1.20.4, 1.20.6, 1.21.1, 1.21.4, 1.21.5, 1.21.8, 1.21.10, 1.21.11), see [Quilt](#quilt).
 
-## Loader toggle (Fabric / NeoForge)
+Left out of NeoForge: **1.21.10**. Upstream QuestCraft ships it, but the fork's `OpenXR-1.21.10` branch does not compile its shared module in this setup even when built exactly as shipped (Fabric only; the Minecraft classes never reach the compiler), so there is no working source to start from. (1.21.11 is newer and does not depend on it, see below.)
 
-The instance creator has a loader dropdown with **Fabric** and **NeoForge**. It decides which Minecraft versions the creator offers (each loader has its own list), what the new instance is installed with, and which mod list its default mods come from. The choice is remembered (`lastSelectedLoader` in `launcher.conf`); a config from before the toggle counts as NeoForge.
+## Loader toggle (Fabric / NeoForge / Quilt)
+
+The instance creator has a loader dropdown with **Fabric**, **NeoForge** and **Quilt**. It decides which Minecraft versions the creator offers (each loader has its own list), what the new instance is installed with, and which mod list its default mods come from. The choice is remembered (`lastSelectedLoader` in `launcher.conf`); a config from before the toggle counts as NeoForge.
 
 - Each instance keeps the loader it was made with (shown next to the version in the instance list). Mod Manager searches Modrinth for, and checks mods and dependencies against, the loader of the selected instance; a modpack becomes an instance of that loader, and a modpack for the other loader is refused.
 - **Quick play** (picking a version in the main dropdown and pressing Play when there is no instance of that name yet) creates the instance with the selected loader, or with the other one if the selected loader does not support that version.
-- Fabric instances use upstream QuestCraft's Fabric mod list and version list as before; NeoForge uses the ones in this repository. A Fabric instance made before the port keeps working unchanged.
-- The loaders live in one place, [`ModLoader`](pojlib/src/main/java/pojlib/install/ModLoader.java): id, display name, Modrinth category, where its mod list and version list are hosted. A further loader needs an entry there, an install branch in `InstanceHandler.create` and its launch arguments; the dropdown, the version lists and Mod Manager follow from the registry.
+- Fabric instances use upstream QuestCraft's Fabric mod list and version list as before; NeoForge uses the ones in this repository; Quilt uses Fabric's mod list with its own version list. A Fabric instance made before the port keeps working unchanged.
+- The loaders live in one place, [`ModLoader`](pojlib/src/main/java/pojlib/install/ModLoader.java): id, display name, Modrinth category, where its mod list and version list are hosted. A further loader (this is how Quilt was added) needs an entry there, an install branch in `InstanceHandler.create` and its launch arguments; the dropdown, the version lists and Mod Manager follow from the registry.
 
 Limits: a default instance is named after its version (`1.21.1`), so once one exists the main dropdown launches that instance whichever loader is selected now. For the same version on the other loader, create it in the instance creator under another name.
+
+## Quilt
+
+Quilt Loader runs Fabric mods (its own `quilt.mod.json` is optional), so the port adds it without a Quilt build of anything:
+
+- **Install**: like Fabric, it is a profile of libraries plus `KnotClient` from the Quilt meta API (`QuiltMeta`), so Pojlib installs it with the same library path. The newest *stable* loader is used (the newest overall is a beta), and Pojlib keeps ASM libraries on the classpath for it as it does for Fabric.
+- **Mods**: the Fabric mod list (core mods, default mods, Vivecraft's Fabric jar) installs unchanged. Mod Manager searches the `quilt` **and** `fabric` categories on Modrinth and accepts files and dependencies from either; a `.mrpack` is accepted if it lists `quilt-loader` or `fabric-loader`. Plain Fabric API is used (Quilted Fabric API has no builds for Minecraft 1.21+).
+- **Versions**: `pojlib/supportedVersions-quilt.json`, written by `update_mods.py`.
+- **Instances** keep `quilt` as their loader, show it next to the version and keep their own mod list snapshot (`mods-quilt.json`).
 
 ## How it works
 
@@ -81,9 +92,11 @@ Done here:
 - **The NeoForge installer** was run headless against the real maven and produced the layout Pojlib expects (`--install-client`).
 - **A desktop simulation of the launch**: the command line Pojlib builds (same merged libraries, resolved module-path arguments, Pojlib's own LWJGL jar, `fml.toml`) was run on a desktop JVM. BootstrapLauncher and ModLauncher start, FML discovers Minecraft, NeoForge and (with the jar built here in `mods/`) Vivecraft, Vivecraft's Mixin configs apply, and Minecraft's client `main` runs - until it needs Android's arm64 `liblwjgl.so`, which cannot exist on a desktop. That run is what found two bugs (vanilla's templated arguments leaking into the command line, and the vanilla client jar name FML has to ignore).
 - **Vivecraft**: the NeoForge jars of all seven versions build with `vivecraft-builder/build.sh` and pass its content checks, and each one loads under NeoForge in the desktop simulation above (FML lists `Vivecraft`, its Mixin configs apply, no module-layer errors) before reaching the Android-only native libraries. The 1.21.11 Fabric jar was boot-tested the same way (Fabric Loader with Fabric API: `vivecraft 1.21.11-1.3.15` loads, then the same native-library wall). NeoForge 1.21.11 uses a new FML (version 10, `net.neoforged.fml.startup.Client` as the main class); the simulation confirms the early window is still switched off by `earlyWindowControl = false`.
+- **Quilt**: for each of the 11 versions, Quilt Loader 0.30.1 was booted on Pojlib's classpath model with the mods Pojlib would install (core + default mods of the Fabric list; the loader reports 72-98 mods per version, nested jars included). All of them resolve and load (Vivecraft, Fabric API, Sodium, ...) and apply their Mixins up to the same Android-only native-library wall as Fabric and NeoForge. That run also showed that Pojlib must keep dropping vanilla's own ASM jar for these versions (it ships 9.6, the loader's is newer; both on the classpath give VerifyErrors in MixinExtras) - Pojlib does, the first version of the simulation did not.
 - **Mod lists** are generated from live Modrinth data and dependency-checked.
 
 **Not verified: running on a headset.** There is no device here, so the following is untested and is where problems, if any, will show up first:
+- Quilt on a device at all (it is the Fabric install path with a different loader; the desktop boot above is the only test), and mods that rely on Fabric-only behaviour Quilt does not provide.
 - The NeoForge installer (a separate Android process) and the game on the Android JRE, including the OpenXR path of Vivecraft under NeoForge.
 - Whether the default mods (Sodium/Embeddium, ImmediatelyFast, ...) behave on the Quest's GL driver as their Fabric builds do. QuestCraft ran patched Sodium builds on older versions.
 - **Microsoft login** and the **Mod Manager** UI on device. Their Java side is unchanged/loader-aware and was checked for API compatibility with the Unity scripts, but they were not run.

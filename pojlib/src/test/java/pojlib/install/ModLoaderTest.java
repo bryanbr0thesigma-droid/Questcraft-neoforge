@@ -18,7 +18,8 @@ class ModLoaderTest {
         assertEquals(ModLoader.NEOFORGE, ModLoader.fromName("neoforge"));
         assertEquals(ModLoader.FABRIC, ModLoader.fromName("Fabric"));
         assertEquals(ModLoader.FABRIC, ModLoader.fromName(" fabric "));
-        assertNull(ModLoader.fromName("Quilt"));
+        assertEquals(ModLoader.QUILT, ModLoader.fromName("Quilt"));
+        assertNull(ModLoader.fromName("Forge"));
         assertNull(ModLoader.fromName(""));
         assertNull(ModLoader.fromName(null));
     }
@@ -31,8 +32,8 @@ class ModLoaderTest {
     }
 
     @Test
-    void theLauncherListsFabricAndNeoForge() {
-        assertArrayEquals(new String[]{"Fabric", "NeoForge"}, ModLoader.displayNames());
+    void theLauncherListsFabricNeoForgeAndQuilt() {
+        assertArrayEquals(new String[]{"Fabric", "NeoForge", "Quilt"}, ModLoader.displayNames());
         // what the launcher shows is accepted again when it passes it back
         for (String name : ModLoader.displayNames()) {
             assertEquals(name, ModLoader.fromName(name).displayName);
@@ -40,16 +41,35 @@ class ModLoaderTest {
     }
 
     @Test
-    void everyLoaderHasItsOwnFilesAndLists() {
-        Set<String> snapshots = new HashSet<>(), caches = new HashSet<>(), mods = new HashSet<>(), versions = new HashSet<>();
+    void everyLoaderHasItsOwnFilesAndVersionList() {
+        Set<String> snapshots = new HashSet<>(), caches = new HashSet<>(), versions = new HashSet<>();
         for (ModLoader loader : ModLoader.values()) {
             assertTrue(snapshots.add(loader.getModsSnapshotName()), "mods snapshot shared");
             assertTrue(caches.add(loader.getSupportedVersionsCacheName()), "version cache shared");
-            assertTrue(mods.add(loader.getModsUrl(false)), "mod list shared");
             assertTrue(versions.add(loader.getSupportedVersionsUrl()), "version list shared");
             assertNotEquals(loader.getModsUrl(false), loader.getModsUrl(true), "dev list is the normal list");
             assertEquals(loader.id, loader.id.toLowerCase(), "the id is the Modrinth category");
         }
+    }
+
+    @Test
+    void quiltReadsFabricsModListButNotItsVersionList() {
+        assertEquals(ModLoader.FABRIC.getModsUrl(false), ModLoader.QUILT.getModsUrl(false));
+        assertEquals(ModLoader.FABRIC.getModsUrl(true), ModLoader.QUILT.getModsUrl(true));
+        assertNotEquals(ModLoader.FABRIC.getSupportedVersionsUrl(), ModLoader.QUILT.getSupportedVersionsUrl());
+        // but what it was last updated from is its own
+        assertNotEquals(ModLoader.FABRIC.getModsSnapshotName(), ModLoader.QUILT.getModsSnapshotName());
+    }
+
+    @Test
+    void modrinthCategoriesSaySoWhichModsLoad() {
+        assertArrayEquals(new String[]{"fabric"}, ModLoader.FABRIC.getModrinthCategories());
+        assertArrayEquals(new String[]{"neoforge"}, ModLoader.NEOFORGE.getModrinthCategories());
+        // Quilt loads its own mods and Fabric's, its own first
+        assertArrayEquals(new String[]{"quilt", "fabric"}, ModLoader.QUILT.getModrinthCategories());
+        // callers can not change the registry through the returned array
+        ModLoader.QUILT.getModrinthCategories()[0] = "changed";
+        assertEquals("quilt", ModLoader.QUILT.getModrinthCategories()[0]);
     }
 
     @Test

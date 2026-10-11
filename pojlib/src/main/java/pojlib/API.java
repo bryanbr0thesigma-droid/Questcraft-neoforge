@@ -132,6 +132,17 @@ public class API {
         return ModLoader.displayNames();
     }
 
+    /**
+     * The Modrinth loader categories whose mods and modpacks load with a loader ("Quilt" gives quilt and fabric).
+     *
+     * @param modLoader a name from {@link #getModLoaders()}
+     * @return the categories, empty if the loader is unknown
+     */
+    public static String[] getModrinthCategories(String modLoader) {
+        ModLoader loader = ModLoader.fromName(modLoader);
+        return loader == null ? new String[0] : loader.getModrinthCategories();
+    }
+
     /** All Minecraft versions that at least one loader supports, newest first. Downloads the lists when online. */
     public static String[] getQCSupportedVersions(Activity ctx) {
         return APIHandler.getQCSupportedVersions(ctx);

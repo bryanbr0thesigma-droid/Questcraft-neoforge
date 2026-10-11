@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Regenerates mods-neoforge.json / devmods-neoforge.json / supportedVersions.json from Modrinth.
+"""Regenerates mods-neoforge.json / devmods-neoforge.json / supportedVersions.json from Modrinth
+and supportedVersions-quilt.json (Quilt shares the Fabric mod list, so it only needs a version list).
 
 For every Minecraft version and mod it takes the newest NeoForge build (releases before betas).
 Mods that have no NeoForge build for a version are left out and reported.
@@ -17,6 +18,11 @@ UA = {"User-Agent": "questcraft-neoforge-port/1.0"}
 
 # NeoForge exists from 1.20.2; these are the versions QuestCraft supports that have a NeoForge Vivecraft build (see vivecraft-builder/)
 VERSIONS = ["1.21.11", "1.21.8", "1.21.5", "1.21.4", "1.21.1", "1.20.6", "1.20.4"]
+
+# Versions Quilt was boot-tested on with the Fabric mod set (every version of QuestCraft's Fabric list). Quilt loads
+# Fabric mods, so it has no mod list of its own, only this list of versions.
+QUILT_VERSIONS = ["1.21.11", "1.21.10", "1.21.8", "1.21.5", "1.21.4", "1.21.1", "1.20.6", "1.20.4", "1.20.1", "1.19.4",
+                  "1.19.2"]
 
 # What QuestCraft's Fabric lists (Pojlib QuestCraft-6.0.1) ship per Minecraft version, by launcher slug.
 FABRIC_SETS = {
@@ -116,6 +122,9 @@ def main():
             f.write("\n")
     with open(os.path.join(OUT, "supportedVersions.json"), "w") as f:
         json.dump({"supportedVersions": VERSIONS}, f, indent=2)
+        f.write("\n")
+    with open(os.path.join(OUT, "supportedVersions-quilt.json"), "w") as f:
+        json.dump({"supportedVersions": QUILT_VERSIONS}, f, indent=2)
         f.write("\n")
 
 

@@ -95,8 +95,9 @@ public class Installer {
             StringJoiner classpath = new StringJoiner(File.pathSeparator);
 
             for (VersionInfo.Library library : versionInfo.libraries) {
-                // vanilla does not use ASM, Fabric and NeoForge do (NeoForge even loads it from its module path)
-                boolean isLoader = versionInfo.id.contains("fabric") || versionInfo.id.contains("neoforge");
+                // vanilla does not use ASM, the loaders do (NeoForge even loads it from its module path)
+                boolean isLoader = versionInfo.id.contains("fabric") || versionInfo.id.contains("neoforge")
+                        || versionInfo.id.contains("quilt");
                 if (library.name.contains("lwjgl") || (library.name.contains("org.ow2.asm") && !isLoader)) {
                     continue;
                 }

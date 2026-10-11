@@ -108,7 +108,7 @@ public class ModManager : MonoBehaviour
             };
 
             if (filterOption != "datapack" && filterOption != "resourcepack")
-                facets.Add("[\"categories:" + (JNIStorage.GetInstance(InstanceButton.currInstName)?.LoaderSlug ?? "neoforge") + "\"]");
+                facets.Add("[" + String.Join(", ", LoaderCategoriesOfCurrentInstance().Select(c => "\"categories:" + c + "\"")) + "]");
 
             //https://docs.modrinth.com/#tag/projects/operation/searchProjects
             
@@ -291,10 +291,15 @@ public class ModManager : MonoBehaviour
         }
     }
     
-    // The loader of the instance mods are added to, mods for another loader would not load
-    private static string LoaderSlugOfCurrentInstance()
+    // The loaders whose mods load in the instance mods are added to, mods for another loader would not load
+    private static string[] LoaderCategoriesOfCurrentInstance()
     {
-        return JNIStorage.GetInstance(InstanceButton.currInstName)?.LoaderSlug ?? "neoforge";
+        return JNIStorage.GetInstance(InstanceButton.currInstName)?.LoaderCategories ?? new[] { "neoforge" };
+    }
+
+    private static bool LoadsInCurrentInstance(IEnumerable<string> fileLoaders)
+    {
+        return LoaderCategoriesOfCurrentInstance().Any(category => fileLoaders.Contains(category));
     }
 
     private bool IsValidModFile(MetaInfo metaInfo, MetaParser metaParser, string instanceVersion)
@@ -302,7 +307,7 @@ public class ModManager : MonoBehaviour
         if (metaParser.project_type is "mod" or "modpack")
         {
             return metaInfo.game_versions.Contains(instanceVersion)
-                   && metaInfo.loaders.Contains(LoaderSlugOfCurrentInstance());
+                   && LoadsInCurrentInstance(metaInfo.loaders);
         }
         else
         {
@@ -389,7 +394,7 @@ public class ModManager : MonoBehaviour
     {
         return depInfo.game_versions.Contains(currentInstanceVer)
                && !depFile.url.Contains(".mrpack")
-               && depInfo.loaders.Contains(LoaderSlugOfCurrentInstance())
+               && LoadsInCurrentInstance(depInfo.loaders)
                && !JNIStorage.apiClass.CallStatic<bool>("hasExtraProject", JNIStorage.GetInstance(InstanceButton.currInstName).raw, slug);
     }
 
