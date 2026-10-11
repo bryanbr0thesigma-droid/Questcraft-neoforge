@@ -4,7 +4,7 @@
 set -euo pipefail
 
 sudo apt-get update
-sudo apt-get install -y --no-install-recommends wget gnupg ca-certificates firefox-esr xdg-utils desktop-file-utils
+sudo apt-get install -y --no-install-recommends wget gnupg ca-certificates firefox-esr xdotool xdg-utils desktop-file-utils
 
 # Unity Hub's own apt repository
 wget -qO - https://hub.unity3d.com/linux/keys/public | gpg --dearmor | sudo tee /usr/share/keyrings/Unity_Technologies_ApS.gpg >/dev/null
