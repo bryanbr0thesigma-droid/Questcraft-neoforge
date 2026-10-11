@@ -1,0 +1,863 @@
+Subject: [PATCH] QCXR
+---
+Index: common/src/main/java/org/vivecraft/client/gui/settings/GuiMainVRSettings.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/common/src/main/java/org/vivecraft/client/gui/settings/GuiMainVRSettings.java b/common/src/main/java/org/vivecraft/client/gui/settings/GuiMainVRSettings.java
+--- a/common/src/main/java/org/vivecraft/client/gui/settings/GuiMainVRSettings.java	(revision d9687fa9192df712fc6182c493b1ee1595f26b51)
++++ b/common/src/main/java/org/vivecraft/client/gui/settings/GuiMainVRSettings.java	(revision de1f6240edcf20775203676963a707954320d914)
+@@ -48,7 +48,7 @@
+             return false;
+         }, VROptionLayout.Position.POS_RIGHT, 2.0F, true, "gui.cancel"),
+         new VROptionLayout((button, mousePos) -> {
+-            this.dataholder.vrSettings.seated = true;
++            // this.dataholder.vrSettings.seated = true;
+             this.settings.saveOptions();
+             this.reinit = true;
+             this.isConfirm = false;
+Index: common/src/main/java/org/vivecraft/client_vr/provider/VRRenderer.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/common/src/main/java/org/vivecraft/client_vr/provider/VRRenderer.java b/common/src/main/java/org/vivecraft/client_vr/provider/VRRenderer.java
+--- a/common/src/main/java/org/vivecraft/client_vr/provider/VRRenderer.java	(revision d9687fa9192df712fc6182c493b1ee1595f26b51)
++++ b/common/src/main/java/org/vivecraft/client_vr/provider/VRRenderer.java	(revision de1f6240edcf20775203676963a707954320d914)
+@@ -706,6 +706,8 @@
+                 ShaderHelper.checkGLError("init FOV shader");
+                 VRShaders.setupPortalShaders();
+                 ShaderHelper.checkGLError("init portal shader");
++                VRShaders.setupGSR();
++                ShaderHelper.checkGLError("init gsr shader");
+                 minecraft.gameRenderer.checkEntityPostEffect(minecraft.getCameraEntity());
+             } catch (Exception exception1) {
+                 System.out.println(exception1.getMessage());
+Index: common/src/main/java/org/vivecraft/client_vr/provider/openvr_lwjgl/OpenVRStereoRenderer.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/common/src/main/java/org/vivecraft/client_vr/provider/openvr_lwjgl/OpenVRStereoRenderer.java b/common/src/main/java/org/vivecraft/client_vr/provider/openvr_lwjgl/OpenVRStereoRenderer.java
+--- a/common/src/main/java/org/vivecraft/client_vr/provider/openvr_lwjgl/OpenVRStereoRenderer.java	(revision d9687fa9192df712fc6182c493b1ee1595f26b51)
++++ b/common/src/main/java/org/vivecraft/client_vr/provider/openvr_lwjgl/OpenVRStereoRenderer.java	(revision de1f6240edcf20775203676963a707954320d914)
+@@ -18,6 +18,7 @@
+ import org.vivecraft.client_vr.provider.VRRenderer;
+ import org.vivecraft.client_vr.render.RenderConfigException;
+ import org.vivecraft.client_vr.render.RenderPass;
++import org.vivecraft.util.VLoader;
+ 
+ import static org.lwjgl.openvr.VRCompositor.VRCompositor_PostPresentHandoff;
+ import static org.lwjgl.openvr.VRCompositor.VRCompositor_Submit;
+@@ -91,7 +92,7 @@
+         RenderSystem.bindTexture(this.LeftEyeTextureId);
+         RenderSystem.texParameter(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_LINEAR);
+         RenderSystem.texParameter(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_LINEAR);
+-        GlStateManager._texImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA8, lwidth, lheight, 0, GL11.GL_RGBA, GL11.GL_INT, null);
++        GlStateManager._texImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA8, lwidth, lheight, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, null);
+         RenderSystem.bindTexture(i);
+         this.openvr.texType0.handle(this.LeftEyeTextureId);
+         this.openvr.texType0.eColorSpace(VR.EColorSpace_ColorSpace_Gamma);
+@@ -102,11 +103,13 @@
+         RenderSystem.bindTexture(this.RightEyeTextureId);
+         RenderSystem.texParameter(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_LINEAR);
+         RenderSystem.texParameter(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_LINEAR);
+-        GlStateManager._texImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA8, lwidth, lheight, 0, GL11.GL_RGBA, GL11.GL_INT, null);
++        GlStateManager._texImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA8, lwidth, lheight, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, null);
+         RenderSystem.bindTexture(i);
+         this.openvr.texType1.handle(this.RightEyeTextureId);
+         this.openvr.texType1.eColorSpace(VR.EColorSpace_ColorSpace_Gamma);
+         this.openvr.texType1.eType(VR.ETextureType_TextureType_OpenGL);
++
++        VLoader.setEGLGlobal();
+     }
+ 
+     public boolean endFrame(RenderPass eye) {
+Index: common/src/main/java/org/vivecraft/client_vr/render/VRShaders.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/common/src/main/java/org/vivecraft/client_vr/render/VRShaders.java b/common/src/main/java/org/vivecraft/client_vr/render/VRShaders.java
+--- a/common/src/main/java/org/vivecraft/client_vr/render/VRShaders.java	(revision d9687fa9192df712fc6182c493b1ee1595f26b51)
++++ b/common/src/main/java/org/vivecraft/client_vr/render/VRShaders.java	(revision de1f6240edcf20775203676963a707954320d914)
+@@ -34,6 +34,8 @@
+     public static AbstractUniform _Overlay_time;
+     public static AbstractUniform _Overlay_BlackAlpha;
+     public static AbstractUniform _Overlay_eye;
++    public static ShaderInstance gsrShader;
++    public static AbstractUniform ViewportInfo;
+ 
+     public static ShaderInstance rendertypeEndPortalShaderVR;
+     public static ShaderInstance rendertypeEndGatewayShaderVR;
+@@ -49,6 +51,12 @@
+     private VRShaders() {
+     }
+ 
++    public static void setupGSR() throws Exception {
++        gsrShader = new ShaderInstance(Minecraft.getInstance().getResourceManager(), "gsr", DefaultVertexFormat.POSITION_TEX);
++
++        ViewportInfo = gsrShader.safeGetUniform("ViewportInfo");
++    }
++
+     public static void setupDepthMask() throws Exception {
+         depthMaskShader = new ShaderInstance(Minecraft.getInstance().getResourceManager(), "mixedreality", DefaultVertexFormat.POSITION_TEX);
+ 
+Index: common/src/main/java/org/vivecraft/client_vr/render/helpers/VRPassHelper.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/common/src/main/java/org/vivecraft/client_vr/render/helpers/VRPassHelper.java b/common/src/main/java/org/vivecraft/client_vr/render/helpers/VRPassHelper.java
+--- a/common/src/main/java/org/vivecraft/client_vr/render/helpers/VRPassHelper.java	(revision d9687fa9192df712fc6182c493b1ee1595f26b51)
++++ b/common/src/main/java/org/vivecraft/client_vr/render/helpers/VRPassHelper.java	(revision de1f6240edcf20775203676963a707954320d914)
+@@ -187,6 +187,11 @@
+             ProgramManager.glUseProgram(0);
+             checkGLError("post overlay" + eye);
+             mc.getProfiler().pop();
++
++            VRShaders.ViewportInfo.setSafe(0.0f, 0.0f,  dataHolder.vrRenderer.framebufferEye0.viewWidth, dataHolder.vrRenderer.framebufferEye0.viewHeight);
++            ((RenderTargetExtension) rendertarget).vivecraft$blitToScreen(VRShaders.gsrShader, 0, dataHolder.vrRenderer.framebufferEye0.viewWidth, dataHolder.vrRenderer.framebufferEye0.viewHeight, 0, false, 0,  0, true);
++            ProgramManager.glUseProgram(0);
++            checkGLError("post overlay" + eye);
+         }
+ 
+         if (dataHolder.currentPass == RenderPass.CAMERA) {
+Index: common/src/main/java/org/vivecraft/client_vr/settings/VRSettings.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/common/src/main/java/org/vivecraft/client_vr/settings/VRSettings.java b/common/src/main/java/org/vivecraft/client_vr/settings/VRSettings.java
+--- a/common/src/main/java/org/vivecraft/client_vr/settings/VRSettings.java	(revision d9687fa9192df712fc6182c493b1ee1595f26b51)
++++ b/common/src/main/java/org/vivecraft/client_vr/settings/VRSettings.java	(revision de1f6240edcf20775203676963a707954320d914)
+@@ -452,13 +452,13 @@
+     @SettingField(VrOptions.CHAT_MESSAGE_STENCIL)
+     public boolean showChatMessageStencil = true;
+     @SettingField(value = VrOptions.VR_ENABLED, config = "vrEnabled")
+-    public boolean vrEnabled = false;
++    public boolean vrEnabled = true;
+     @SettingField(VrOptions.VR_REMEMBER_ENABLED)
+     public boolean rememberVr = true;
+     @SettingField(VrOptions.VR_HOTSWITCH)
+-    public boolean vrHotswitchingEnabled = true;
++    public boolean vrHotswitchingEnabled = false;
+     @SettingField(value = VrOptions.VR_TOGGLE_BUTTON_VISIBLE, config = "vrToggleButtonEnabled")
+-    public boolean vrToggleButtonEnabled = true;
++    public boolean vrToggleButtonEnabled = false;
+     @SettingField(value = VrOptions.VR_SETTINGS_BUTTON_VISIBLE, config = "vrSettingsButtonEnabled")
+     public boolean vrSettingsButtonEnabled = true;
+     @SettingField(value = VrOptions.VR_SETTINGS_BUTTON_POSITION, config = "vrSettingsButtonPositionLeft")
+Index: common/src/main/java/org/vivecraft/mixin/client_vr/OpenVRMixin.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/common/src/main/java/org/vivecraft/mixin/client_vr/OpenVRMixin.java b/common/src/main/java/org/vivecraft/mixin/client_vr/OpenVRMixin.java
+new file mode 100644
+--- /dev/null	(revision de1f6240edcf20775203676963a707954320d914)
++++ b/common/src/main/java/org/vivecraft/mixin/client_vr/OpenVRMixin.java	(revision de1f6240edcf20775203676963a707954320d914)
+@@ -0,0 +1,67 @@
++package org.vivecraft.mixin.client_vr;
++
++import org.lwjgl.openvr.OpenVR;
++import org.spongepowered.asm.mixin.Mixin;
++import org.spongepowered.asm.mixin.Overwrite;
++import org.spongepowered.asm.mixin.Shadow;
++
++import javax.annotation.Nullable;
++import java.util.function.LongFunction;
++
++import static org.lwjgl.openvr.VR.*;
++
++@Mixin(value = OpenVR.class, remap = false)
++public abstract class OpenVRMixin {
++    @Shadow @Nullable public static OpenVR.IVRSystem VRSystem;
++    @Shadow @Nullable public static OpenVR.IVRChaperone VRChaperone;
++    @Shadow @Nullable public static OpenVR.IVRChaperoneSetup VRChaperoneSetup;
++    @Shadow @Nullable public static OpenVR.IVRCompositor VRCompositor;
++    @Shadow @Nullable public static OpenVR.IVROverlay VROverlay;
++    @Shadow @Nullable public static OpenVR.IVRResources VRResources;
++    @Shadow @Nullable public static OpenVR.IVRRenderModels VRRenderModels;
++    @Shadow @Nullable public static OpenVR.IVRExtendedDisplay VRExtendedDisplay;
++    @Shadow @Nullable public static OpenVR.IVRSettings VRSettings;
++    @Shadow @Nullable public static OpenVR.IVRApplications VRApplications;
++    @Shadow @Nullable public static OpenVR.IVRTrackedCamera VRTrackedCamera;
++    @Shadow @Nullable public static OpenVR.IVRScreenshots VRScreenshots;
++    @Shadow @Nullable public static OpenVR.IVRDriverManager VRDriverManager;
++    @Shadow @Nullable public static OpenVR.IVRInput VRInput;
++    @Shadow @Nullable public static OpenVR.IVRIOBuffer VRIOBuffer;
++    @Shadow @Nullable public static OpenVR.IVRSpatialAnchors VRSpatialAnchors;
++    @Shadow @Nullable public static OpenVR.IVRNotifications VRNotifications;
++    @Shadow private static int token;
++
++    @Shadow
++    @Nullable
++    private static <T> T getGenericInterface(String interfaceNameVersion, LongFunction<T> supplier) {
++        return null;
++    }
++
++    /**
++     * @author
++     * @reason
++     */
++    @Overwrite
++    public static void create(int tok) {
++        token = tok;
++
++        VRSystem = getGenericInterface(IVRSystem_Version, OpenVR.IVRSystem::new);
++        VRChaperone = getGenericInterface(IVRChaperone_Version, OpenVR.IVRChaperone::new);
++        VRChaperoneSetup = getGenericInterface(IVRChaperoneSetup_Version, OpenVR.IVRChaperoneSetup::new);
++        VRCompositor = getGenericInterface(IVRCompositor_Version, OpenVR.IVRCompositor::new);
++        VROverlay = getGenericInterface(IVROverlay_Version, OpenVR.IVROverlay::new);
++        // VRResources = getGenericInterface(IVRResources_Version, OpenVR.IVRResources::new);
++        VRRenderModels = getGenericInterface(IVRRenderModels_Version, OpenVR.IVRRenderModels::new);
++        VRExtendedDisplay = getGenericInterface(IVRExtendedDisplay_Version, OpenVR.IVRExtendedDisplay::new);
++        VRSettings = getGenericInterface(IVRSettings_Version, OpenVR.IVRSettings::new);
++        VRApplications = getGenericInterface(IVRApplications_Version, OpenVR.IVRApplications::new);
++        // VRTrackedCamera = getGenericInterface(IVRTrackedCamera_Version, OpenVR.IVRTrackedCamera::new);
++        VRScreenshots = getGenericInterface(IVRScreenshots_Version, OpenVR.IVRScreenshots::new);
++        // VRDriverManager = getGenericInterface(IVRDriverManager_Version, OpenVR.IVRDriverManager::new);
++        VRInput = getGenericInterface(IVRInput_Version, OpenVR.IVRInput::new);
++        // VRIOBuffer = getGenericInterface(IVRIOBuffer_Version, OpenVR.IVRIOBuffer::new);
++        // VRSpatialAnchors = getGenericInterface(IVRSpatialAnchors_Version, OpenVR.IVRSpatialAnchors::new);
++        // VRDebug = getGenericInterface(IVRDebug_Version, OpenVR.IVRDebug::new);
++        // VRNotifications = getGenericInterface(IVRNotifications_Version, OpenVR.IVRNotifications::new);
++    }
++}
+Index: common/src/main/java/org/vivecraft/util/VLoader.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/common/src/main/java/org/vivecraft/util/VLoader.java b/common/src/main/java/org/vivecraft/util/VLoader.java
+new file mode 100644
+--- /dev/null	(revision de1f6240edcf20775203676963a707954320d914)
++++ b/common/src/main/java/org/vivecraft/util/VLoader.java	(revision de1f6240edcf20775203676963a707954320d914)
+@@ -0,0 +1,9 @@
++package org.vivecraft.util;
++
++public class VLoader {
++    static {
++        System.loadLibrary("openvr_api");
++    }
++
++    public static native void setEGLGlobal();
++}
+Index: common/src/main/resources/assets/minecraft/shaders/core/fovreduction.fsh
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/common/src/main/resources/assets/minecraft/shaders/core/fovreduction.fsh b/common/src/main/resources/assets/minecraft/shaders/core/fovreduction.fsh
+--- a/common/src/main/resources/assets/minecraft/shaders/core/fovreduction.fsh	(revision d9687fa9192df712fc6182c493b1ee1595f26b51)
++++ b/common/src/main/resources/assets/minecraft/shaders/core/fovreduction.fsh	(revision de1f6240edcf20775203676963a707954320d914)
+@@ -2,7 +2,7 @@
+ 
+ uniform sampler2D Sampler0;
+ uniform float circle_radius;
+-uniform float circle_offset = 0.1;
++uniform float circle_offset;
+ uniform float border;
+ 
+ uniform float water;
+@@ -22,7 +22,7 @@
+ const vec4 orange = vec4(.25, .125, 0, 1.0);
+ const float pi = 3.14159265;
+ 
+-uniform int eye = 0;
++uniform int eye;
+ 
+ void main(){
+ 
+Index: common/src/main/resources/assets/minecraft/shaders/core/fovreduction.vsh
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/common/src/main/resources/assets/minecraft/shaders/core/fovreduction.vsh b/common/src/main/resources/assets/minecraft/shaders/core/fovreduction.vsh
+--- a/common/src/main/resources/assets/minecraft/shaders/core/fovreduction.vsh	(revision d9687fa9192df712fc6182c493b1ee1595f26b51)
++++ b/common/src/main/resources/assets/minecraft/shaders/core/fovreduction.vsh	(revision de1f6240edcf20775203676963a707954320d914)
+@@ -7,5 +7,5 @@
+ out vec2 texCoordinates;
+ void main() {
+     gl_Position = ProjMat * ModelViewMat * vec4(Position, 1.0);
+-    texCoordinates = UV0;
++    texCoordinates = vec2(UV0.s, 1.0 - UV0.t);
+ }
+Index: common/src/main/resources/assets/minecraft/shaders/core/gsr.fsh
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/common/src/main/resources/assets/minecraft/shaders/core/gsr.fsh b/common/src/main/resources/assets/minecraft/shaders/core/gsr.fsh
+new file mode 100644
+--- /dev/null	(revision de1f6240edcf20775203676963a707954320d914)
++++ b/common/src/main/resources/assets/minecraft/shaders/core/gsr.fsh	(revision de1f6240edcf20775203676963a707954320d914)
+@@ -0,0 +1,142 @@
++#version 450 core
++
++//============================================================================================================
++//
++//
++//                  Copyright (c) 2023, Qualcomm Innovation Center, Inc. All rights reserved.
++//                              SPDX-License-Identifier: BSD-3-Clause
++//
++//============================================================================================================
++
++precision mediump float;
++precision highp int;
++
++////////////////////////
++// USER CONFIGURATION //
++////////////////////////
++
++/*
++* Operation modes:
++* RGBA -> 1
++* RGBY -> 3
++* LERP -> 4
++*/
++#define OperationMode 1
++
++#define EdgeThreshold 4.0/255.0
++
++#define EdgeSharpness 2.0
++
++// #define UseUniformBlock
++
++////////////////////////
++////////////////////////
++////////////////////////
++
++#if defined(UseUniformBlock)
++layout (set=0, binding = 0) uniform UniformBlock
++{
++	highp vec4 ViewportInfo[1];
++};
++layout(set = 0, binding = 1) uniform mediump sampler2D Sampler0;
++#else
++uniform vec4 ViewportInfo[1];
++uniform sampler2D Sampler0;
++#endif
++
++in vec2 texCoordinates;
++out vec4 fragColor;
++
++float fastLanczos2(float x)
++{
++	float wA = x-4.0;
++	float wB = x*wA-wA;
++	wA *= wA;
++	return wB*wA;
++}
++vec2 weightY(float dx, float dy,float c, float std)
++{
++	float x = ((dx*dx)+(dy* dy))* 0.55 + clamp(abs(c)*std, 0.0, 1.0);
++	float w = fastLanczos2(x);
++	return vec2(w, w * c);
++}
++
++void main()
++{
++	const int mode = OperationMode;
++	float edgeThreshold = EdgeThreshold;
++	float edgeSharpness = EdgeSharpness;
++
++	vec4 color;
++	if(mode == 1)
++		color.xyz = textureLod(Sampler0,texCoordinates.xy,0.0).xyz;
++	else
++		color.xyzw = textureLod(Sampler0,texCoordinates.xy,0.0).xyzw;
++
++	float xCenter;
++	xCenter = abs(texCoordinates.x+-0.5);
++	float yCenter;
++	yCenter = abs(texCoordinates.y+-0.5);
++
++	//todo: config the SR region based on needs
++	//if ( mode!=4 && xCenter*xCenter+yCenter*yCenter<=0.4 * 0.4)
++	if ( mode!=4)
++	{
++		vec2 imgCoord = ((texCoordinates.xy*ViewportInfo[0].zw)+vec2(-0.5,0.5));
++		vec2 imgCoordPixel = floor(imgCoord);
++		vec2 coord = (imgCoordPixel*ViewportInfo[0].xy);
++		vec2 pl = (imgCoord+(-imgCoordPixel));
++		vec4 left = textureGather(Sampler0,coord, mode);
++
++		float edgeVote = abs(left.z - left.y) + abs(color[mode] - left.y)  + abs(color[mode] - left.z) ;
++		if(edgeVote > edgeThreshold)
++		{
++			coord.x += ViewportInfo[0].x;
++
++			vec4 right = textureGather(Sampler0,coord + vec2(ViewportInfo[0].x, 0.0), mode);
++			vec4 upDown;
++			upDown.xy = textureGather(Sampler0,coord + vec2(0.0, -ViewportInfo[0].y),mode).wz;
++			upDown.zw  = textureGather(Sampler0,coord+ vec2(0.0, ViewportInfo[0].y), mode).yx;
++
++			float mean = (left.y+left.z+right.x+right.w)*0.25;
++			left = left - vec4(mean);
++			right = right - vec4(mean);
++			upDown = upDown - vec4(mean);
++			color.w =color[mode] - mean;
++
++			float sum = (((((abs(left.x)+abs(left.y))+abs(left.z))+abs(left.w))+(((abs(right.x)+abs(right.y))+abs(right.z))+abs(right.w)))+(((abs(upDown.x)+abs(upDown.y))+abs(upDown.z))+abs(upDown.w)));
++			float std = 2.181818/sum;
++
++			vec2 aWY = weightY(pl.x, pl.y+1.0, upDown.x,std);
++			aWY += weightY(pl.x-1.0, pl.y+1.0, upDown.y,std);
++			aWY += weightY(pl.x-1.0, pl.y-2.0, upDown.z,std);
++			aWY += weightY(pl.x, pl.y-2.0, upDown.w,std);
++			aWY += weightY(pl.x+1.0, pl.y-1.0, left.x,std);
++			aWY += weightY(pl.x, pl.y-1.0, left.y,std);
++			aWY += weightY(pl.x, pl.y, left.z,std);
++			aWY += weightY(pl.x+1.0, pl.y, left.w,std);
++			aWY += weightY(pl.x-1.0, pl.y-1.0, right.x,std);
++			aWY += weightY(pl.x-2.0, pl.y-1.0, right.y,std);
++			aWY += weightY(pl.x-2.0, pl.y, right.z,std);
++			aWY += weightY(pl.x-1.0, pl.y, right.w,std);
++
++			float finalY = aWY.y/aWY.x;
++
++			float maxY = max(max(left.y,left.z),max(right.x,right.w));
++			float minY = min(min(left.y,left.z),min(right.x,right.w));
++			finalY = clamp(edgeSharpness*finalY, minY, maxY);
++
++			float deltaY = finalY -color.w;
++
++			//smooth high contrast input
++			deltaY = clamp(deltaY, -23.0 / 255.0, 23.0 / 255.0);
++
++			color.x = clamp((color.x+deltaY),0.0,1.0);
++			color.y = clamp((color.y+deltaY),0.0,1.0);
++			color.z = clamp((color.z+deltaY),0.0,1.0);
++		}
++	}
++
++	color.w = 1.0;  //assume alpha channel is not used
++	fragColor.xyzw = color;
++}
+Index: common/src/main/resources/assets/minecraft/shaders/core/gsr.json
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/common/src/main/resources/assets/minecraft/shaders/core/gsr.json b/common/src/main/resources/assets/minecraft/shaders/core/gsr.json
+new file mode 100644
+--- /dev/null	(revision de1f6240edcf20775203676963a707954320d914)
++++ b/common/src/main/resources/assets/minecraft/shaders/core/gsr.json	(revision de1f6240edcf20775203676963a707954320d914)
+@@ -0,0 +1,23 @@
++{
++  "blend": {
++    "func": "add",
++    "srcrgb": "srcalpha",
++    "dstrgb": "1-srcalpha"
++  },
++  "vertex": "passthrough",
++  "fragment": "gsr",
++  "attributes": ["Position", "UV0"],
++  "samplers": [
++    {
++      "name": "Sampler0"
++    }
++  ],
++  "uniforms": [
++    {
++      "name": "ViewportInfo",
++      "type": "float",
++      "count": 4,
++      "values": [0.0, 0.0, 1.0, 1.0]
++    }
++  ]
++}
+Index: common/src/main/resources/assets/vivecraft/input/oculus_defaults.json
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/common/src/main/resources/assets/vivecraft/input/oculus_defaults.json b/common/src/main/resources/assets/vivecraft/input/oculus_defaults.json
+--- a/common/src/main/resources/assets/vivecraft/input/oculus_defaults.json	(revision d9687fa9192df712fc6182c493b1ee1595f26b51)
++++ b/common/src/main/resources/assets/vivecraft/input/oculus_defaults.json	(revision de1f6240edcf20775203676963a707954320d914)
+@@ -142,7 +142,7 @@
+             }
+           },
+           "mode": "button",
+-          "path": "/user/hand/left/input/y"
++          "path": "/user/hand/left/input/application_menu"
+         },
+         {
+           "inputs": {
+@@ -151,7 +151,7 @@
+             }
+           },
+           "mode": "button",
+-          "path": "/user/hand/left/input/x"
++          "path": "/user/hand/left/input/y"
+         }
+       ]
+     },
+@@ -243,7 +243,7 @@
+             }
+           },
+           "mode": "button",
+-          "path": "/user/hand/left/input/trigger"
++          "path": "/user/hand/left/input/x"
+         },
+         {
+           "inputs": {
+@@ -261,46 +261,52 @@
+             }
+           },
+           "mode": "button",
+-          "path": "/user/hand/right/input/a"
++          "path": "/user/hand/left/input/trigger"
+         },
+         {
+           "inputs": {
+             "click": {
+               "output": "/actions/ingame/in/key.jump"
++            }
++               },
++               "mode" : "button",
++               "path" : "/user/hand/right/input/a"
+             },
+-            "position": {
+-              "output": "/actions/ingame/in/vivecraft.key.freemovestrafe"
+-            }
+-          },
+-          "mode": "joystick",
+-          "path": "/user/hand/left/input/joystick"
+-        },
+-        {
+-          "inputs": {
+-            "position": {
+-              "output": "/actions/ingame/in/vivecraft.key.rotateaxis"
+-            }
+-          },
+-          "mode": "joystick",
+-          "path": "/user/hand/right/input/joystick"
+-        },
+-        {
+-          "inputs": {
+-            "click": {
+-              "output": "/actions/ingame/in/key.sneak"
+-            }
+-          },
+-          "mode": "toggle_button",
+-          "path": "/user/hand/right/input/joystick"
+-        },
+-        {
+-          "inputs": {
+-            "pull": {
++            {
++               "inputs" : {
++                  "position" : {
++                     "output" : "/actions/ingame/in/vivecraft.key.freemovestrafe"
++                  }
++               },
++               "mode" : "joystick",
++               "path" : "/user/hand/left/input/joystick"
++            },
++            {
++               "inputs" : {
++                  "position" : {
++                     "output" : "/actions/ingame/in/vivecraft.key.rotateaxis"
++                  }
++               },
++               "mode" : "joystick",
++               "path" : "/user/hand/right/input/joystick"
++            },
++            {
++               "inputs" : {
++                  "click" : {
++                     "output" : "/actions/ingame/in/key.sneak"
++                  }
++               },
++               "mode" : "toggle_button",
++               "path" : "/user/hand/right/input/joystick"
++            },
++            {
++               "inputs" : {
++                  "click": {
+               "output": "/actions/ingame/in/vivecraft.key.teleportfallback"
+             }
+           },
+-          "mode": "trigger",
+-          "path": "/user/hand/left/input/trigger"
++          "mode": "button",
++          "path": "/user/hand/left/input/x"
+         }
+       ]
+     },
+Index: common/src/main/resources/assets/vivecraft/input/vive_defaults.json
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/common/src/main/resources/assets/vivecraft/input/vive_defaults.json b/common/src/main/resources/assets/vivecraft/input/vive_defaults.json
+--- a/common/src/main/resources/assets/vivecraft/input/vive_defaults.json	(revision d9687fa9192df712fc6182c493b1ee1595f26b51)
++++ b/common/src/main/resources/assets/vivecraft/input/vive_defaults.json	(revision de1f6240edcf20775203676963a707954320d914)
+@@ -146,15 +146,12 @@
+         },
+         {
+           "inputs": {
+-            "north": {
++            "click": {
+               "output": "/actions/global/in/key.inventory"
+             }
+           },
+-          "mode": "dpad",
+-          "parameters": {
+-            "sub_mode": "click"
+-          },
+-          "path": "/user/hand/right/input/trackpad"
++          "mode": "button",
++          "path": "/user/hand/left/input/y"
+         }
+       ]
+     },
+@@ -194,7 +191,7 @@
+             }
+           },
+           "mode": "button",
+-          "path": "/user/hand/right/input/trackpad"
++          "path": "/user/hand/right/input/a"
+         },
+         {
+           "inputs": {
+@@ -202,11 +199,11 @@
+               "output": "/actions/gui/in/vivecraft.key.guiscrollaxis"
+             }
+           },
+-          "parameters": {
+-            "discrete_scroll_trackpad_slideandhold_enabled": "false"
+-          },
+-          "mode": "scroll",
+-          "path": "/user/hand/right/input/trackpad"
++          "mode" : "scroll",
++               "parameters" : {
++                  "scroll_mode" : "discrete"
++          },
++          "path": "/user/hand/right/input/joystick"
+         }
+       ]
+     },
+@@ -223,36 +220,30 @@
+         },
+         {
+           "inputs": {
+-            "pull": {
+-              "output": "/actions/ingame/in/vivecraft.key.teleportfallback"
++            "click": {
++              "output": "/actions/ingame/in/vivecraft.key.hotbarnext"
+             }
+           },
+-          "mode": "trigger",
+-          "path": "/user/hand/left/input/trigger"
++          "mode": "button",
++          "path": "/user/hand/right/input/grip"
+         },
+         {
+           "inputs": {
+-            "north": {
+-              "output": "/actions/ingame/in/key.jump"
+-            },
+-            "south": {
+-              "output": "/actions/ingame/in/key.sneak"
+-            }
+-          },
+-          "mode": "dpad",
+-          "parameters": {
+-            "sub_mode": "click"
+-          },
+-          "path": "/user/hand/left/input/trackpad"
+-        },
+-        {
+-          "inputs": {
++            "click": {
++              "output": "/actions/ingame/in/key.attack"
++                  }
++               },
++               "mode" : "button",
++               "path" : "/user/hand/right/input/trigger"
++            },
++            {
++               "inputs" : {
+             "click": {
+-              "output": "/actions/ingame/in/vivecraft.key.hotbarnext"
++              "output": "/actions/ingame/in/vivecraft.key.teleport"
+             }
+           },
+           "mode": "button",
+-          "path": "/user/hand/right/input/grip"
++          "path": "/user/hand/left/input/x"
+         },
+         {
+           "inputs": {
+@@ -261,42 +252,66 @@
+             }
+           },
+           "mode": "button",
+-          "path": "/user/hand/right/input/application_menu"
++          "path": "/user/hand/right/input/b"
+         },
+         {
+           "inputs": {
+             "click": {
+-              "output": "/actions/ingame/in/key.attack"
++              "output": "/actions/ingame/in/key.use"
+             }
+           },
+           "mode": "button",
+-          "path": "/user/hand/right/input/trigger"
++          "path": "/user/hand/left/input/trigger"
+         },
+         {
+           "inputs": {
+-            "south": {
+-              "output": "/actions/ingame/in/key.use"
++            "click": {
++              "output": "/actions/ingame/in/key.jump"
+             }
+           },
+-          "mode": "dpad",
+-          "parameters": {
+-            "sub_mode": "click"
++          "mode": "button",
++          "path": "/user/hand/right/input/a"
++        },
++        {
++          "inputs": {
++            "position": {
++              "output": "/actions/ingame/in/vivecraft.key.freemovestrafe"
++            }
+           },
+-          "path": "/user/hand/right/input/trackpad"
++          "mode": "joystick",
++          "path": "/user/hand/left/input/joystick"
+         },
+         {
+           "inputs": {
++            "position": {
++              "output": "/actions/ingame/in/vivecraft.key.rotateaxis"
++            }
++          },
++          "mode": "joystick",
++          "path": "/user/hand/right/input/joystick"
++            },
++            {
++               "inputs" : {
++                  "click" : {
++                     "output" : "/actions/ingame/in/key.sneak"
++            }
++          },
++          "mode": "toggle_button",
++          "path": "/user/hand/right/input/joystick"
++        },
++        {
++          "inputs": {
+             "click": {
+-              "output": "/actions/ingame/in/vivecraft.key.teleport"
++              "output": "/actions/ingame/in/vivecraft.key.teleportfallback"
+             }
+           },
+           "mode": "button",
+-          "path": "/user/hand/left/input/trigger"
+-        }
+-      ]
+-    },
+-    "/actions/keyboard": {
+-      "sources": [
++          "path": "/user/hand/left/input/x"
++            }
++         ]
++      },
++      "/actions/keyboard" : {
++         "sources" : [
+         {
+           "inputs": {
+             "click": {
+@@ -315,9 +330,9 @@
+           "mode": "button",
+           "path": "/user/hand/right/input/grip"
+         },
+-        {
+-          "inputs": {
+-            "click": {
++            {
++               "inputs" : {
++                  "click": {
+               "output": "/actions/keyboard/in/vivecraft.key.keyboardclick"
+             }
+           },
+@@ -334,34 +349,12 @@
+           "path": "/user/hand/right/input/trigger"
+         }
+       ]
+-    },
+-    "/actions/technical": {
+-      "sources": [
+-        {
+-          "inputs": {
+-            "touch": {
+-              "output": "/actions/technical/in/vivecraft.key.trackpadtouch"
+-            }
+-          },
+-          "mode": "trackpad",
+-          "path": "/user/hand/left/input/trackpad"
+-        },
+-        {
+-          "inputs": {
+-            "touch": {
+-              "output": "/actions/technical/in/vivecraft.key.trackpadtouch"
+-            }
+-          },
+-          "mode": "trackpad",
+-          "path": "/user/hand/right/input/trackpad"
+-        }
+-      ]
+     }
+   },
+   "category": "steamvr_input",
+-  "controller_type": "vive_controller",
++  "controller_type": "oculus_touch",
+   "description": "",
+-  "name": "Vive Controller Defaults",
++  "name": "Oculus Touch Defaults",
+   "options": {},
+   "simulated_actions": []
+ }
+Index: common/src/main/resources/vivecraft.accesswidener
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/common/src/main/resources/vivecraft.accesswidener b/common/src/main/resources/vivecraft.accesswidener
+--- a/common/src/main/resources/vivecraft.accesswidener	(revision d9687fa9192df712fc6182c493b1ee1595f26b51)
++++ b/common/src/main/resources/vivecraft.accesswidener	(revision de1f6240edcf20775203676963a707954320d914)
+@@ -6,6 +6,8 @@
+ accessible field net/minecraft/client/model/geom/ModelPart cubes Ljava/util/List;
+ accessible field net/minecraft/client/model/geom/ModelPart$Cube polygons [Lnet/minecraft/client/model/geom/ModelPart$Polygon;
+ 
++accessible class com/mojang/blaze3d/systems/RenderSystem$AutoStorageIndexBuffer$IndexGenerator
++
+ # custom player modle rendering
+ accessible field net/minecraft/client/model/PlayerModel slim Z
+ extendable method net/minecraft/client/renderer/entity/player/PlayerRenderer setModelProperties (Lnet/minecraft/client/player/AbstractClientPlayer;)V
+Index: common/src/main/resources/vivecraft.mixins.json
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/common/src/main/resources/vivecraft.mixins.json b/common/src/main/resources/vivecraft.mixins.json
+--- a/common/src/main/resources/vivecraft.mixins.json	(revision d9687fa9192df712fc6182c493b1ee1595f26b51)
++++ b/common/src/main/resources/vivecraft.mixins.json	(revision de1f6240edcf20775203676963a707954320d914)
+@@ -27,6 +27,7 @@
+     "client_vr.KeyboardInputVRMixin",
+     "client_vr.MinecraftVRMixin",
+     "client_vr.MouseHandlerVRMixin",
++    "client_vr.OpenVRMixin",
+     "client_vr.OptionsVRMixin",
+     "client_vr.blaze3d.audio.LibraryVRMixin",
+     "client_vr.blaze3d.platform.GlStateManagerVRMixin",     
