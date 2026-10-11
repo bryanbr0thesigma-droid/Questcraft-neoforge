@@ -30,6 +30,7 @@ import pojlib.API;
 import pojlib.UnityPlayerActivity;
 import pojlib.install.Installer;
 import pojlib.install.MinecraftMeta;
+import pojlib.install.NeoForgeInstaller;
 import pojlib.util.json.MinecraftInstances;
 
 public class JREUtils {
@@ -142,18 +143,26 @@ public class JREUtils {
     }
 
     public static void relocateLibPath(final Context ctx, MinecraftInstances.Instance instance) {
+        relocateLibPath(ctx, instance.instanceName);
+    }
+
+    public static void relocateLibPath(final Context ctx, String instanceName) {
         sNativeLibDir = ctx.getApplicationInfo().nativeLibraryDir;
 
         LD_LIBRARY_PATH = ctx.getFilesDir() + "/runtimes/JRE/bin:" + ctx.getFilesDir() + "/runtimes/JRE/lib:" +
-                "/system/lib64:/vendor/lib64:/vendor/lib64/hw:" + ctx.getDataDir().toPath().resolve(instance.instanceName) + ":" +
+                "/system/lib64:/vendor/lib64:/vendor/lib64/hw:" + ctx.getDataDir().toPath().resolve(instanceName) + ":" +
                 sNativeLibDir;
     }
 
     public static void setJavaEnvironment(Activity activity, MinecraftInstances.Instance instance) throws Throwable {
+        setJavaEnvironment(activity, instance.gameDir);
+    }
+
+    public static void setJavaEnvironment(Context activity, String home) throws Throwable {
         Map<String, String> envMap = new ArrayMap<>();
         envMap.put("POJLIB_NATIVEDIR", activity.getApplicationInfo().nativeLibraryDir);
         envMap.put("JAVA_HOME", activity.getFilesDir() + "/runtimes/JRE");
-        envMap.put("HOME", instance.gameDir);
+        envMap.put("HOME", home);
         //envMap.put("APP_HOME", Constants.USER_HOME);
         envMap.put("TMPDIR", activity.getCacheDir().getAbsolutePath());
         envMap.put("VR_MODEL", API.model);
@@ -201,6 +210,11 @@ public class JREUtils {
         Installer.installLibraries(MinecraftMeta.getVersionInfo(instance.versionName), Constants.USER_HOME).get();
         Installer.installAssets(MinecraftMeta.getVersionInfo(instance.versionName), Constants.USER_HOME).get();
 
+        if (instance.isNeoForge()) {
+            // brings back what was deleted or never finished, nothing happens if it is all there
+            NeoForgeInstaller.install(activity, MinecraftMeta.getVersionInfo(instance.versionName), Constants.USER_HOME);
+        }
+
         Installer.installJVM(activity, false);
         if(!initJavaRuntime()) {
             Installer.installJVM(activity, true);
@@ -208,6 +222,45 @@ public class JREUtils {
         }
 
         return true;
+    }
+
+    /**
+     * Runs a java program (for example a mod loader installer) to completion in a JVM without any of the graphics
+     * setup the game needs. A JVM can only be created once per process, so this has to be called from a process
+     * that is not going to launch the game, see {@link pojlib.install.NeoForgeInstallService}.
+     *
+     * @param ctx         The application context
+     * @param programArgs What goes after {@code java}, for example {@code -jar installer.jar --install-client dir}
+     * @param workDir     Working directory and user home of the program
+     * @return The exit code of the program. Note that a program calling {@code System.exit} ends the process instead.
+     */
+    public static int launchInstallerVM(Context ctx, List<String> programArgs, String workDir) throws Throwable {
+        runtimeDir = ctx.getFilesDir() + "/runtimes/JRE";
+        relocateLibPath(ctx, "installer");
+        setJavaEnvironment(ctx, workDir);
+        if (!initJavaRuntime()) {
+            throw new IOException("Could not load the Java runtime");
+        }
+
+        List<String> args = new ArrayList<>(Arrays.asList(
+                "java",
+                "-Djava.home=" + new File(ctx.getFilesDir(), "runtimes/JRE"),
+                "-Djava.io.tmpdir=" + ctx.getCacheDir().getAbsolutePath(),
+                "-Duser.home=" + workDir,
+                "-Dos.name=Linux",
+                "-Dos.version=Android-" + Build.VERSION.RELEASE,
+                "-Djava.library.path=" + ctx.getApplicationInfo().nativeLibraryDir,
+                "-Djava.awt.headless=true",
+                "-Xms256M",
+                "-Xmx1536M",
+                "-XX:+UseSerialGC",
+                "-XX:+UnlockExperimentalVMOptions",
+                "-XX:+UnlockDiagnosticVMOptions"
+        ));
+        args.addAll(programArgs);
+
+        chdir(workDir);
+        return VMLauncher.launchJVM(args.toArray(new String[0]));
     }
 
     public static int launchJavaVM(final Activity activity, final List<String> JVMArgs, MinecraftInstances.Instance instance) throws Throwable {

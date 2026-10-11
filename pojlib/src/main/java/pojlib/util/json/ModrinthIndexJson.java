@@ -19,5 +19,7 @@ public class ModrinthIndexJson {
         public String minecraft;
         @SerializedName("fabric-loader")
         public String fabricLoader;
+        @SerializedName("neoforge")
+        public String neoForge;
     }
 }

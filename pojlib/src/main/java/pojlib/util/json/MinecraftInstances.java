@@ -5,6 +5,7 @@ import com.google.gson.JsonPrimitive;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -78,6 +79,36 @@ public class MinecraftInstances {
         public String extraNatives;
         public ProjectInfo[] extProjects;
         public boolean defaultMods;
+        // "fabric" or "neoforge", instances that were created before NeoForge existed have none and are Fabric
+        public String modLoader;
+        // Arguments the mod loader needs on top of the ones every instance gets, already resolved for this device
+        public String[] loaderJvmArgs;
+        public String[] loaderGameArgs;
+
+        public boolean isNeoForge() {
+            return "neoforge".equals(modLoader);
+        }
+
+        // The mod list this instance was last updated from, to find out what changed. Each loader has its own list.
+        public String modsSnapshotPath() {
+            return Constants.USER_HOME + (isNeoForge() ? "/mods-neoforge.json" : "/mods.json");
+        }
+
+        // One JVM argument per line in <files>/loader_jvm_args.txt. Lets the module setup of NeoForge be adjusted
+        // on a headset without a new build, for example -DignoreList=... to keep a jar out of the module layer.
+        private static List<String> readExtraJvmArgs() {
+            List<String> extra = new ArrayList<>();
+            File file = new File(Constants.USER_HOME, "loader_jvm_args.txt");
+            if (!file.isFile()) return extra;
+            try {
+                for (String line : Files.readAllLines(file.toPath(), StandardCharsets.UTF_8)) {
+                    if (!line.trim().isEmpty() && !line.startsWith("#")) extra.add(line.trim());
+                }
+            } catch (IOException e) {
+                Logger.getInstance().appendToLog("Could not read loader_jvm_args.txt: " + e);
+            }
+            return extra;
+        }
 
         public List<String> generateLaunchArgs(MinecraftAccount account) {
             String[] mcArgs = {"--username", account.username, "--version", versionName, "--gameDir", gameDir,
@@ -85,10 +116,13 @@ public class MinecraftInstances {
                     "--accessToken", account.accessToken, "--userType", account.userType, "--versionType", "release"};
 
             List<String> allArgs = new ArrayList<>();
+            if (loaderJvmArgs != null) allArgs.addAll(Arrays.asList(loaderJvmArgs));
+            allArgs.addAll(readExtraJvmArgs());
             allArgs.add("-cp");
             allArgs.add(classpath);
             allArgs.add(mainClass);
             allArgs.addAll(Arrays.asList(mcArgs));
+            if (loaderGameArgs != null) allArgs.addAll(Arrays.asList(loaderGameArgs));
             if (account.isDemoMode) {
                 allArgs.add("--demo");
             }
@@ -109,11 +143,7 @@ public class MinecraftInstances {
 
         private ModsJson downloadCurrentModsJson(String userHome) throws Exception {
             File mods = new File(userHome + "/new_mods.json");
-            if(API.developerMods) {
-                DownloadUtils.downloadFile(InstanceHandler.DEV_MODS, mods);
-            } else {
-                DownloadUtils.downloadFile(InstanceHandler.MODS, mods);
-            }
+            DownloadUtils.downloadFile(InstanceHandler.modsUrl(API.developerMods, isNeoForge()), mods);
 
             return parseModsJson(mods.getAbsolutePath());
         }
@@ -245,7 +275,7 @@ public class MinecraftInstances {
             }
             try {
                 ModsJson newMods = downloadCurrentModsJson(Constants.USER_HOME);
-                ModsJson oldMods = parseModsJson(Constants.USER_HOME + "/mods.json");
+                ModsJson oldMods = parseModsJson(modsSnapshotPath());
 
                 if(oldMods != null) {
                     removeOldMods(oldMods, newMods);
@@ -270,7 +300,7 @@ public class MinecraftInstances {
 
                 GsonUtils.objectToJsonFile(Constants.USER_HOME + "/instances.json", instances);
                 File newModsFile = new File(Constants.USER_HOME + "/new_mods.json");
-                File modsFile = new File(Constants.USER_HOME + "/mods.json");
+                File modsFile = new File(modsSnapshotPath());
 
                 modsFile.delete();
                 Files.copy(newModsFile.toPath(), modsFile.toPath());

@@ -95,7 +95,9 @@ public class Installer {
             StringJoiner classpath = new StringJoiner(File.pathSeparator);
 
             for (VersionInfo.Library library : versionInfo.libraries) {
-                if (library.name.contains("lwjgl") || (library.name.contains("org.ow2.asm")) & !versionInfo.id.contains("fabric")) {
+                // vanilla does not use ASM, Fabric and NeoForge do (NeoForge even loads it from its module path)
+                boolean isLoader = versionInfo.id.contains("fabric") || versionInfo.id.contains("neoforge");
+                if (library.name.contains("lwjgl") || (library.name.contains("org.ow2.asm") && !isLoader)) {
                     continue;
                 }
                 for (int i = 0; i < 5; i++) {
@@ -144,7 +146,7 @@ public class Installer {
         });
     }
 
-    //Only works on minecraft, not fabric, quilt, etc...
+    //Only works on minecraft, not fabric, neoforge, etc...
     //Will only download asset if it is missing
     public static CompletableFuture<String> installAssets(VersionInfo minecraftVersionInfo, String gameDir) throws IOException {
         return CompletableFuture.supplyAsync(() -> {
@@ -190,6 +192,9 @@ public class Installer {
             FileUtils.writeByteArrayToFile(new File(instance.gameDir + "/config/immediatelyfast.json"), FileUtil.loadFromAssetToByte(activity, "immediatelyfast.json"));
             FileUtils.writeByteArrayToFile(new File(instance.gameDir + "/config/moreculling.toml"), FileUtil.loadFromAssetToByte(activity,"moreculling.toml"));
             FileUtils.writeByteArrayToFile(new File(instance.gameDir + "/config/modernfix-mixins.properties"), FileUtil.loadFromAssetToByte(activity,"modernfix-mixins.properties"));
+            if (instance.isNeoForge()) {
+                FileUtils.writeByteArrayToFile(new File(instance.gameDir + "/config/fml.toml"), FileUtil.loadFromAssetToByte(activity, "fml.toml"));
+            }
             FileUtils.writeByteArrayToFile(new File(instance.gameDir + "/options.txt"), FileUtil.loadFromAssetToByte(activity, "options.txt"));
             FileUtils.writeByteArrayToFile(new File(instance.gameDir + "/servers.dat"), FileUtil.loadFromAssetToByte(activity, "servers.dat"));
             FileUtils.writeByteArrayToFile(new File(instance.gameDir + "/config/vivecraft-client-config.json"), FileUtil.loadFromAssetToByte(activity, "vivecraft-client-config.json"));

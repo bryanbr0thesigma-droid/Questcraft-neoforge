@@ -12,6 +12,10 @@ public class Constants {
 
     public static final String QUILT_META_URL = "https://meta.quiltmc.org/v3";
 
+    public static final String NEOFORGE_MAVEN_URL = "https://maven.neoforged.net/releases";
+
+    public static final String NEOFORGE_API_URL = "https://maven.neoforged.net/api/maven";
+
     public static final String OAUTH_TOKEN_URL = "https://login.live.com/oauth20_token.srf";
 
     public static final String XBL_AUTH_URL = "https://user.auth.xboxlive.com/user/authenticate";
@@ -26,6 +30,9 @@ public class Constants {
 
     public static final String MINOTAR_URL = "https://minotar.net";
     public static final String GIT_BRANCH = "QuestCraft-6.0.1";
+    // Where this port hosts the files the launcher downloads at runtime (mod lists, supported versions).
+    // TODO: point this at the default branch once the port is merged, the repo has no main yet.
+    public static final String PORT_RAW_URL = "https://raw.githubusercontent.com/bryanbr0thesigma-droid/Questcraft-neoforge/claude/fervent-mayer-8idkzr";
     public static String USER_HOME;
 
     public static void initConstants(Activity activity) {
