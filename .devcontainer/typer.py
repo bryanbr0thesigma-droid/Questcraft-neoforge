@@ -21,16 +21,30 @@ button{font-size:28px;padding:16px 24px;margin:8px 8px 8px 0}.s{color:#070}</sty
 <h3>Password</h3>
 <form method=post><input type=password name=text autocomplete=off placeholder="password">
 <br><button name=do value=enter>Type + Enter</button><button name=do value=type>Type</button></form>
-<p class=s>@@MSG@@</p>"""
+<h3>Help</h3>
+<form method=post><button name=do value=starthub>Start Unity Hub</button><button name=do value=status>Status</button></form>
+<p class=s>@@MSG@@</p><pre>@@OUT@@</pre>"""
 
 
 def xdo(*args):
     return subprocess.run(["xdotool", *args], env=ENV, capture_output=True, text=True, timeout=30)
 
 
+def status():
+    def run(cmd):
+        r = subprocess.run(cmd, shell=True, env=ENV, capture_output=True, text=True, timeout=30)
+        return (r.stdout + r.stderr).strip()
+    return "\n".join([
+        "desktop sockets: " + run("ls /tmp/.X11-unix"),
+        "windows: " + run("xdotool search --onlyvisible --name . getwindowname %@ | head -8"),
+        "processes: " + run("ps -eo pid,etime,comm | grep -E 'unityhub|firefox|Xtigervnc|fluxbox' | head -10"),
+        "hub.log: " + run("tail -8 ~/hub.log"),
+    ])
+
+
 class Handler(BaseHTTPRequestHandler):
-    def _send(self, message=""):
-        body = PAGE.replace("@@MSG@@", html.escape(message)).encode()
+    def _send(self, message="", out=""):
+        body = PAGE.replace("@@MSG@@", html.escape(message)).replace("@@OUT@@", html.escape(out)).encode()
         self.send_response(200)
         self.send_header("Content-Type", "text/html; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
@@ -44,6 +58,12 @@ class Handler(BaseHTTPRequestHandler):
         form = urllib.parse.parse_qs(self.rfile.read(int(self.headers.get("Content-Length", 0))).decode())
         text, action = form.get("text", [""])[0], form.get("do", ["type"])[0]
         try:
+            if action == "starthub":
+                subprocess.Popen([os.path.expanduser("~/start-hub.sh")], env=ENV, start_new_session=True,
+                                 stdout=open(os.path.expanduser("~/hub.log"), "ab"), stderr=subprocess.STDOUT)
+                return self._send("Started Unity Hub, give it 10-20 seconds, then look at the desktop tab.")
+            if action == "status":
+                return self._send("Status", status())
             if action.startswith("k_"):
                 result = xdo("key", action[2:])
             else:
