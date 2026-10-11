@@ -14,7 +14,11 @@ QuestCraft itself is not a mod. It is a launcher app (a Unity project that calls
 
 ## Supported Minecraft versions
 
-**1.20.4, 1.20.6, 1.21.1, 1.21.4 and 1.21.5.** NeoForge only exists from Minecraft 1.20.2 (older versions only have Forge), so QuestCraft's 1.19.x and 1.20.1 are not part of this port. Upstream QuestCraft also supports 1.21.8, 1.21.10 and 1.21.11. NeoForge exists for those, but QuestCraft's Vivecraft fork has no `neoforge` module on its 1.21.8+ branches (Fabric only), so they need a NeoForge module written first and are not part of this port yet.
+**1.20.4, 1.20.6, 1.21.1, 1.21.4, 1.21.5 and 1.21.8.** NeoForge only exists from Minecraft 1.20.2 (older versions only have Forge), so QuestCraft's 1.19.x and 1.20.1 cannot be ported.
+
+Upstream QuestCraft also ships 1.21.10 and 1.21.11. NeoForge exists for both, but they are not in this port:
+- **1.21.10**: the fork's `OpenXR-1.21.10` branch does not compile its shared module in this setup even when built exactly as shipped (Fabric only; the Minecraft classes never reach the compiler), so there is nothing a NeoForge build could be based on yet.
+- **1.21.11**: the fork has no source for it (the `6.0.1-1.21.11` tag points at an old Minecraft 1.21 commit), only a prebuilt Fabric jar.
 
 ## How it works
 
@@ -42,7 +46,12 @@ The login (device-code flow through MSAL, then Xbox Live, XSTS and Minecraft ser
 
 ### Vivecraft
 
-QuestCraft's Vivecraft fork has all of its Quest/OpenXR changes in the shared `common` module, and a `neoforge` module on every branch, so no code port was needed; [`vivecraft-builder/build.sh <mc version>`](vivecraft-builder/build.sh) builds that module. It leaves out the `org.lwjgl.openvr` classes the module would bundle, because Pojlib's LWJGL jar already provides them (with their JNI natives, which LWJGL binds to the class loader that loaded the classes; NeoForge gives mods a loader of their own, where a second copy could not use them). `org.lwjgl.openxr` is QuestCraft's own build and stays. The mod lists link to the jars at `releases/download/vivecraft-<mc>/vivecraft-neoforge-<mc>.jar` of this repository: run the **Build Vivecraft (NeoForge)** workflow with *publish* ticked to create them.
+QuestCraft's Vivecraft fork has all of its Quest/OpenXR changes in the shared `common` module, and a `neoforge` module on every branch, so no code port was needed. [`vivecraft-builder/build.sh <mc version>`](vivecraft-builder/build.sh) builds that module. Two things it has to do:
+
+- On the 1.21.5 and 1.21.8 branches the module exists but is switched off (not in `enabled_platforms`, not in `settings.gradle`); the script turns it on.
+- It leaves out the `org.lwjgl.openvr` classes the module would bundle, because Pojlib's LWJGL jar already provides them (with their JNI natives, which LWJGL binds to the class loader that loaded the classes; NeoForge gives mods a loader of their own, where a second copy could not use them). `org.lwjgl.openxr` is QuestCraft's own build and stays. The script checks both in the finished jar.
+
+The mod lists link to the jars at `releases/download/vivecraft-<mc>/vivecraft-neoforge-<mc>.jar` of this repository: run the **Build Vivecraft (NeoForge)** workflow with *publish* ticked to create them.
 
 ## Building
 
@@ -60,7 +69,7 @@ Done here:
 - **Unit tests** ([`pojlib/src/test`](pojlib/src/test)) run against the profile the real NeoForge installer generated: version selection, argument resolution, library de-duplication, and that only the loader's arguments reach the command line.
 - **The NeoForge installer** was run headless against the real maven and produced the layout Pojlib expects (`--install-client`).
 - **A desktop simulation of the launch**: the command line Pojlib builds (same merged libraries, resolved module-path arguments, Pojlib's own LWJGL jar, `fml.toml`) was run on a desktop JVM. BootstrapLauncher and ModLauncher start, FML discovers Minecraft, NeoForge and (with the jar built here in `mods/`) Vivecraft, Vivecraft's Mixin configs apply, and Minecraft's client `main` runs - until it needs Android's arm64 `liblwjgl.so`, which cannot exist on a desktop. That run is what found two bugs (vanilla's templated arguments leaking into the command line, and the vanilla client jar name FML has to ignore).
-- **Vivecraft** NeoForge jars build with `vivecraft-builder/build.sh` (1.21.1 verified end to end; see the workflow for the others).
+- **Vivecraft**: the NeoForge jars of all six versions build with `vivecraft-builder/build.sh` and pass its content checks, and each one loads under NeoForge in the desktop simulation above (FML lists `Vivecraft`, its Mixin configs apply, no module-layer errors) before reaching the Android-only native libraries.
 - **Mod lists** are generated from live Modrinth data and dependency-checked.
 
 **Not verified: running on a headset.** There is no device here, so the following is untested and is where problems, if any, will show up first:

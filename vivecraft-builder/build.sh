@@ -22,6 +22,15 @@ for patch in "$here"/patches/"$mc"/*.patch; do
   git -C "$work" apply --index "$patch"
 done
 
+# Some branches (1.21.5 and newer) have a neoforge module but switch it off: it is neither in the enabled platforms
+# of the shared module nor in settings.gradle. Turn it on.
+if ! grep -q '^enabled_platforms=.*neoforge' "$work/gradle.properties"; then
+  sed -i -E 's/^(enabled_platforms=.*)$/\1,neoforge/' "$work/gradle.properties"
+fi
+if ! grep -q 'include("neoforge")' "$work/settings.gradle"; then
+  printf '\ninclude("neoforge")\n' >> "$work/settings.gradle"
+fi
+
 # Pojlib's LWJGL jar already provides org.lwjgl.openvr (with its JNI natives, which LWJGL binds to the class
 # loader that loaded the classes). On Fabric everything shares one class loader so a second copy was harmless;
 # NeoForge loads mods in a loader of their own, where a second copy could not use those natives. Don't bundle it.

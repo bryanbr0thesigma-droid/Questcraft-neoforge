@@ -16,10 +16,12 @@ OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
 UA = {"User-Agent": "questcraft-neoforge-port/1.0"}
 
 # NeoForge exists from 1.20.2; these are the versions QuestCraft supports that have a NeoForge Vivecraft build (see vivecraft-builder/)
-VERSIONS = ["1.21.5", "1.21.4", "1.21.1", "1.20.6", "1.20.4"]
+VERSIONS = ["1.21.8", "1.21.5", "1.21.4", "1.21.1", "1.20.6", "1.20.4"]
 
 # What QuestCraft's Fabric lists (Pojlib QuestCraft-6.0.1) ship per Minecraft version, by launcher slug.
 FABRIC_SETS = {
+    "1.21.8": ["Sodium", "Cloth-Config", "Ferrite-Core", "MoreCulling", "Lithium", "ImmediatelyFast", "Krypton",
+               "Simple-Voice-Chat", "BadOptimizations", "bbrb", "EntityCulling"],
     "1.21.5": ["Sodium", "Cloth-Config", "Ferrite-Core", "MoreCulling", "Lithium", "ImmediatelyFast", "Krypton",
                "Simple-Voice-Chat", "BadOptimizations", "bbrb", "EntityCulling"],
     "1.21.4": ["Sodium", "Cloth-Config", "Ferrite-Core", "ModernFix", "MoreCulling", "Lithium", "ImmediatelyFast",
@@ -49,6 +51,9 @@ MODRINTH = {
     "ModernFix": ["nmDcB62a"],
     "Noisium": ["KuNKN7d2"],
 }
+
+# Fabric API can not exist on NeoForge; a multi-loader jar that asks for it asks for it on its Fabric side only
+IGNORED_REQUIREMENTS = {"P7dR8mSH"}
 
 # QuestCraft's Vivecraft fork (QuestCraftPlusPlus/VivecraftMod, OpenXR branches), its NeoForge module built by
 # .github/workflows/vivecraft.yml. Upstream only publishes the Fabric jar.
@@ -93,7 +98,7 @@ def main():
         have = {m["project_id"] for m in entry["defaultMods"]}
         for mod in entry["defaultMods"]:
             for dep in mod["required"]:
-                if dep not in have:
+                if dep not in have and dep not in IGNORED_REQUIREMENTS:
                     print(f"{mc}: {mod['slug']} requires Modrinth project {dep} which is not in the list",
                           file=sys.stderr)
         for mod in entry["defaultMods"]:  # only needed for the check

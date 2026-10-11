@@ -1,6 +1,68 @@
 {
 	"versions": [
 		{
+			"name": "1.21.8",
+			"coreMods": [
+				{
+					"slug": "Vivecraft",
+					"version": "1.0",
+					"download_link": "https://github.com/bryanbr0thesigma-droid/Questcraft-neoforge/releases/download/vivecraft-1.21.8/vivecraft-neoforge-1.21.8.jar"
+				}
+			],
+			"defaultMods": [
+				{
+					"slug": "Sodium",
+					"version": "mc1.21.8-0.7.3-neoforge",
+					"download_link": "https://cdn.modrinth.com/data/AANobbMI/versions/q6wdZywr/sodium-neoforge-0.7.3%2Bmc1.21.8.jar"
+				},
+				{
+					"slug": "Cloth-Config",
+					"version": "19.0.147+neoforge",
+					"download_link": "https://cdn.modrinth.com/data/9s6osm5g/versions/BYkKAJ0C/cloth-config-19.0.147-neoforge.jar"
+				},
+				{
+					"slug": "Ferrite-Core",
+					"version": "8.0.4-neoforge",
+					"download_link": "https://cdn.modrinth.com/data/uXXizFIs/versions/vqv9Um4Q/ferritecore-8.0.4-neoforge.jar"
+				},
+				{
+					"slug": "MoreCulling",
+					"version": "1.4.0-beta.2",
+					"download_link": "https://cdn.modrinth.com/data/51shyZVL/versions/pxrTGOud/moreculling-neoforge-1.21.8-1.4.0-beta.2.jar"
+				},
+				{
+					"slug": "Lithium",
+					"version": "mc1.21.8-0.18.1-neoforge",
+					"download_link": "https://cdn.modrinth.com/data/gvQqBUqZ/versions/TSzQRFtn/lithium-neoforge-0.18.1%2Bmc1.21.8.jar"
+				},
+				{
+					"slug": "ImmediatelyFast",
+					"version": "1.12.6+1.21.8-neoforge",
+					"download_link": "https://cdn.modrinth.com/data/5ZwdcRci/versions/kefcE2Oq/ImmediatelyFast-NeoForge-1.12.6%2B1.21.8.jar"
+				},
+				{
+					"slug": "Simple-Voice-Chat",
+					"version": "neoforge-1.21.8-2.6.22",
+					"download_link": "https://cdn.modrinth.com/data/9eGKb6K1/versions/mADzRVrP/voicechat-neoforge-1.21.8-2.6.22.jar"
+				},
+				{
+					"slug": "BadOptimizations",
+					"version": "2.4.1",
+					"download_link": "https://cdn.modrinth.com/data/g96Z4WVZ/versions/9s4ZpGFq/BadOptimizations-2.4.1-1.21.6-21.8.jar"
+				},
+				{
+					"slug": "bbrb",
+					"version": "1.5.2",
+					"download_link": "https://cdn.modrinth.com/data/Xh8hkQmD/versions/HZlLCOct/betterbiomeblend-1.5.2.jar"
+				},
+				{
+					"slug": "EntityCulling",
+					"version": "1.11.3",
+					"download_link": "https://cdn.modrinth.com/data/NNAgCjsB/versions/28jQKfEJ/entityculling-neoforge-1.11.3-mc1.21.8.jar"
+				}
+			]
+		},
+		{
 			"name": "1.21.5",
 			"coreMods": [
 				{
