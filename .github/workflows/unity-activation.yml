@@ -1,0 +1,23 @@
+name: Unity activation file
+
+# Step 1 of the one-time Unity license setup (see apk.yml): produces the .alf file you upload at
+# https://license.unity3d.com/manual to get the .ulf license for the UNITY_LICENSE secret.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  activation:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - id: request
+        uses: game-ci/unity-request-activation-file@v2
+        with:
+          projectPath: unity-wrapper
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.request.outputs.filePath }}
+          path: ${{ steps.request.outputs.filePath }}
