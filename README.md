@@ -79,6 +79,8 @@ The mod lists link to the jars at `releases/download/vivecraft-<mc>/vivecraft-ne
 
 [`godot-launcher/`](godot-launcher) is a second launcher, written in Godot 4.4 instead of Unity. It looks and sits like the Unity one (the QuestCraft menu on the big screen of the Minecraft room, controller rays, on-screen keyboard) and starts the game through Pojlib's new `LauncherApi` facade. Godot is free and builds without any account or license, so `godot-launcher/build-apk.sh` (or the **Build Godot APK** workflow) makes an installable APK anywhere. It is signed with a throw-away key (fine for sideloading; uninstall before installing a build signed with another key).
 
+The room's lighting is baked into the model's vertex colours by `godot-launcher/tools/prepare_world.py` (Minecraft style: lanterns and sky light, shaded corners), because the Unity launcher's lightmaps only fit the model through a UV set that exists inside Unity. The same script gets the block textures the Unity project lacks (grass, leaves, azalea pots, flowers) from a Minecraft client jar you give it.
+
 **Not verified on a headset.** The menu and every screen were run on a desktop against a fake backend, and the APK's manifest, libraries and Pojlib code were inspected, but nothing here ran on a Quest. The riskiest part is the hand-over at "Play": the launcher ends its OpenXR session so Minecraft (Vivecraft) can open its own in the same process, as the Unity launcher does.
 
 ## Getting the APK

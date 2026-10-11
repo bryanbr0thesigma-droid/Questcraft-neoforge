@@ -18,8 +18,13 @@ func _initialize() -> void:
 	eye.fov = 100
 	eye.current = true
 	eye.look_at_from_position(head.origin + Vector3(0, 1.6, 0), head.origin + Vector3(0, 1.6, 0) + (-head.basis.z) * 5.0, Vector3.UP)
-	for i in range(12):
-		await process_frame
-	root.get_texture().get_image().save_png("/tmp/claude-0/godot/xr_scene.png")
+	var base := head.origin + Vector3(0, 1.6, 0)
+	var forward := -head.basis.z
+	var looks := {"front": forward, "left": forward.rotated(Vector3.UP, deg_to_rad(80)), "right": forward.rotated(Vector3.UP, deg_to_rad(-80)), "back": -forward}
+	for key in looks:
+		eye.look_at_from_position(base, base + looks[key] * 5.0, Vector3.UP)
+		for i in range(8):
+			await process_frame
+		root.get_texture().get_image().save_png("/tmp/claude-0/godot/room_%s.png" % key)
 	main.viewport.get_texture().get_image().save_png("/tmp/claude-0/godot/xr_ui.png")
 	quit()

@@ -71,10 +71,14 @@ func _build_world() -> void:
 	var mesh := load(WORLD_MESH) as Mesh
 	if mesh == null:
 		return
-	# blocky textures: no smoothing, and cut-out transparency for plants, glass and leaves
+	# blocky textures: no smoothing, and cut-out transparency for plants, glass and leaves. The light is baked into the
+	# vertex colours (tools/prepare_world.py), so the materials show texture x vertex colour and nothing else.
 	for i in range(mesh.get_surface_count()):
 		var mat := mesh.surface_get_material(i) as BaseMaterial3D
 		if mat:
+			mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+			mat.vertex_color_use_as_albedo = true
+			mat.vertex_color_is_srgb = true
 			mat.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
 			mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA_SCISSOR
 			mat.alpha_scissor_threshold = 0.5
