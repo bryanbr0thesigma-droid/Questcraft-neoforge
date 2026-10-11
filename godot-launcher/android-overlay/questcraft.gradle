@@ -1,0 +1,36 @@
+// Added to the Godot Android build (see build-apk.sh): Pojlib, the libraries it needs and their packaging rules.
+repositories {
+    maven { url 'https://jitpack.io' }   // android_gamepad_remapper
+}
+
+dependencies {
+    implementation fileTree(dir: 'pojlib-libs', include: ['*.aar'])
+
+    implementation("com.google.guava:guava:31.0.1-jre")
+    implementation("org.jetbrains:annotations:24.0.1")
+    implementation("com.google.code.gson:gson:2.12.1")
+    implementation("org.json:json:20220924")
+    implementation("commons-io:commons-io:2.13.0")
+    implementation("commons-codec:commons-codec:1.15")
+    implementation("androidx.annotation:annotation:1.7.1")
+    implementation("androidx.core:core:1.13.1")
+    implementation("com.microsoft.azure:msal4j:1.17.2")
+    implementation("com.github.Mathias-Boulay:android_gamepad_remapper:2.0.3")
+}
+
+android {
+    packagingOptions {
+        // Pojlib's libraries (and the JRE it runs) bring many copies of license files
+        resources {
+            excludes += ['META-INF/DEPENDENCIES', 'META-INF/LICENSE*', 'META-INF/NOTICE*', 'META-INF/INDEX.LIST',
+                         'META-INF/*.kotlin_module', 'META-INF/versions/**', 'META-INF/MANIFEST.MF',
+                         'META-INF/AL2.0', 'META-INF/LGPL2.1', 'META-INF/io.netty.versions.properties']
+            pickFirsts += ['**/*.properties', '**/*.xml', 'META-INF/services/**']
+        }
+        jniLibs {
+            // Pojlib's loader and Godot's own (if any) are the same library, one is enough
+            pickFirsts += ['**/libopenxr_loader.so']
+            useLegacyPackaging = true   // the JVM Pojlib starts loads libraries by file path
+        }
+    }
+}

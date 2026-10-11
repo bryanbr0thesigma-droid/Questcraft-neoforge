@@ -27,7 +27,6 @@ import java.util.Map;
 
 import pojlib.API;
 
-import pojlib.UnityPlayerActivity;
 import pojlib.install.Installer;
 import pojlib.install.MinecraftMeta;
 import pojlib.install.NeoForgeInstaller;
@@ -205,7 +204,7 @@ public class JREUtils {
         JREUtils.relocateLibPath(activity, instance);
         setJavaEnvironment(activity, instance);
 
-        UnityPlayerActivity.installLWJGL(activity);
+        LwjglInstaller.installLWJGL(activity);
         Installer.installClient(MinecraftMeta.getVersionInfo(instance.versionName), Constants.USER_HOME).get();
         Installer.installLibraries(MinecraftMeta.getVersionInfo(instance.versionName), Constants.USER_HOME).get();
         Installer.installAssets(MinecraftMeta.getVersionInfo(instance.versionName), Constants.USER_HOME).get();

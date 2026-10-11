@@ -217,7 +217,7 @@ public class InstanceHandler {
             try {
                 CompletableFuture<String> clientClasspath = Installer.installClient(minecraftVersionInfo, gameDir);
                 CompletableFuture<String> assetsFuture = Installer.installAssets(minecraftVersionInfo, gameDir);
-                String lwjgl = UnityPlayerActivity.installLWJGL(activity);
+                String lwjgl = pojlib.util.LwjglInstaller.installLWJGL(activity);
 
                 if (loader == ModLoader.NEOFORGE) {
                     // the installer needs the vanilla client, and the instance is vanilla + NeoForge as one version

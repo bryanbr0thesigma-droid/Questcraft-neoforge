@@ -100,6 +100,7 @@ public class UnityPlayerActivity extends ActivityGroup implements IUnityPlayerLi
 
         updateWindowSize(this);
         GLOBAL_CLIPBOARD = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
+        pojlib.input.ClipboardHolder.clipboard = GLOBAL_CLIPBOARD;
 
         mInputManager = new RemapperManager(this, new RemapperView.Builder(null)
                 .remapA(true)
@@ -121,31 +122,11 @@ public class UnityPlayerActivity extends ActivityGroup implements IUnityPlayerLi
     }
 
     public static String installLWJGL(Activity activity) throws IOException {
-        Logger.getInstance().appendToLog("Checking LWJGL");
-        File lwjgl = new File(Constants.USER_HOME + "/lwjgl3/lwjgl-glfw-classes.jar");
-        byte[] lwjglAsset = FileUtil.loadFromAssetToByte(activity, "lwjgl/lwjgl-glfw-classes.jar");
-
-        if (!lwjgl.exists()) {
-            Objects.requireNonNull(lwjgl.getParentFile()).mkdirs();
-            FileUtil.write(lwjgl.getAbsolutePath(), lwjglAsset);
-        } else if (!FileUtil.matchingAssetFile(lwjgl, lwjglAsset)) {
-            lwjgl.delete();
-            Objects.requireNonNull(lwjgl.getParentFile()).mkdirs();
-            FileUtil.write(lwjgl.getAbsolutePath(), lwjglAsset);
-        }
-
-        Logger.getInstance().appendToLog("LWJGL installed");
-        return lwjgl.getAbsolutePath();
+        return pojlib.util.LwjglInstaller.installLWJGL(activity);
     }
 
     public void reinitUnity() {
-        this.runOnUiThread(() -> {
-            Intent start = this.getPackageManager().getLaunchIntentForPackage(getApplicationInfo().packageName);
-            start.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-            this.startActivity(start);
-            this.finish();
-            Process.killProcess(Process.myPid());
-        });
+        LauncherHost.relaunch(this);
     }
 
     public static DisplayMetrics getDisplayMetrics(Activity activity) {
