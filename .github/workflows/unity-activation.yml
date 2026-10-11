@@ -1,0 +1,27 @@
+name: Unity activation file
+
+# For people without a PC/Mac to run Unity Hub on. Creates the manual activation file (.alf) with the same Unity
+# version the project uses. Upload it at https://license.unity3d.com/manual (signed in with your Unity account),
+# download the .ulf it gives back and paste its whole contents into the UNITY_LICENSE repository secret.
+# Whether Unity still hands out Personal licenses through that page is Unity's decision; if it refuses, use Unity Hub.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  activation:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Create the activation file
+        run: |
+          mkdir out && chmod 777 out
+          docker run --rm -v "$PWD/out:/out" -w /out unityci/editor:ubuntu-2022.3.62f3-base-3 \
+            unity-editor -batchmode -nographics -quit -createManualActivationFile -logfile - || true
+          ls -la out
+          test -n "$(ls out/*.alf 2>/dev/null)"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: unity-activation-file
+          path: out/*.alf
