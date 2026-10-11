@@ -16,10 +16,12 @@ OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
 UA = {"User-Agent": "questcraft-neoforge-port/1.0"}
 
 # NeoForge exists from 1.20.2; these are the versions QuestCraft supports that have a NeoForge Vivecraft build (see vivecraft-builder/)
-VERSIONS = ["1.21.8", "1.21.5", "1.21.4", "1.21.1", "1.20.6", "1.20.4"]
+VERSIONS = ["1.21.11", "1.21.8", "1.21.5", "1.21.4", "1.21.1", "1.20.6", "1.20.4"]
 
 # What QuestCraft's Fabric lists (Pojlib QuestCraft-6.0.1) ship per Minecraft version, by launcher slug.
 FABRIC_SETS = {
+    "1.21.11": ["Sodium", "Lithium", "BadOptimizations", "zFastNoise", "Modernfix-mVUS", "Better-Biome-Blend",
+                "EntityCulling", "Simple-Voice-Chat"],
     "1.21.8": ["Sodium", "Cloth-Config", "Ferrite-Core", "MoreCulling", "Lithium", "ImmediatelyFast", "Krypton",
                "Simple-Voice-Chat", "BadOptimizations", "bbrb", "EntityCulling"],
     "1.21.5": ["Sodium", "Cloth-Config", "Ferrite-Core", "MoreCulling", "Lithium", "ImmediatelyFast", "Krypton",
@@ -50,6 +52,9 @@ MODRINTH = {
     "EntityCulling": ["NNAgCjsB"],
     "ModernFix": ["nmDcB62a"],
     "Noisium": ["KuNKN7d2"],
+    "zFastNoise": ["OnlVIpq5"],
+    "Modernfix-mVUS": ["TjSm1wrD"],  # a ModernFix variant, the fabric list ships it for 1.21.11
+    "Better-Biome-Blend": ["Rs6c7WyL"],
 }
 
 # Fabric API can not exist on NeoForge; a multi-loader jar that asks for it asks for it on its Fabric side only

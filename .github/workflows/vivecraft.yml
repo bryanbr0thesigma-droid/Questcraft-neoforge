@@ -24,7 +24,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        mc: ['1.20.4', '1.20.6', '1.21.1', '1.21.4', '1.21.5', '1.21.8']
+        mc: ['1.20.4', '1.20.6', '1.21.1', '1.21.4', '1.21.5', '1.21.8', '1.21.11']
+        include:
+          # the fork has no source for 1.21.11, QuestCraft's changes are ported onto upstream Vivecraft
+          # (vivecraft-builder/patches/1.21.11), and a Fabric jar comes out of the same build
+          - mc: '1.21.11'
+            loaders: both
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -32,15 +37,15 @@ jobs:
           java-version: '21'
           distribution: 'temurin'
       - name: Build
-        run: ./vivecraft-builder/build.sh ${{ matrix.mc }}
+        run: ./vivecraft-builder/build.sh ${{ matrix.mc }} ${{ matrix.loaders || 'neoforge' }}
       - uses: actions/upload-artifact@v4
         with:
-          name: vivecraft-neoforge-${{ matrix.mc }}
-          path: vivecraft-builder/dist/vivecraft-neoforge-${{ matrix.mc }}.jar
+          name: vivecraft-${{ matrix.mc }}
+          path: vivecraft-builder/dist/*-${{ matrix.mc }}.jar
       - name: Publish
         if: ${{ inputs.publish }}
         uses: softprops/action-gh-release@v2
         with:
           tag_name: vivecraft-${{ matrix.mc }}
           name: Vivecraft for Minecraft ${{ matrix.mc }} (NeoForge)
-          files: vivecraft-builder/dist/vivecraft-neoforge-${{ matrix.mc }}.jar
+          files: vivecraft-builder/dist/*-${{ matrix.mc }}.jar

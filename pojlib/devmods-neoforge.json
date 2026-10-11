@@ -1,6 +1,53 @@
 {
 	"versions": [
 		{
+			"name": "1.21.11",
+			"coreMods": [
+				{
+					"slug": "Vivecraft",
+					"version": "1.0",
+					"download_link": "https://github.com/bryanbr0thesigma-droid/Questcraft-neoforge/releases/download/vivecraft-1.21.11/vivecraft-neoforge-1.21.11.jar"
+				}
+			],
+			"defaultMods": [
+				{
+					"slug": "Sodium",
+					"version": "mc1.21.11-0.8.14-neoforge",
+					"download_link": "https://cdn.modrinth.com/data/AANobbMI/versions/sC6wj32u/sodium-neoforge-0.8.14%2Bmc1.21.11.jar"
+				},
+				{
+					"slug": "Lithium",
+					"version": "mc1.21.11-0.21.4-neoforge",
+					"download_link": "https://cdn.modrinth.com/data/gvQqBUqZ/versions/M93zf1Gr/lithium-neoforge-0.21.4%2Bmc1.21.11.jar"
+				},
+				{
+					"slug": "BadOptimizations",
+					"version": "2.4.1",
+					"download_link": "https://cdn.modrinth.com/data/g96Z4WVZ/versions/Q3Dusz2j/BadOptimizations-2.4.1-1.21.11.jar"
+				},
+				{
+					"slug": "Modernfix-mVUS",
+					"version": "5.21.0",
+					"download_link": "https://cdn.modrinth.com/data/TjSm1wrD/versions/BEBb0SF0/modernfix-neoforge-5.21.0.jar"
+				},
+				{
+					"slug": "Better-Biome-Blend",
+					"version": "1.21.11-1.4.0-neoforge",
+					"download_link": "https://cdn.modrinth.com/data/Rs6c7WyL/versions/UxHBetQY/betterbiomeblend-neoforge-1.21.11-1.4.0.jar"
+				},
+				{
+					"slug": "EntityCulling",
+					"version": "1.11.3",
+					"download_link": "https://cdn.modrinth.com/data/NNAgCjsB/versions/w1sp8Uel/entityculling-neoforge-1.11.3-mc1.21.11.jar"
+				},
+				{
+					"slug": "Simple-Voice-Chat",
+					"version": "neoforge-1.21.11-2.6.22",
+					"download_link": "https://cdn.modrinth.com/data/9eGKb6K1/versions/k7nBzwiA/voicechat-neoforge-1.21.11-2.6.22.jar"
+				}
+			]
+		},
+		{
 			"name": "1.21.8",
 			"coreMods": [
 				{

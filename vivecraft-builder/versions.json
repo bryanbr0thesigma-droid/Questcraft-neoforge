@@ -4,5 +4,9 @@
   "1.21.1": "OpenXR-1.21",
   "1.21.4": "OpenXR-1.21.4",
   "1.21.5": "OpenXR-1.21.5",
-  "1.21.8": "OpenXR-1.21.8"
+  "1.21.8": "OpenXR-1.21.8",
+  "1.21.11": {
+    "repo": "https://github.com/Vivecraft/VivecraftMod.git",
+    "branch": "Multiloader-1.21.11"
+  }
 }

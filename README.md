@@ -14,11 +14,9 @@ QuestCraft itself is not a mod. It is a launcher app (a Unity project that calls
 
 ## Supported Minecraft versions
 
-**1.20.4, 1.20.6, 1.21.1, 1.21.4, 1.21.5 and 1.21.8.** NeoForge only exists from Minecraft 1.20.2 (older versions only have Forge), so QuestCraft's 1.19.x and 1.20.1 cannot be ported.
+**1.20.4, 1.20.6, 1.21.1, 1.21.4, 1.21.5, 1.21.8 and 1.21.11.** NeoForge only exists from Minecraft 1.20.2 (older versions only have Forge), so QuestCraft's 1.19.x and 1.20.1 cannot be ported.
 
-Upstream QuestCraft also ships 1.21.10 and 1.21.11. NeoForge exists for both, but they are not in this port:
-- **1.21.10**: the fork's `OpenXR-1.21.10` branch does not compile its shared module in this setup even when built exactly as shipped (Fabric only; the Minecraft classes never reach the compiler), so there is nothing a NeoForge build could be based on yet.
-- **1.21.11**: the fork has no source for it (the `6.0.1-1.21.11` tag points at an old Minecraft 1.21 commit), only a prebuilt Fabric jar.
+Left out: **1.21.10**. Upstream QuestCraft ships it, but the fork's `OpenXR-1.21.10` branch does not compile its shared module in this setup even when built exactly as shipped (Fabric only; the Minecraft classes never reach the compiler), so there is no working source to start from. (1.21.11 is newer and does not depend on it, see below.)
 
 ## Loader toggle (Fabric / NeoForge)
 
@@ -62,6 +60,8 @@ QuestCraft's Vivecraft fork has all of its Quest/OpenXR changes in the shared `c
 - On the 1.21.5 and 1.21.8 branches the module exists but is switched off (not in `enabled_platforms`, not in `settings.gradle`); the script turns it on.
 - It leaves out the `org.lwjgl.openvr` classes the module would bundle, because Pojlib's LWJGL jar already provides them (with their JNI natives, which LWJGL binds to the class loader that loaded the classes; NeoForge gives mods a loader of their own, where a second copy could not use them). `org.lwjgl.openxr` is QuestCraft's own build and stays. The script checks both in the finished jar.
 
+**1.21.11** is different: QuestCraft's fork has no source for it (its `6.0.1-1.21.11` tag points at an old Minecraft 1.21 commit; only a prebuilt Fabric jar exists). So it is ported here: QuestCraft's change set (about 44 files, nearly all of it the OpenXR provider) was merged onto upstream Vivecraft's `Multiloader-1.21.11` the way the fork's maintainers update the fork, starting from the fork's newest branch so only one Minecraft version had to be crossed instead of ten. The result is [`vivecraft-builder/patches/1.21.11/questcraft-openxr.patch`](vivecraft-builder/patches/1.21.11/questcraft-openxr.patch), applied by `build.sh` on a clone of upstream, and it builds for **both** loaders (`build.sh 1.21.11 both`). The OpenXR renderer had to be adapted to upstream's new eye-target handling: the swapchain image the runtime hands out each frame is now put into `framebufferEye[]`, and `setupRenderConfiguration()` delegates to QuestCraft's two-mode `setupRenderConfiguration(boolean)`. The Fabric 1.21.11 mod list still points at upstream QuestCraft's prebuilt jar (1.3.7); the Fabric jar built here is attached to the same release for anyone who wants to use it instead.
+
 The mod lists link to the jars at `releases/download/vivecraft-<mc>/vivecraft-neoforge-<mc>.jar` of this repository: run the **Build Vivecraft (NeoForge)** workflow with *publish* ticked to create them.
 
 ## Building
@@ -80,7 +80,7 @@ Done here:
 - **Unit tests** ([`pojlib/src/test`](pojlib/src/test)) run against the profile the real NeoForge installer generated: version selection, argument resolution, library de-duplication, and that only the loader's arguments reach the command line.
 - **The NeoForge installer** was run headless against the real maven and produced the layout Pojlib expects (`--install-client`).
 - **A desktop simulation of the launch**: the command line Pojlib builds (same merged libraries, resolved module-path arguments, Pojlib's own LWJGL jar, `fml.toml`) was run on a desktop JVM. BootstrapLauncher and ModLauncher start, FML discovers Minecraft, NeoForge and (with the jar built here in `mods/`) Vivecraft, Vivecraft's Mixin configs apply, and Minecraft's client `main` runs - until it needs Android's arm64 `liblwjgl.so`, which cannot exist on a desktop. That run is what found two bugs (vanilla's templated arguments leaking into the command line, and the vanilla client jar name FML has to ignore).
-- **Vivecraft**: the NeoForge jars of all six versions build with `vivecraft-builder/build.sh` and pass its content checks, and each one loads under NeoForge in the desktop simulation above (FML lists `Vivecraft`, its Mixin configs apply, no module-layer errors) before reaching the Android-only native libraries.
+- **Vivecraft**: the NeoForge jars of all seven versions build with `vivecraft-builder/build.sh` and pass its content checks, and each one loads under NeoForge in the desktop simulation above (FML lists `Vivecraft`, its Mixin configs apply, no module-layer errors) before reaching the Android-only native libraries. The 1.21.11 Fabric jar was boot-tested the same way (Fabric Loader with Fabric API: `vivecraft 1.21.11-1.3.15` loads, then the same native-library wall). NeoForge 1.21.11 uses a new FML (version 10, `net.neoforged.fml.startup.Client` as the main class); the simulation confirms the early window is still switched off by `earlyWindowControl = false`.
 - **Mod lists** are generated from live Modrinth data and dependency-checked.
 
 **Not verified: running on a headset.** There is no device here, so the following is untested and is where problems, if any, will show up first:
