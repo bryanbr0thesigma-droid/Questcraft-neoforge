@@ -12,13 +12,14 @@ const VIEW_SIZE := Vector2i(1200, 600)
 # The menu hangs on the wall of the room as one big screen, 8 m x 4 m, like in the Unity launcher
 # (positions below are the Unity scene's, converted to this model's coordinates).
 const SCREEN_SIZE := Vector2(8.0, 4.0)
-const SCREEN_POSITION := Vector3(-1.0, 128.0, 22.0)
+# 6 cm in front of the wall it hangs on, so the two surfaces do not fight over the same pixels
+const SCREEN_POSITION := Vector3(-1.0, 128.0, 21.94)
 
 # The Minecraft room the launcher is in: the QCWorld model of the Unity launcher (a woodland-mansion library).
 # The player stands on the floor of its main hall, looking down the hall (+X).
 const WORLD_MESH := "res://assets/world/QCWorld.obj"
 const SPAWN_POSITION := Vector3(-1.084, 124.06, 16.42)
-const SPAWN_YAW_DEGREES := 180.0   # looking along +Z, at the screen
+const SPAWN_YAW_DEGREES := 180.0   # looking along +Z, at the screen (until the first headset pose arrives)
 
 var xr_interface: XRInterface
 var ui: Control
@@ -29,6 +30,7 @@ var origin: XROrigin3D
 var laser: Array = []
 var pointer_down := {}
 var in_xr := false
+var recentered := false
 
 
 func _ready() -> void:
@@ -39,6 +41,7 @@ func _ready() -> void:
 		DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
 		get_viewport().use_xr = true
 		_build_xr_scene()
+		xr_interface.pose_recentered.connect(_recenter)   # the Oculus button, held, recenters
 	else:
 		_build_desktop_scene()
 
@@ -89,6 +92,8 @@ func _build_xr_scene() -> void:
 	origin.rotation_degrees = Vector3(0, SPAWN_YAW_DEGREES, 0)
 	add_child(origin)
 	camera = XRCamera3D.new()
+	camera.near = 0.1    # more depth precision than the default, which makes coplanar surfaces flicker less
+	camera.far = 300.0
 	origin.add_child(camera)
 	for hand in ["left_hand", "right_hand"]:
 		var c := XRController3D.new()
@@ -140,8 +145,24 @@ func _build_panel() -> void:
 func _process(_delta: float) -> void:
 	if not in_xr:
 		return
+	# the first frames have no head pose yet; once there is one (the head is above the floor), line up with the room
+	if not recentered and camera.position.y > 0.3:
+		_recenter()
 	for l in laser:
 		_update_pointer(l)
+
+
+## Turns and moves the tracking space so the player stands at the spawn point looking at the screen, whichever way
+## the headset's own axes point (they follow where you were facing when the app started, or the room set-up).
+func _recenter() -> void:
+	if camera == null or origin == null:
+		return
+	var head: Transform3D = camera.transform   # relative to the origin
+	var head_yaw := head.basis.get_euler().y
+	origin.rotation = Vector3(0.0, deg_to_rad(SPAWN_YAW_DEGREES) - head_yaw, 0.0)
+	var flat := Vector3(head.origin.x, 0.0, head.origin.z)
+	origin.position = SPAWN_POSITION - origin.basis * flat
+	recentered = true
 
 
 func _ray_hit(controller: XRController3D) -> Variant:
