@@ -1,0 +1,41 @@
+name: Build Pojlib
+
+# Tests the NeoForge install logic and builds Pojlib-release.aar, the launcher library the Unity wrapper
+# (unity-wrapper/Assets/Plugins/Android/Pojlib-release.aar) calls into.
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'pojlib/**'
+      - '.github/workflows/pojlib.yml'
+  pull_request:
+    paths:
+      - 'pojlib/**'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    defaults:
+      run:
+        working-directory: pojlib
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+      - uses: android-actions/setup-android@v3
+      - name: Install SDK parts
+        run: sdkmanager "platforms;android-34" "build-tools;30.0.3" "ndk;26.1.10909125"
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Unit tests
+        run: ./gradlew --no-daemon testDebugUnitTest
+      - name: Build AAR
+        run: ./gradlew --no-daemon assembleRelease
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Pojlib-release.aar
+          path: pojlib/build/outputs/aar/*-release.aar
