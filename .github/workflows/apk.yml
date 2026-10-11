@@ -4,7 +4,8 @@ name: Build APK
 # with GameCI. The APK appears as the "QuestCraft-apk" artifact of the run (Actions tab -> the run -> Artifacts).
 #
 # One-time setup: Unity needs a license in the repository secrets (Settings -> Secrets and variables -> Actions)
-#   UNITY_LICENSE                              a Personal license file (.ulf), see https://game.ci/docs/github/activation
+#   UNITY_LICENSE                              the contents of Unity_lic.ulf from a computer with Unity Hub signed in and a
+#                                              Personal license activated, see https://game.ci/docs/github/activation
 #   or UNITY_EMAIL + UNITY_PASSWORD + UNITY_SERIAL   for a Plus/Pro seat
 # Without ANDROID_KEYSTORE_BASE64 the APK is signed with Unity's debug key, which is fine for sideloading.
 # To sign with your own key add ANDROID_KEYSTORE_BASE64 (base64 of the .keystore), ANDROID_KEYSTORE_PASS,

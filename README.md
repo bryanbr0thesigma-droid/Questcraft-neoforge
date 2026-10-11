@@ -77,7 +77,7 @@ The mod lists link to the jars at `releases/download/vivecraft-<mc>/vivecraft-ne
 
 ## Getting the APK
 
-The launcher is a Unity project, so the APK is built by the **Build APK** workflow (`.github/workflows/apk.yml`, GameCI, Unity 2022.3.62f3): Actions tab -> *Build APK* -> *Run workflow*, then download `QuestCraft-apk` from the run and sideload the `.apk` (SideQuest or `adb install`). It needs a Unity license once as a repository secret (`UNITY_LICENSE`, or `UNITY_EMAIL`/`UNITY_PASSWORD`/`UNITY_SERIAL`; see the comments in the workflow). The APK is debug-signed unless you add the `ANDROID_KEYSTORE_*` secrets. This workflow has not been run (no Unity here), so expect to fix a first-build problem or two.
+The launcher is a Unity project, so the APK is built by the **Build APK** workflow (`.github/workflows/apk.yml`, GameCI, Unity 2022.3.62f3): Actions tab -> *Build APK* -> *Run workflow*, then download `QuestCraft-apk` from the run and sideload the `.apk` (SideQuest or `adb install`). It needs a Unity license once as a repository secret: activate a Personal license in Unity Hub on your computer and paste the contents of `Unity_lic.ulf` (Windows `C:\ProgramData\Unity\`, macOS `/Library/Application Support/Unity/`, Linux `~/.local/share/unity3d/Unity/`) into `UNITY_LICENSE`, see [GameCI's activation guide](https://game.ci/docs/github/activation). Plus/Pro seats can use `UNITY_EMAIL`/`UNITY_PASSWORD`/`UNITY_SERIAL` instead. The APK is debug-signed unless you add the `ANDROID_KEYSTORE_*` secrets. This workflow has not been run (no Unity here), so expect to fix a first-build problem or two.
 
 ## Building
 
