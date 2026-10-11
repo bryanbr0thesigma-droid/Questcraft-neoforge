@@ -7,10 +7,24 @@
       "webPort": "6080"
     }
   },
-  "forwardPorts": [6080],
+  "forwardPorts": [
+    6080,
+    8000
+  ],
   "portsAttributes": {
-    "6080": { "label": "Desktop (password: unity)", "onAutoForward": "notify" }
+    "6080": {
+      "label": "Desktop (password: unity)",
+      "onAutoForward": "notify"
+    },
+    "8000": {
+      "label": "Typing page",
+      "onAutoForward": "notify"
+    }
   },
   "postCreateCommand": "bash .devcontainer/setup-unity-hub.sh",
-  "hostRequirements": { "cpus": 2, "memory": "4gb" }
+  "hostRequirements": {
+    "cpus": 2,
+    "memory": "4gb"
+  },
+  "postStartCommand": "bash .devcontainer/autostart.sh"
 }
