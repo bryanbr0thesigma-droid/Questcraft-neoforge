@@ -9,9 +9,9 @@ func _initialize() -> void:
 		out = args[0]
 	DirAccess.make_dir_recursive_absolute(out)
 	var window := root
-	window.size = Vector2i(1280, 720)
+	window.size = Vector2i(1200, 600)
 	var ui: Control = load("res://scripts/ui.gd").new()
-	ui.size = Vector2(1280, 720)
+	ui.size = Vector2(1200, 600)
 	root.add_child(ui)
 	await _frames(4)
 	ui.show_login()
@@ -25,6 +25,11 @@ func _initialize() -> void:
 	await _snap(out, "home")
 	ui.show_create()
 	await _snap(out, "create")
+	ui.show_instances()
+	await _snap(out, "instances")
+	ui.show_home()
+	ui._open_version_menu(ui.page.get_child(ui.page.get_child_count() - 1))
+	await _snap(out, "home_menu")
 	ui.show_settings()
 	await _snap(out, "settings")
 	ui.show_mods({"name": "1.21.1", "version": "1.21.1", "loader": "NeoForge"})

@@ -7,15 +7,18 @@ extends Node3D
 
 const UIScript := preload("res://scripts/ui.gd")
 
-const PANEL_WIDTH := 3.0
-const PANEL_DISTANCE := 2.4
-const VIEW_SIZE := Vector2i(1280, 720)
+const VIEW_SIZE := Vector2i(1200, 600)
+
+# The menu hangs on the wall of the room as one big screen, 8 m x 4 m, like in the Unity launcher
+# (positions below are the Unity scene's, converted to this model's coordinates).
+const SCREEN_SIZE := Vector2(8.0, 4.0)
+const SCREEN_POSITION := Vector3(-1.0, 128.0, 22.0)
 
 # The Minecraft room the launcher is in: the QCWorld model of the Unity launcher (a woodland-mansion library).
 # The player stands on the floor of its main hall, looking down the hall (+X).
 const WORLD_MESH := "res://assets/world/QCWorld.obj"
-const SPAWN_POSITION := Vector3(-15.0, 124.0, 5.0)
-const SPAWN_YAW_DEGREES := -90.0
+const SPAWN_POSITION := Vector3(-1.084, 124.06, 16.42)
+const SPAWN_YAW_DEGREES := 180.0   # looking along +Z, at the screen
 
 var xr_interface: XRInterface
 var ui: Control
@@ -25,7 +28,6 @@ var camera: XRCamera3D
 var origin: XROrigin3D
 var laser: Array = []
 var pointer_down := {}
-var placed := false
 var in_xr := false
 
 
@@ -55,12 +57,12 @@ func _build_world() -> void:
 	e.background_mode = Environment.BG_COLOR
 	e.background_color = Color("87b4ff")
 	e.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	e.ambient_light_color = Color(0.82, 0.82, 0.86)
+	e.ambient_light_color = Color(0.95, 0.74, 0.55)   # the room is lit by lanterns
 	env.environment = e
 	add_child(env)
 	var sun := DirectionalLight3D.new()
 	sun.rotation_degrees = Vector3(-50, 30, 0)
-	sun.light_energy = 0.7
+	sun.light_energy = 0.35
 	sun.shadow_enabled = false
 	add_child(sun)
 	var mesh := load(WORLD_MESH) as Mesh
@@ -118,41 +120,28 @@ func _build_xr_scene() -> void:
 	viewport.add_child(ui)
 	ui.request_start_game.connect(_start_game)
 
+	_build_panel()
+
+
+func _build_panel() -> void:
 	panel = MeshInstance3D.new()
 	var quad := QuadMesh.new()
-	quad.size = Vector2(PANEL_WIDTH, PANEL_WIDTH * VIEW_SIZE.y / VIEW_SIZE.x)
+	quad.size = SCREEN_SIZE
 	panel.mesh = quad
 	var pm := StandardMaterial3D.new()
 	pm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	pm.albedo_texture = viewport.get_texture()
 	panel.material_override = pm
+	panel.position = SCREEN_POSITION
+	panel.rotation_degrees = Vector3(0, 180, 0)   # the quad faces +Z, the player is on the -Z side
 	add_child(panel)
-	panel.visible = false
 
 
 func _process(_delta: float) -> void:
 	if not in_xr:
 		return
-	if not placed:
-		_place_panel()
 	for l in laser:
 		_update_pointer(l)
-
-
-## Puts the panel in front of where the player looks the first time the headset has a pose.
-func _place_panel() -> void:
-	if camera.global_position.length() < 0.001 and camera.transform.basis == Basis.IDENTITY:
-		return
-	var head := camera.global_position
-	var forward := -camera.global_transform.basis.z
-	forward.y = 0.0
-	if forward.length() < 0.01:
-		forward = Vector3(0, 0, -1)
-	forward = forward.normalized()
-	panel.global_position = head + forward * PANEL_DISTANCE
-	panel.look_at(head, Vector3.UP, true)
-	panel.visible = true
-	placed = true
 
 
 func _ray_hit(controller: XRController3D) -> Variant:
