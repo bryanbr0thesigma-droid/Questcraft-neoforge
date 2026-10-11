@@ -100,11 +100,6 @@ public class Installer {
                 if (library.name.contains("lwjgl") || (library.name.contains("org.ow2.asm") && !isLoader)) {
                     continue;
                 }
-                // NeoForge puts every jar on the classpath into a module layer, where two jars with the same package
-                // fail to load. Our LWJGL jar already contains jsr305 (javax.annotation), so the library would clash.
-                if (library.name.contains("com.google.code.findbugs:jsr305") && versionInfo.id.contains("neoforge")) {
-                    continue;
-                }
                 for (int i = 0; i < 5; i++) {
                     if (i == 4)
                         throw new RuntimeException(String.format("Library download of %s failed after 5 retries", library.name));

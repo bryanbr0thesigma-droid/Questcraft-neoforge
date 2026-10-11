@@ -95,6 +95,21 @@ class NeoForgeVersionInfoTest {
         assertEquals(List.of("-plain", "-a", "-b"), LaunchArguments.resolve(arguments, new HashMap<>()));
     }
 
+    /** What the launch path really resolves: the merged version. Vanilla's own templates must not get through. */
+    @Test
+    void mergedArgumentsAreTheLoadersAloneAndFullyResolve() {
+        VersionInfo merged = VersionInfo.merge(vanilla, neoForge);
+
+        List<String> jvm = LaunchArguments.resolve(merged.arguments.jvm, variables());
+        assertEquals(LaunchArguments.resolve(neoForge.arguments.jvm, variables()), jvm);
+        assertFalse(jvm.contains("-cp"), "the class path is added by Pojlib");
+        assertFalse(jvm.stream().anyMatch(a -> a.contains("natives_directory") || a.contains("${")), jvm.toString());
+
+        List<String> game = LaunchArguments.resolve(merged.arguments.game, variables());
+        assertEquals(LaunchArguments.resolve(neoForge.arguments.game, variables()), game);
+        assertFalse(game.stream().anyMatch(a -> a.contains("${") || a.equals("--username")), game.toString());
+    }
+
     @Test
     void mergeLetsTheLoaderReplaceVanillaLibraries() {
         VersionInfo merged = VersionInfo.merge(vanilla, neoForge);

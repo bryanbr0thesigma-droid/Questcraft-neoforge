@@ -22,8 +22,9 @@ for patch in "$here"/patches/"$mc"/*.patch; do
   git -C "$work" apply --index "$patch"
 done
 
-# Pojlib's LWJGL jar already provides org.lwjgl.openvr. NeoForge loads every jar into one module layer, where a
-# package that is in two jars is an error (Fabric's flat classpath never minded), so don't bundle it a second time.
+# Pojlib's LWJGL jar already provides org.lwjgl.openvr (with its JNI natives, which LWJGL binds to the class
+# loader that loaded the classes). On Fabric everything shares one class loader so a second copy was harmless;
+# NeoForge loads mods in a loader of their own, where a second copy could not use those natives. Don't bundle it.
 # org.lwjgl.openxr is QuestCraft's own build and only exists in this jar, it stays.
 sed -i '/^[[:space:]]*bundle("org.lwjgl:lwjgl-openvr/d' "$work/neoforge/build.gradle"
 

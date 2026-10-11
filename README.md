@@ -42,7 +42,7 @@ The login (device-code flow through MSAL, then Xbox Live, XSTS and Minecraft ser
 
 ### Vivecraft
 
-QuestCraft's Vivecraft fork has all of its Quest/OpenXR changes in the shared `common` module, and a `neoforge` module on every branch, so no code port was needed; [`vivecraft-builder/build.sh <mc version>`](vivecraft-builder/build.sh) builds that module. The mod lists link to the jars at `releases/download/vivecraft-<mc>/vivecraft-neoforge-<mc>.jar` of this repository: run the **Build Vivecraft (NeoForge)** workflow with *publish* ticked to create them.
+QuestCraft's Vivecraft fork has all of its Quest/OpenXR changes in the shared `common` module, and a `neoforge` module on every branch, so no code port was needed; [`vivecraft-builder/build.sh <mc version>`](vivecraft-builder/build.sh) builds that module. It leaves out the `org.lwjgl.openvr` classes the module would bundle, because Pojlib's LWJGL jar already provides them (with their JNI natives, which LWJGL binds to the class loader that loaded the classes; NeoForge gives mods a loader of their own, where a second copy could not use them). `org.lwjgl.openxr` is QuestCraft's own build and stays. The mod lists link to the jars at `releases/download/vivecraft-<mc>/vivecraft-neoforge-<mc>.jar` of this repository: run the **Build Vivecraft (NeoForge)** workflow with *publish* ticked to create them.
 
 ## Building
 
@@ -56,14 +56,17 @@ QuestCraft's Vivecraft fork has all of its Quest/OpenXR changes in the shared `c
 ## What has and has not been verified
 
 Done here:
-- The NeoForge installer was run headless against the real maven; the resulting profile is what the unit tests ([`pojlib/src/test`](pojlib/src/test)) run against (version selection, argument resolution, library de-duplication).
-- The Java changes compile against the Android 12 API.
-- The mod lists are generated from live Modrinth data and dependency-checked.
+- **Pojlib builds**: `./gradlew testDebugUnitTest assembleRelease` succeeds with the real Android SDK/NDK, and the resulting AAR is the one in `unity-wrapper/Assets/Plugins/Android/`. It has the same file set as the AAR the wrapper shipped with, and every Java method and field the wrapper's C# calls (`createNewInstance`, `prelaunch`, `login`, `addExtraProject`, ...) exists with a matching signature.
+- **Unit tests** ([`pojlib/src/test`](pojlib/src/test)) run against the profile the real NeoForge installer generated: version selection, argument resolution, library de-duplication, and that only the loader's arguments reach the command line.
+- **The NeoForge installer** was run headless against the real maven and produced the layout Pojlib expects (`--install-client`).
+- **A desktop simulation of the launch**: the command line Pojlib builds (same merged libraries, resolved module-path arguments, Pojlib's own LWJGL jar, `fml.toml`) was run on a desktop JVM. BootstrapLauncher and ModLauncher start, FML discovers Minecraft, NeoForge and (with the jar built here in `mods/`) Vivecraft, Vivecraft's Mixin configs apply, and Minecraft's client `main` runs - until it needs Android's arm64 `liblwjgl.so`, which cannot exist on a desktop. That run is what found two bugs (vanilla's templated arguments leaking into the command line, and the vanilla client jar name FML has to ignore).
+- **Vivecraft** NeoForge jars build with `vivecraft-builder/build.sh` (1.21.1 verified end to end; see the workflow for the others).
+- **Mod lists** are generated from live Modrinth data and dependency-checked.
 
 **Not verified: running on a headset.** There is no device here, so the following is untested and is where problems, if any, will show up first:
-- The NeoForge installer and the game running on the Android JRE (module path, `BootstrapLauncher`, the GLFW/LWJGL shim and Vivecraft's OpenXR path under NeoForge's module layers).
+- The NeoForge installer (a separate Android process) and the game on the Android JRE, including the OpenXR path of Vivecraft under NeoForge.
 - Whether the default mods (Sodium/Embeddium, ImmediatelyFast, ...) behave on the Quest's GL driver as their Fabric builds do. QuestCraft ran patched Sodium builds on older versions.
-- Microsoft login and the Mod Manager UI on device (their code paths were reviewed, not run).
+- **Microsoft login** and the **Mod Manager** UI on device. Their Java side is unchanged/loader-aware and was checked for API compatibility with the Unity scripts, but they were not run.
 
 # Upstream README (QuestCraft)
 

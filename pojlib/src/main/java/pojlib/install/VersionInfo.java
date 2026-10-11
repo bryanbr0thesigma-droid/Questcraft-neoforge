@@ -2,10 +2,7 @@ package pojlib.install;
 
 import com.google.gson.annotations.SerializedName;
 
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 
 public class VersionInfo {
@@ -33,7 +30,11 @@ public class VersionInfo {
      * Resolves {@code child} (a mod loader version json) on top of {@code parent} (the vanilla version it
      * {@code inheritsFrom}) the way the vanilla launcher does:
      * the child wins, its libraries come first and replace parent libraries with the same
-     * {@code group:artifact[:classifier]}, and the arguments are concatenated.
+     * {@code group:artifact[:classifier]}.
+     * <p>
+     * The arguments are the loader's alone. Pojlib assembles the vanilla part of the command line itself (library
+     * path, class path, account, directories), so vanilla's templated arguments must not be passed along:
+     * they would arrive with unresolved placeholders and a second {@code -cp}.
      */
     public static VersionInfo merge(VersionInfo parent, VersionInfo child) {
         VersionInfo merged = new VersionInfo();
@@ -54,10 +55,8 @@ public class VersionInfo {
         merged.libraries = libraries.values().toArray(new Library[0]);
 
         merged.arguments = new Arguments();
-        merged.arguments.game = concat(parent.arguments == null ? null : parent.arguments.game,
-                child.arguments == null ? null : child.arguments.game);
-        merged.arguments.jvm = concat(parent.arguments == null ? null : parent.arguments.jvm,
-                child.arguments == null ? null : child.arguments.jvm);
+        merged.arguments.game = child.arguments == null ? new Object[0] : child.arguments.game;
+        merged.arguments.jvm = child.arguments == null ? new Object[0] : child.arguments.jvm;
         return merged;
     }
 
@@ -66,13 +65,6 @@ public class VersionInfo {
         String[] parts = name.split("@")[0].split(":");
         if (parts.length < 3) return name;
         return parts.length > 3 ? parts[0] + ":" + parts[1] + ":" + parts[3] : parts[0] + ":" + parts[1];
-    }
-
-    private static Object[] concat(Object[] first, Object[] second) {
-        List<Object> all = new ArrayList<>();
-        if (first != null) all.addAll(Arrays.asList(first));
-        if (second != null) all.addAll(Arrays.asList(second));
-        return all.toArray();
     }
 
     public static class AssetIndex {
