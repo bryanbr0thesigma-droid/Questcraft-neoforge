@@ -85,6 +85,22 @@
             </intent-filter>
         </activity>
 
+        <!-- Minecraft runs here, in a process of its own, so that it can open its own OpenXR session while the launcher's
+             stays with the launcher (Godot never ends its session before its process ends) -->
+        <activity
+            android:name=".GameActivity"
+            android:process=":game"
+            android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen"
+            android:screenOrientation="landscape"
+            android:configChanges="locale|fontScale|keyboard|keyboardHidden|mcc|mnc|navigation|orientation|screenLayout|screenSize|smallestScreenSize|touchscreen|uiMode"
+            android:excludeFromRecents="true"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="com.oculus.intent.category.VR" />
+            </intent-filter>
+        </activity>
+
     </application>
 
 </manifest>

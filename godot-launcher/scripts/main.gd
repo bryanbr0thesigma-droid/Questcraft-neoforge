@@ -30,6 +30,7 @@ var origin: XROrigin3D
 var laser: Array = []
 var pointer_down := {}
 var in_xr := false
+var game_running := false   # Minecraft is in front, this menu is paused
 var recentered := false
 
 
@@ -253,19 +254,16 @@ func _on_button(button_name: String, hand: String, pressed: bool) -> void:
 		(l["controller"] as XRController3D).trigger_haptic_pulse("haptic", 0.0, 0.3, 0.05, 0.0)
 
 
-## Gives up the headset and lets Pojlib run Minecraft in this process.
+## Starts Minecraft in its own activity and process (GameActivity). This menu pauses while the game is in front, and
+## comes back, showing the main screen, when the game ends.
 func _start_game() -> void:
-	if in_xr:
-		panel.visible = false
-		for l in laser:
-			(l["ray"] as MeshInstance3D).visible = false
-		await get_tree().create_timer(0.3).timeout
-		get_viewport().use_xr = false
-		if xr_interface and xr_interface.is_initialized():
-			xr_interface.uninitialize()
-		in_xr = false
-		await get_tree().create_timer(0.5).timeout
-	Bridge.api("startGame")
-	# nothing more to draw; keep the engine from burning battery while the game runs
-	Engine.max_fps = 5
-	OS.low_processor_usage_mode = true
+	game_running = true
+	Config.save_config()
+	Bridge.api("startGameProcess", [Config.last_instance, Config.last_account_uuid])
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_APPLICATION_RESUMED and game_running:
+		game_running = false
+		if ui:
+			ui.show_home()

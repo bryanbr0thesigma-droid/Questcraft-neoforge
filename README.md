@@ -81,7 +81,7 @@ The mod lists link to the jars at `releases/download/vivecraft-<mc>/vivecraft-ne
 
 The room's lighting is baked into the model's vertex colours by `godot-launcher/tools/prepare_world.py` (Minecraft style: lanterns and sky light, shaded corners), because the Unity launcher's lightmaps only fit the model through a UV set that exists inside Unity. The same script gets the block textures the Unity project lacks (grass, leaves, azalea pots, flowers) from a Minecraft client jar you give it.
 
-**Not verified on a headset.** The menu and every screen were run on a desktop against a fake backend, and the APK's manifest, libraries and Pojlib code were inspected, but nothing here ran on a Quest. The riskiest part is the hand-over at "Play": the launcher ends its OpenXR session so Minecraft (Vivecraft) can open its own in the same process, as the Unity launcher does.
+**Not verified on a headset.** The menu and every screen were run on a desktop against a fake backend, and the APK's manifest, libraries and Pojlib code were inspected, but nothing here ran on a Quest. The riskiest part is the hand-over at "Play". Godot never ends its OpenXR session before its process ends (its `uninitialize()` only drops the script side), so Minecraft cannot share the launcher's process, as it does in the Unity launcher. Instead the game runs in its own activity and Android process (`GameActivity`, `android:process=":game"`); the launcher's activity, with its VR session and menu, just pauses, and the menu is there again when the game ends.
 
 ## Getting the APK
 

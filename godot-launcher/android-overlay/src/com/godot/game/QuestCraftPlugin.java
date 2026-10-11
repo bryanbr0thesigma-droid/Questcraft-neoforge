@@ -1,5 +1,6 @@
 package com.godot.game;
 
+import android.content.Intent;
 import android.util.Log;
 
 import androidx.annotation.NonNull;
@@ -27,6 +28,15 @@ public class QuestCraftPlugin extends GodotPlugin {
     @Override
     public String getPluginName() {
         return "QuestCraft";
+    }
+
+    /** Starts the game in its own activity and process; this one (the VR menu) pauses until the game ends. */
+    private String startGameProcess(String instance, String account) {
+        Intent intent = new Intent(getActivity(), GameActivity.class);
+        intent.putExtra("instance", instance);
+        intent.putExtra("account", account);
+        getActivity().startActivity(intent);
+        return "";
     }
 
     @UsedByGodot
@@ -57,6 +67,7 @@ public class QuestCraftPlugin extends GodotPlugin {
                 case "removeAccount": return String.valueOf(LauncherApi.removeAccount(a.optString(0)));
                 case "prepare": LauncherApi.prepare(a.optString(0)); return "";
                 case "startGame": LauncherApi.startGame(); return "";
+                case "startGameProcess": return startGameProcess(a.optString(0), a.optString(1));
                 case "restart": LauncherApi.restart(); return "";
                 case "progress": return LauncherApi.progress();
                 case "acknowledge": LauncherApi.acknowledge(); return "";

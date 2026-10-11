@@ -14,9 +14,7 @@ import org.lwjgl.glfw.CallbackBridge;
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.util.ArrayList;
-import java.util.List;
+import java.io.RandomAccessFile;
 
 import pojlib.account.MinecraftAccount;
 import pojlib.input.ClipboardHolder;
@@ -296,6 +294,23 @@ public final class LauncherApi {
         }, "qc-game").start();
     }
 
+    /**
+     * Like {@link #startGame()} but runs the game on the calling thread and returns when it ends (normally the
+     * process ends first, a game ending by {@code System.exit} takes it with it). For a host that runs the game in
+     * a process and activity of its own.
+     */
+    public static void runGameBlocking() {
+        MinecraftInstances.Instance instance = find(readyInstance);
+        if (instance == null || !"ready".equals(phase)) return;
+        phase = "running";
+        task = "Running " + readyInstance;
+        try {
+            API.launchInstance(activity, API.currentAcc, instance);
+        } catch (Throwable t) {
+            Logger.getInstance().appendToLog("Launch failed | " + t);
+        }
+    }
+
     /** Ends the game and starts the launcher again. */
     public static void restart() {
         API.restartLauncher(activity);
@@ -321,11 +336,16 @@ public final class LauncherApi {
     }
 
     public static String logTail(int lines) {
-        try {
-            File log = new File(Constants.USER_HOME, "latestlog.txt");
-            List<String> all = Files.readAllLines(log.toPath(), StandardCharsets.UTF_8);
-            List<String> tail = new ArrayList<>(all.subList(Math.max(0, all.size() - Math.max(1, lines)), all.size()));
-            return String.join("\n", tail);
+        // only the end of the file: the log grows large and this is polled from the launcher's render thread
+        try (RandomAccessFile file = new RandomAccessFile(new File(Constants.USER_HOME, "latestlog.txt"), "r")) {
+            long length = file.length();
+            int want = (int) Math.min(length, 16 * 1024);
+            byte[] bytes = new byte[want];
+            file.seek(length - want);
+            file.readFully(bytes);
+            String[] all = new String(bytes, StandardCharsets.UTF_8).split("\\r?\\n");
+            int from = Math.max(0, all.length - Math.max(1, lines));
+            return String.join("\n", java.util.Arrays.copyOfRange(all, from, all.length));
         } catch (Throwable t) {
             return "";
         }

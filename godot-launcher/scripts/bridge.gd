@@ -88,6 +88,9 @@ func _mock(method: String, args: Array) -> Variant:
 		"acknowledge":
 			_mock_phase = "idle"
 			return ""
+		"startGameProcess":
+			print("MOCK startGameProcess ", args)
+			return ""
 		"logTail": return "Mock log line 1\nMock log line 2"
 		"hasConnection": return "true"
 		_: return ""
