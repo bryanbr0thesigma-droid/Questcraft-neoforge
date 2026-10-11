@@ -12,7 +12,7 @@ import org.json.JSONArray;
 import pojlib.LauncherApi;
 
 /**
- * The bridge between the Godot launcher (GDScript) and Pojlib. One method, {@code call(method, argsJson)}, so the
+ * The bridge between the Godot launcher (GDScript) and Pojlib. One method, {@code invoke(method, argsJson)}, so the
  * GDScript side never needs to know Java types: arguments are a JSON array of strings, the result is a string
  * (lists and objects are JSON text).
  */
@@ -30,7 +30,7 @@ public class QuestCraftPlugin extends GodotPlugin {
     }
 
     @UsedByGodot
-    public String call(String method, String argsJson) {
+    public String invoke(String method, String argsJson) {
         try {
             JSONArray a = new JSONArray(argsJson == null ? "[]" : argsJson);
             switch (method) {

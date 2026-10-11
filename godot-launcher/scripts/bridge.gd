@@ -28,7 +28,7 @@ func _ready() -> void:
 func api(method: String, args: Array = []) -> Variant:
 	if is_mock:
 		return _mock(method, args)
-	var raw = plugin.call("call", method, JSON.stringify(args))
+	var raw = plugin.call("invoke", method, JSON.stringify(args))
 	var text := str(raw)
 	if text.begins_with("[") or text.begins_with("{"):
 		var parsed = JSON.parse_string(text)

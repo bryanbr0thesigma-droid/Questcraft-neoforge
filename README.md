@@ -75,6 +75,12 @@ QuestCraft's Vivecraft fork has all of its Quest/OpenXR changes in the shared `c
 
 The mod lists link to the jars at `releases/download/vivecraft-<mc>/vivecraft-neoforge-<mc>.jar` of this repository: run the **Build Vivecraft (NeoForge)** workflow with *publish* ticked to create them.
 
+## Godot launcher (no Unity needed)
+
+[`godot-launcher/`](godot-launcher) is a second launcher, written in Godot 4.4 instead of Unity. It looks and sits like the Unity one (the QuestCraft menu on the big screen of the Minecraft room, controller rays, on-screen keyboard) and starts the game through Pojlib's new `LauncherApi` facade. Godot is free and builds without any account or license, so `godot-launcher/build-apk.sh` (or the **Build Godot APK** workflow) makes an installable APK anywhere. It is signed with a throw-away key (fine for sideloading; uninstall before installing a build signed with another key).
+
+**Not verified on a headset.** The menu and every screen were run on a desktop against a fake backend, and the APK's manifest, libraries and Pojlib code were inspected, but nothing here ran on a Quest. The riskiest part is the hand-over at "Play": the launcher ends its OpenXR session so Minecraft (Vivecraft) can open its own in the same process, as the Unity launcher does.
+
 ## Getting the APK
 
 The launcher is a Unity project, so the APK is built by the **Build APK** workflow (`.github/workflows/apk.yml`, GameCI, Unity 2022.3.62f3): Actions tab -> *Build APK* -> *Run workflow*, then download `QuestCraft-apk` from the run and sideload the `.apk` (SideQuest or `adb install`). It needs a Unity license once as a repository secret: activate a Personal license in Unity Hub on your computer and paste the contents of `Unity_lic.ulf` (Windows `C:\ProgramData\Unity\`, macOS `/Library/Application Support/Unity/`, Linux `~/.local/share/unity3d/Unity/`) into `UNITY_LICENSE`, see [GameCI's activation guide](https://game.ci/docs/github/activation). Plus/Pro seats can use `UNITY_EMAIL`/`UNITY_PASSWORD`/`UNITY_SERIAL` instead. No PC for the license step? Create a Codespace on this branch: `.devcontainer/` gives it a desktop in the browser (port 6080, password `unity`) with Unity Hub; run `~/start-hub.sh`, sign in, activate a Personal license, then `~/show-license.sh` prints the `.ulf` to paste into the secret. The APK is debug-signed unless you add the `ANDROID_KEYSTORE_*` secrets. This workflow has not been run (no Unity here), so expect to fix a first-build problem or two.

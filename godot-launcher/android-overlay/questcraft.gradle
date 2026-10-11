@@ -34,3 +34,17 @@ android {
         }
     }
 }
+
+// Godot writes src/<buildType>/AndroidManifest.xml for the export, with an activity that replaces the one in our
+// AndroidManifest.xml ("mergeOnlyAttributes"), so the categories that make the headset start the app as a VR app
+// must be added there.
+['debug', 'release'].each { buildType ->
+    def overlay = file("src/${buildType}/AndroidManifest.xml")
+    if (overlay.exists() && !overlay.text.contains('com.oculus.intent.category.VR')) {
+        overlay.text = overlay.text.replace(
+            '<category android:name="android.intent.category.LAUNCHER" />',
+            '<category android:name="android.intent.category.LAUNCHER" />\n' +
+            '                <category android:name="com.oculus.intent.category.VR" />\n' +
+            '                <category android:name="org.khronos.openxr.intent.category.IMMERSIVE_HMD" />')
+    }
+}

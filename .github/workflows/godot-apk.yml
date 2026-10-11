@@ -1,0 +1,50 @@
+name: Build Godot APK
+
+# Builds the Godot launcher (godot-launcher/) into an APK. Needs no Unity and no license: Godot, its export templates
+# and the Android SDK are all free downloads. The APK is the "QuestCraft-godot-apk" artifact of the run.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  GODOT_VERSION: 4.4.1
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+      - uses: android-actions/setup-android@v3
+      - name: Android SDK parts
+        run: sdkmanager "platforms;android-34" "build-tools;34.0.0" "ndk;26.1.10909125"
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Build Pojlib
+        working-directory: pojlib
+        run: ./gradlew --no-daemon assembleRelease
+      - name: Install Godot and its export templates
+        run: |
+          base=https://github.com/godotengine/godot-builds/releases/download/${GODOT_VERSION}-stable
+          curl -sSL -o godot.zip "$base/Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip"
+          unzip -q godot.zip -d "$HOME/godot"
+          chmod +x "$HOME/godot/Godot_v${GODOT_VERSION}-stable_linux.x86_64"
+          curl -sSL -o templates.tpz "$base/Godot_v${GODOT_VERSION}-stable_export_templates.tpz"
+          dir="$HOME/.local/share/godot/export_templates/${GODOT_VERSION}.stable"
+          mkdir -p "$dir"
+          unzip -q -j templates.tpz 'templates/android_*' 'templates/version.txt' -d "$dir"
+      - name: Build the APK
+        env:
+          GODOT: ${{ env.HOME }}/godot/Godot_v${{ env.GODOT_VERSION }}-stable_linux.x86_64
+        run: |
+          export GODOT="$HOME/godot/Godot_v${GODOT_VERSION}-stable_linux.x86_64"
+          export JAVA_HOME="$JAVA_HOME_17_X64"
+          godot-launcher/build-apk.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: QuestCraft-godot-apk
+          path: godot-launcher/build/QuestCraft.apk
