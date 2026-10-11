@@ -196,9 +196,11 @@ func _selector(options: Array, selected: String, changed := Callable()) -> HBoxC
 	shown.custom_minimum_size = Vector2(230, 0)
 	shown.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	shown.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	var index := maxi(0, options.find(selected))
+	# the position lives in a dictionary: a plain variable would be copied into each handler below, and the buttons
+	# would move their own copy while the label kept showing the first value
+	var st := {"index": maxi(0, options.find(selected))}
 	var apply := func():
-		var v: String = str(options[index]) if options.size() > 0 else ""
+		var v: String = str(options[st["index"]]) if options.size() > 0 else ""
 		shown.text = v
 		row.set_meta("value", v)
 		if changed.is_valid():
@@ -206,7 +208,7 @@ func _selector(options: Array, selected: String, changed := Callable()) -> HBoxC
 	var step := func(delta: int):
 		if options.size() == 0:
 			return
-		index = (index + delta + options.size()) % options.size()
+		st["index"] = (int(st["index"]) + delta + options.size()) % options.size()
 		apply.call()
 	row.add_child(_button("<", func(): step.call(-1), Vector2(56, 54)))
 	row.add_child(shown)
@@ -381,6 +383,12 @@ func show_home() -> void:
 	page.add_child(version_button)
 	version_button.pressed.connect(_open_version_menu.bind(version_button))
 
+	# which mod loader quick-play versions are made with (Fabric, NeoForge, Quilt); the version list follows it
+	var loader_button := _button("Loader: " + Config.last_loader, _cycle_loader, Vector2(330, 44))
+	loader_button.position = Vector2(26, H - 176)
+	loader_button.size = Vector2(330, 44)
+	page.add_child(loader_button)
+
 	var play := _button("Play", _play_selected, Vector2(340, 78))
 	play.add_theme_font_size_override("font_size", 38)
 	play.position = Vector2(430, H - 104)
@@ -401,6 +409,17 @@ func show_home() -> void:
 	var gear := _icon_button("gear", show_settings, 64)
 	gear.position = Vector2(W - 70, H - 100)
 	page.add_child(gear)
+
+
+## Switches the loader for new quick-play instances to the next one (Fabric -> NeoForge -> Quilt -> ...).
+func _cycle_loader() -> void:
+	if _loaders.is_empty():
+		return
+	var i := _loaders.find(Config.last_loader)
+	Config.last_loader = str(_loaders[(i + 1) % _loaders.size()])
+	Config.save_config()
+	show_home()
+	set_status("New versions will be made with " + Config.last_loader)
 
 
 ## The instance (or Minecraft version) the main screen will start.
