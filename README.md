@@ -1,138 +1,95 @@
-# Welcome to the QuestCraft GitHub!
-### **[Support us on Patreon!](https://patreon.com/QuestCraftXR)**
+# QuestCraft for NeoForge
 
-# QuestCraft
+A port of [QuestCraft](https://github.com/QuestCraftPlusPlus/QuestCraft) (Minecraft: Java Edition in VR on Meta Quest and other standalone headsets) from the **Fabric** mod loader to **NeoForge**.
+
 ![QC](/QCSimple3.jpg)
 
-QuestCraft, utilizing Vivecraft and Pojlib, is a standalone port of Minecraft: Java Edition to many VR Headsets. With a team of three main developers and 11 third-party developers, over the past year, we have not only gotten the bestselling game, Minecraft: Java Edition running on Android, but we have also worked with third-party developers to bring it into Virtual Reality on the Meta Quest and other standalone HMDs.
+QuestCraft itself is not a mod. It is a launcher app (a Unity project that calls into an Android Java library, Pojlib) that installs Minecraft, a mod loader, and a set of mods - Vivecraft above all - and runs the game on the headset. Porting it to NeoForge therefore touches three projects, which upstream keeps in separate repositories and which live side by side here:
 
-# Features
-- **Roomscale Minecraft VR!** 
-- **Quest 2 and 3 Native!**
-- **Pico Neo 3, 4, 4u Support along with other headsets!**
-- **Full Multiplayer!**                                                                    
-- **Immersive Controls through Vivecraft!**                                                                                                   
-- **Supports 1.19.2 & 4, 1.20.1, 4 & 6, 1.21.1 + 4 & 5**
-- **Fully standalone!**                                                                                                                        
-- **Includes a launcher that allows you to start QuestCraft, switch between versions, automatically update installed mods and other MC components in seconds, and use Mod Manager, a tool to download and install mods, modpacks and resourcepacks right from your Quest!**                                                                                                                                                                                
+| Directory | Upstream | What changed for NeoForge |
+|---|---|---|
+| [`pojlib/`](pojlib) | [Pojlib](https://github.com/QuestCraftPlusPlus/Pojlib), branch `QuestCraft-6.0.1` | Installs and launches NeoForge instead of Fabric, NeoForge mod lists, Microsoft login and mod handling unchanged in behaviour |
+| [`unity-wrapper/`](unity-wrapper) | [QCXR-XR-Wrapper](https://github.com/QuestCraftPlusPlus/QCXR-XR-Wrapper), `master` | Creates NeoForge instances, Mod Manager searches/validates mods for the instance's loader |
+| [`vivecraft-builder/`](vivecraft-builder) | [VivecraftMod](https://github.com/QuestCraftPlusPlus/VivecraftMod) (QuestCraft's Vivecraft fork), `OpenXR-*` branches | Builds the fork's `neoforge` module; upstream only publishes the Fabric jar |
 
-# Installation Instructions
+## Supported Minecraft versions
 
-**NOTE: To install QuestCraft, you must have an internet connection for the initial setup to succeed. Furthermore, you MUST own a legal, valid copy of Minecraft: Java Edition to play!**
+**1.20.4, 1.20.6, 1.21.1, 1.21.4 and 1.21.5.** NeoForge only exists from Minecraft 1.20.2 (older versions only have Forge), so QuestCraft's 1.19.x and 1.20.1 are not part of this port. Upstream QuestCraft also supports 1.21.8, 1.21.10 and 1.21.11. NeoForge exists for those, but QuestCraft's Vivecraft fork has no `neoforge` module on its 1.21.8+ branches (Fabric only), so they need a NeoForge module written first and are not part of this port yet.
 
-First off, you most likely want to install QuestCraft. Please go to the release page for **[QuestCraft](https://github.com/QuestCraftPlusPlus/QuestCraft/releases/latest)** and download the APK to your computer or Android device.
+## How it works
 
-Secondly, you must install the QuestCraft APK to your VR Headset using **[SideQuest](https://sidequestvr.com/setup-howto)** and follow the necessary steps to connect your preferred VR headset. Drag and drop the APK, and wait for it to install.
+### NeoForge instead of Fabric
 
-Next, open your headset's QuestCraft launcher (maybe in Unknown Sources.) Make sure to grant requested permissions. Once you're done, you'll follow the on-screen prompts to enter your Minecraft login details, then press play and wait for all the files to download. (approx. 10 minutes, dependent on internet speed, you must do this for each specific version to play that version!) While it downloads, do not take off your headset as it may cause files to stop transferring.
+Fabric is a list of libraries plus a main class, so Pojlib could install it by downloading that list. NeoForge is not: its installer patches and remaps the Minecraft client (mappings, jar splitting, binary patching) and launches through `BootstrapLauncher` on a Java module path. Pojlib therefore:
 
-And boom! You have successfully installed QuestCraft on your VR headset! To play, press the **Play** button and wait for it to load; depending on the headset, it might take a while, but our nifty log viewer will show you progress, (1-4 minutes max with default mods.)
+1. downloads the newest NeoForge installer for the Minecraft version (`NeoForgeMeta`),
+2. runs it headless (`--install-client`) in a JVM of its own, in a separate Android process (`NeoForgeInstallService`; a process can only host one JVM and the game needs the main one),
+3. reads the `neoforge-<version>.json` the installer wrote, merges it over the vanilla version json the way the vanilla launcher does (`VersionInfo.merge`) and resolves its templated JVM/game arguments (`LaunchArguments`),
+4. launches with the module-path arguments NeoForge asks for, and
+5. writes `config/fml.toml` with `earlyWindowControl = false`, because FML's early loading screen would open a second GLFW/GL context next to Vivecraft's.
 
-## Supported Renderer
+If NeoForge's module setup needs adjusting on a headset without a rebuild, put JVM arguments (one per line) in `<app files>/loader_jvm_args.txt`; they are added to the launch command.
 
-**Light Thin Wrapper**
+### Mods
 
-We use a renderer made in joint collaboration with [PojavLauncherTeam](https://github.com/PojavLauncherTeam), which allows for fast, compatible, and best way to play Java Edition on Mobile Devices.
+NeoForge instances get their mods from [`pojlib/mods-neoforge.json`](pojlib/mods-neoforge.json) (and `devmods-neoforge.json`). They are generated by [`pojlib/tools/update_mods.py`](pojlib/tools/update_mods.py): QuestCraft's Fabric mod set for each version, mapped to the newest NeoForge build on Modrinth, with a check that every required dependency is in the list. Mods without a NeoForge build for a version are left out (the generator prints them): Krypton, Lithium on 1.20.x and MoreCulling on 1.20.6. Sodium has no 1.20.4 NeoForge build and is replaced by Embeddium there.
 
-## Included Mods 
+In the app, **Mod Manager** searches Modrinth for the loader of the selected instance and checks mod files and their dependencies against it, so only mods that can load are offered.
 
-QuestCraft includes many mods that replace modpacks for optimization. [You can check it out here!](https://github.com/QuestCraftPlusPlus/Pojlib/blob/QuestCraft/mods.json)
+### Microsoft login
 
-## Mod Issues
+The login (device-code flow through MSAL, then Xbox Live, XSTS and Minecraft services) is part of Pojlib and does not depend on the mod loader. It is unchanged from upstream.
 
-**Did you experience a mod-related crash when loading MC? You can do 1 of these solutions to find the cause and fix it!**
+### Vivecraft
 
-### Easy Way
+QuestCraft's Vivecraft fork has all of its Quest/OpenXR changes in the shared `common` module, and a `neoforge` module on every branch, so no code port was needed; [`vivecraft-builder/build.sh <mc version>`](vivecraft-builder/build.sh) builds that module. The mod lists link to the jars at `releases/download/vivecraft-<mc>/vivecraft-neoforge-<mc>.jar` of this repository: run the **Build Vivecraft (NeoForge)** workflow with *publish* ticked to create them.
 
-Join the QuestCraft [Discord Server](https://discord.gg/questcraft) and go to #bot-commands. Grab your log by going to Need Help? button, going to the link it supplies, downloading the log, then uploading it to Crafty by doing /logs.
+## Building
 
-### Manual Way
+1. **Pojlib AAR** - `cd pojlib && ./gradlew assembleRelease` (JDK 17, Android SDK 34, build tools 30.0.3, NDK 26.1.10909125; the **Build Pojlib** workflow does this and runs the unit tests). Copy `build/outputs/aar/*-release.aar` to `unity-wrapper/Assets/Plugins/Android/Pojlib-release.aar`. The wrapper calls into that AAR, so **a NeoForge launcher needs this rebuilt AAR**.
+2. **Vivecraft** - `./vivecraft-builder/build.sh 1.21.1` (JDK 21), or the workflow.
+3. **Unity wrapper** - open `unity-wrapper/` in Unity and build the Android player as upstream does.
+4. **Mod lists** - `python3 pojlib/tools/update_mods.py`.
 
-To find out what caused the crash, you can open the latestlog.txt file. You can find it in Android/data/com.qcxr.qcxr with a file viewer. You can go to the bottom of the file and look for a Fabric error message. This message will tell you which mods caused the crash. Once you know what caused the problem, you can fix it. You can now also get logs by pressing the "Need Help?" button, where it will give you a mclo.gs link.
+`Constants.PORT_RAW_URL` in Pojlib is where the launcher downloads the mod lists and supported versions from. It points at this repository's working branch; point it at the default branch once the port is merged.
 
-If you need help with these solutions, please go to the support channel of the QuestCraft [Discord](https://discord.gg/questcraft). 
+## What has and has not been verified
 
-*All mods that are preinstalled can be toggled off and on with the execption of Vivecraft and Fabric API in a new instance.*
+Done here:
+- The NeoForge installer was run headless against the real maven; the resulting profile is what the unit tests ([`pojlib/src/test`](pojlib/src/test)) run against (version selection, argument resolution, library de-duplication).
+- The Java changes compile against the Android 12 API.
+- The mod lists are generated from live Modrinth data and dependency-checked.
 
-## Some Recommended Settings and Tips
-1. In the options menu, go to VR Settings/Stereo Rendering and set the resolution (NOT CAMERA RES) to 80%. This will decrease the general quality but will give an extra performance boost.
-2. The game's render distance is best at 4-6, but you *may* encounter lag spikes when using it. 9 and above is not recommended.
-3. **[Skyblock](https://minecraft.wiki/w/Tutorials/Skyblock)** and **[Oneblock](https://www.curseforge.com/minecraft/worlds/oneblock)** worlds perform the best, as they require less hardware usage.
+**Not verified: running on a headset.** There is no device here, so the following is untested and is where problems, if any, will show up first:
+- The NeoForge installer and the game running on the Android JRE (module path, `BootstrapLauncher`, the GLFW/LWJGL shim and Vivecraft's OpenXR path under NeoForge's module layers).
+- Whether the default mods (Sodium/Embeddium, ImmediatelyFast, ...) behave on the Quest's GL driver as their Fabric builds do. QuestCraft ran patched Sodium builds on older versions.
+- Microsoft login and the Mod Manager UI on device (their code paths were reviewed, not run).
 
-# Notes
-- We do not exist on TikTok. No one from the dev team makes TikTok videos.
-- QuestCraft (QCXR) is developed and maintained by the QCXR team; we also contribute upstream to the open-source tools that we used to make this a reality; make sure to check out **[MCXR](https://github.com/mcxr-org/MCXR)**, the previous VR mod, now replaced with **[VivecraftMod](https://github.com/ferriarnus/VivecraftMod)**, **[PojavLauncher](https://github.com/PojavLauncherTeam/PojavLauncher)** (for [Pojlib](https://github.com/QuestCraftPlusPlus/Pojlib/tree/QuestCraft)!)
-- All support questions should be asked inside the **[QuestCraft Discord](discord.gg/questcraft)** for the best experience.
-- **questcraft.net is not maintained or owned by anyone on the QuestCraft team**; they could put malware on it anytime. Please do not download anything from or visit questcraft.net. **Our website is here at [QuestCraft](https://questcraft.org/)**. 
-- When installing mods you may face issues, ranging from unexpected behaviour to crashes! If you experience any, go to the **[Discord server](https://discord.gg/questcraft/), or if there isn't already an issue and is not about mod compatibility, [make a bug report](https://github.com/QuestCraftPlusPlus/QuestCraft/issues)**
+# Upstream README (QuestCraft)
 
-# This project is open source...
-...but you don't find source code in this repo. You can find the source code for each subproject in their respective repos:
-- **[Pojlib (Launcher library)](https://github.com/questcraftplusplus/pojlib)**
-- **[Unity Environment (Launcher Wrapper)](https://github.com/QuestCraftPlusPlus/QCXR-XR-Wrapper).** 
+Everything below describes QuestCraft itself and still applies, except where it says Fabric.
+
+- Roomscale Minecraft VR, Quest 2 / 3 / Pro native, Pico and other headsets, multiplayer, immersive controls through Vivecraft, fully standalone.
+- Install: build or download the APK, sideload it with [SideQuest](https://sidequestvr.com/setup-howto), open QuestCraft in Unknown Sources, log in with the Microsoft account that owns Minecraft: Java Edition and press Play. The first launch of each version downloads its files (about 10 minutes); keep the headset on while it does.
+- Renderer: Light Thin Wrapper, made jointly with [PojavLauncherTeam](https://github.com/PojavLauncherTeam).
+- Support: [QuestCraft Discord](https://discord.gg/questcraft). **questcraft.net is not maintained by the QuestCraft team**; the project site is [questcraft.org](https://questcraft.org/).
+- Tips: set VR Settings / Stereo Rendering resolution to 80%, keep render distance at 4-6, Skyblock and Oneblock worlds run best.
 
 ## Controls
 
 ![Diagram of the table below](/QC_Controls.png)
 
-<details>
-  <summary>Show controls table</summary>
-  <table>
-    <thead>
-      <tr>
-        <th scope="col">Button</th>
-        <th scope="col">Function</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <th scope="row" style="text-align: left;">Left Thumbstick</th>
-        <td>Move (Press to Sprint)</td>
-      </tr>
-      <tr>
-        <th scope="row" style="text-align: left;">Right Thumbstick</th>
-        <td>Left / Right Turn (Press to Crouch)</td>
-      </tr>
-      <tr>
-        <th scope="row" style="text-align: left;">Left Trigger</th>
-        <td>Place/use</td>
-      </tr>
-      <tr>
-        <th scope="row" style="text-align: left;">Right Trigger</th>
-        <td>Break / Grab</td>
-      </tr>
-      <tr>
-        <th scope="row" style="text-align: left;">Left Grab</th>
-        <td>Hotbar Left (Left Scroll)</td>
-      </tr>
-      <tr>
-        <th scope="row" style="text-align: left;">Right Grab</th>
-        <td>Hotbar Right (Right Scroll)</td>
-      </tr>
-      <tr>
-        <th scope="row" style="text-align: left;">X</th>
-        <td>Inventory</td>
-      </tr>
-      <tr>
-        <th scope="row" style="text-align: left;">Y</th>
-        <td>Teleport</td>
-      </tr>
-      <tr>
-        <th scope="row" style="text-align: left;">A</th>
-        <td>Radial Menu</td>
-      </tr>
-      <tr>
-        <th scope="row" style="text-align: left;">B</th>
-        <td>Jump</td>
-      </tr>
-      <tr>
-        <th scope="row" style="text-align: left;">Menu Button</th>
-        <td>Pause / Esc</td>
-      </tr>
-      <tr>
-        <th scope="row" style="text-align: left;">Meta Button</th>
-        <td>Meta Home</td>
-      </tr>
-    </tbody>
-  </table>
-</details>
+| Button | Function |
+|---|---|
+| Left Thumbstick | Move (press to sprint) |
+| Right Thumbstick | Left / right turn (press to crouch) |
+| Left Trigger | Place / use |
+| Right Trigger | Break / grab |
+| Left Grab | Hotbar left |
+| Right Grab | Hotbar right |
+| X | Inventory |
+| Y | Teleport |
+| A | Radial menu |
+| B | Jump |
+| Menu Button | Pause / Esc |
+| Meta Button | Meta Home |

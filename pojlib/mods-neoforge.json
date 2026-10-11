@@ -202,6 +202,48 @@
 			]
 		},
 		{
+			"name": "1.20.6",
+			"coreMods": [
+				{
+					"slug": "Vivecraft",
+					"version": "1.0",
+					"download_link": "https://github.com/bryanbr0thesigma-droid/Questcraft-neoforge/releases/download/vivecraft-1.20.6/vivecraft-neoforge-1.20.6.jar"
+				}
+			],
+			"defaultMods": [
+				{
+					"slug": "Sodium",
+					"version": "0.3.20+mc1.20.6",
+					"download_link": "https://cdn.modrinth.com/data/sk9rgfiA/versions/ktzp4Wfg/embeddium-0.3.20%2Bmc1.20.6.jar"
+				},
+				{
+					"slug": "ModernFix",
+					"version": "5.18.0+mc1.20.6",
+					"download_link": "https://cdn.modrinth.com/data/nmDcB62a/versions/g8YTb1tk/modernfix-neoforge-5.18.0%2Bmc1.20.6.jar"
+				},
+				{
+					"slug": "Noisium",
+					"version": "2.3.0+mc1.20.5-1.20.6",
+					"download_link": "https://cdn.modrinth.com/data/KuNKN7d2/versions/Oclohbu0/noisium-neoforge-2.3.0%2Bmc1.20.5-1.20.6.jar"
+				},
+				{
+					"slug": "Cloth-Config",
+					"version": "14.0.139+neoforge",
+					"download_link": "https://cdn.modrinth.com/data/9s6osm5g/versions/hradv69C/cloth-config-14.0.139-neoforge.jar"
+				},
+				{
+					"slug": "Simple-Voice-Chat",
+					"version": "neoforge-1.20.6-2.5.22",
+					"download_link": "https://cdn.modrinth.com/data/9eGKb6K1/versions/EWx0dQjf/voicechat-neoforge-1.20.6-2.5.22.jar"
+				},
+				{
+					"slug": "EntityCulling",
+					"version": "1.11.3",
+					"download_link": "https://cdn.modrinth.com/data/NNAgCjsB/versions/fSSFHCFd/entityculling-neoforge-1.11.3-mc1.20.6.jar"
+				}
+			]
+		},
+		{
 			"name": "1.20.4",
 			"coreMods": [
 				{

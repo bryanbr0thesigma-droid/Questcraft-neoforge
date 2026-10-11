@@ -16,7 +16,7 @@ OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
 UA = {"User-Agent": "questcraft-neoforge-port/1.0"}
 
 # NeoForge exists from 1.20.2; these are the versions QuestCraft supports that have a NeoForge Vivecraft build (see vivecraft-builder/)
-VERSIONS = ["1.21.5", "1.21.4", "1.21.1", "1.20.4"]
+VERSIONS = ["1.21.5", "1.21.4", "1.21.1", "1.20.6", "1.20.4"]
 
 # What QuestCraft's Fabric lists (Pojlib QuestCraft-6.0.1) ship per Minecraft version, by launcher slug.
 FABRIC_SETS = {
@@ -26,6 +26,8 @@ FABRIC_SETS = {
                "Krypton", "Simple-Voice-Chat", "BadOptimizations", "bbrb", "EntityCulling"],
     "1.21.1": ["Sodium", "ModernFix", "Noisium", "Lithium", "MoreCulling", "Simple-Voice-Chat", "Cloth-Config",
                "BadOptimizations", "Ferrite-Core", "ImmediatelyFast", "bbrb", "EntityCulling"],
+    "1.20.6": ["Sodium", "ModernFix", "Noisium", "Lithium", "MoreCulling", "Cloth-Config", "Simple-Voice-Chat",
+               "EntityCulling"],
     "1.20.4": ["Sodium", "Cloth-Config", "ImmediatelyFast", "Simple-Voice-Chat", "ModernFix", "Noisium", "Lithium",
                "EntityCulling", "Ferrite-Core", "Krypton"],
     # Fabric-Language-Kotlin is left out on purpose, it only exists for Fabric

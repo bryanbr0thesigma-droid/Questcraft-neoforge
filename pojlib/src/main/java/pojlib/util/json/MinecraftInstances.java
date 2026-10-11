@@ -81,6 +81,8 @@ public class MinecraftInstances {
         public boolean defaultMods;
         // "fabric" or "neoforge", instances that were created before NeoForge existed have none and are Fabric
         public String modLoader;
+        // The loader version the instance was made with, for NeoForge. Its classpath and arguments belong to it.
+        public String loaderVersion;
         // Arguments the mod loader needs on top of the ones every instance gets, already resolved for this device
         public String[] loaderJvmArgs;
         public String[] loaderGameArgs;

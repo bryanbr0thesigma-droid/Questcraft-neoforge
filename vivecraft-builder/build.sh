@@ -22,10 +22,28 @@ for patch in "$here"/patches/"$mc"/*.patch; do
   git -C "$work" apply --index "$patch"
 done
 
+# Pojlib's LWJGL jar already provides org.lwjgl.openvr. NeoForge loads every jar into one module layer, where a
+# package that is in two jars is an error (Fabric's flat classpath never minded), so don't bundle it a second time.
+# org.lwjgl.openxr is QuestCraft's own build and only exists in this jar, it stays.
+sed -i '/^[[:space:]]*bundle("org.lwjgl:lwjgl-openvr/d' "$work/neoforge/build.gradle"
+
 (cd "$work" && chmod +x gradlew && ./gradlew --no-daemon :neoforge:build -x test)
 
 # remapJar writes <name>-neoforge.jar, the other jars in there are dev/shadow intermediates
 jar="$(ls "$work"/neoforge/build/libs/*-neoforge.jar | grep -v -e '-dev' -e '-sources' | head -n 1)"
+
+# make sure the tweak above did what it is for. The listing goes to a file first: with pipefail, grep -q ending
+# a pipe early would make the pipeline "fail" even though it found what it was looking for.
+listing="$(mktemp)"
+unzip -Z1 "$jar" > "$listing"
+if grep -q '^org/lwjgl/openvr/' "$listing"; then
+  echo "error: $jar still contains org/lwjgl/openvr" >&2; rm -f "$listing"; exit 1
+fi
+if ! grep -q '^org/lwjgl/openxr/' "$listing"; then
+  echo "error: $jar lost org/lwjgl/openxr" >&2; rm -f "$listing"; exit 1
+fi
+rm -f "$listing"
+
 mkdir -p "$here/dist"
 cp "$jar" "$here/dist/vivecraft-neoforge-$mc.jar"
 echo "Built $here/dist/vivecraft-neoforge-$mc.jar"

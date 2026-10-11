@@ -56,5 +56,7 @@ class NeoForgeMetaTest {
     @Test
     void versionIdMatchesInstallerProfile() {
         assertEquals("neoforge-21.1.259", NeoForgeMeta.getVersionId("21.1.259"));
+        assertEquals("21.1.259", NeoForgeMeta.getVersionFromId("neoforge-21.1.259"));
+        assertEquals("21.5.2-beta", NeoForgeMeta.getVersionFromId(NeoForgeMeta.getVersionId("21.5.2-beta")));
     }
 }

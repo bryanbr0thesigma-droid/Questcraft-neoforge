@@ -95,4 +95,9 @@ public class NeoForgeMeta {
     public static String getVersionId(String neoForgeVersion) {
         return "neoforge-" + neoForgeVersion;
     }
+
+    /** The inverse of {@link #getVersionId}: {@code neoforge-21.1.259} gives {@code 21.1.259}. */
+    public static String getVersionFromId(String versionId) {
+        return versionId.substring("neoforge-".length());
+    }
 }

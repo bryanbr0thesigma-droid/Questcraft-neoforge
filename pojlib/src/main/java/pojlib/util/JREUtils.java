@@ -212,7 +212,7 @@ public class JREUtils {
 
         if (instance.isNeoForge()) {
             // brings back what was deleted or never finished, nothing happens if it is all there
-            NeoForgeInstaller.install(activity, MinecraftMeta.getVersionInfo(instance.versionName), Constants.USER_HOME);
+            NeoForgeInstaller.install(activity, MinecraftMeta.getVersionInfo(instance.versionName), Constants.USER_HOME, instance.loaderVersion);
         }
 
         Installer.installJVM(activity, false);

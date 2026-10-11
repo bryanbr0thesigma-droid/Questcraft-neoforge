@@ -215,7 +215,8 @@ public class InstanceHandler {
                 if (modLoader.equals("NeoForge")) {
                     // the installer needs the vanilla client, and the instance is vanilla + NeoForge as one version
                     clientClasspath.get();
-                    VersionInfo neoForge = NeoForgeInstaller.install(activity, minecraftVersionInfo, gameDir);
+                    VersionInfo neoForge = NeoForgeInstaller.install(activity, minecraftVersionInfo, gameDir, null);
+                    instance.loaderVersion = NeoForgeMeta.getVersionFromId(neoForge.id);
                     String libraries = Installer.installLibraries(neoForge, gameDir).get();
 
                     instance.mainClass = neoForge.mainClass;

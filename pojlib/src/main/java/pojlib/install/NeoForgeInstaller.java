@@ -40,16 +40,19 @@ public class NeoForgeInstaller {
      * Makes sure NeoForge is installed for a Minecraft version, running the installer if necessary.
      *
      * @param minecraftVersionInfo version json of the vanilla version, NeoForge is resolved on top of it
-     * @return the resolved version (libraries, main class and arguments of vanilla and NeoForge together)
+     * @param pinnedVersion        the NeoForge version an existing instance was made with, or null for the newest.
+     *                             An instance keeps its version, its saved classpath and arguments belong to it.
+     * @return the resolved version (libraries, main class and arguments of vanilla and NeoForge together);
+     *         its id is {@code neoforge-<version>}, see {@link NeoForgeMeta#getVersionId}
      * @throws IOException if there is no NeoForge for this version, or it could not be installed
      */
-    public static VersionInfo install(Activity activity, VersionInfo minecraftVersionInfo, String gameDir) throws IOException {
+    public static VersionInfo install(Activity activity, VersionInfo minecraftVersionInfo, String gameDir, String pinnedVersion) throws IOException {
         String minecraftVersion = minecraftVersionInfo.id;
         if (!NeoForgeMeta.isSupported(minecraftVersion)) {
             throw new IOException("NeoForge does not exist for Minecraft " + minecraftVersion + ", it starts at 1.20.2");
         }
 
-        String neoForgeVersion = NeoForgeMeta.getLatestVersion(minecraftVersion);
+        String neoForgeVersion = pinnedVersion != null ? pinnedVersion : NeoForgeMeta.getLatestVersion(minecraftVersion);
         if (neoForgeVersion == null) {
             throw new IOException("Could not find a NeoForge version for Minecraft " + minecraftVersion + ". Are you offline?");
         }
