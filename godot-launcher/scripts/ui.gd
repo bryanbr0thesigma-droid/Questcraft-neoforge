@@ -362,7 +362,7 @@ func show_home() -> void:
 	page.add_child(logo)
 
 	# the log, top right
-	var notebook := _icon_button("notebook", show_log, 56)
+	var notebook := _icon_button("notebook", func(): show_log(true), 56)
 	notebook.position = Vector2(W - 78, 16)
 	page.add_child(notebook)
 
@@ -676,11 +676,30 @@ func show_settings() -> void:
 	body.add_child(_button("Save", do_save, Vector2(200, 56)))
 
 
-func show_log() -> void:
+func show_log(only_problems := true) -> void:
 	var body := _screen("Log", show_home)
-	var logbox := _label(str(Bridge.api("logTail", [14])), 18, TEXT_DIM)
-	logbox.max_lines_visible = 14
-	body.add_child(logbox)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 10)
+	body.add_child(row)
+	row.add_child(_button("Problems and VR only" if not only_problems else "Show everything", show_log.bind(not only_problems), Vector2(330, 48)))
+	row.add_child(_button("Refresh", show_log.bind(only_problems), Vector2(160, 48)))
+	var lines: PackedStringArray = str(Bridge.api("logTail", [200])).split("\n")
+	var shown: Array = []
+	var re := RegEx.create_from_string("(?i)error|exception|warn|fail|openxr|vivecraft|xr_|controller|action|session|loader")
+	for line in lines:
+		if line.strip_edges() == "":
+			continue
+		if not only_problems or re.search(line) != null:
+			shown.append(line.left(150))
+	shown = shown.slice(maxi(0, shown.size() - 40))
+	var scroll := ScrollContainer.new()
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	body.add_child(scroll)
+	var logbox := _label("\n".join(shown) if shown.size() > 0 else "Nothing in the log yet.", 15, TEXT_DIM)
+	logbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	logbox.autowrap_mode = TextServer.AUTOWRAP_ARBITRARY
+	scroll.add_child(logbox)
 
 
 # ---------------------------------------------------------------- mods

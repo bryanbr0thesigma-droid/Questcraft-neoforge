@@ -1,6 +1,7 @@
 package com.godot.game;
 
 import android.app.Activity;
+import android.content.Intent;
 import android.os.Bundle;
 import android.os.Process;
 import android.util.Log;
@@ -37,7 +38,7 @@ public class GameActivity extends Activity {
             LauncherApi.login(account);
             waitFor(() -> new JSONObject(LauncherApi.loginState()).optBoolean("loggedIn"), 120, "the sign in");
 
-            LauncherApi.prepare(instance);   // quick: the launcher has just done the downloads
+            LauncherApi.prepareLight(instance);   // the launcher has just done the downloads and checks
             waitFor(() -> {
                 JSONObject progress = new JSONObject(LauncherApi.progress());
                 String phase = progress.optString("phase");
@@ -49,11 +50,15 @@ public class GameActivity extends Activity {
         } catch (Throwable t) {
             Log.e(TAG, "The game did not start", t);
         } finally {
-            // back to the launcher: close this activity and end this process (the launcher's lives on)
-            runOnUiThread(this::finishAndRemoveTask);
+            // back to the menu: the launcher's process was ended when the game started (so that its OpenXR session and
+            // its memory are gone), start it again from scratch, then end this one
             try {
-                Thread.sleep(500);
-            } catch (InterruptedException ignored) {
+                Intent launcher = getPackageManager().getLaunchIntentForPackage(getPackageName());
+                launcher.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                startActivity(launcher);
+                Thread.sleep(800);
+            } catch (Throwable t) {
+                Log.e(TAG, "Could not start the launcher again", t);
             }
             Process.killProcess(Process.myPid());
         }

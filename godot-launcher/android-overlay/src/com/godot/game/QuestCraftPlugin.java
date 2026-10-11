@@ -1,6 +1,9 @@
 package com.godot.game;
 
 import android.content.Intent;
+import android.os.Handler;
+import android.os.Looper;
+import android.os.Process;
 import android.util.Log;
 
 import androidx.annotation.NonNull;
@@ -36,6 +39,9 @@ public class QuestCraftPlugin extends GodotPlugin {
         intent.putExtra("instance", instance);
         intent.putExtra("account", account);
         getActivity().startActivity(intent);
+        // This process holds an OpenXR session (Godot only ends it with the process) and a lot of memory, and the game
+        // needs both: end it. The game's activity starts the launcher again when the game ends.
+        new Handler(Looper.getMainLooper()).postDelayed(() -> Process.killProcess(Process.myPid()), 1500);
         return "";
     }
 

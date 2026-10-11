@@ -22,6 +22,7 @@ func _ready() -> void:
 		plugin = Engine.get_singleton("QuestCraft")
 		is_mock = false
 		init_error = str(api("init", []))
+		api("setModel", [OS.get_model_name()])   # e.g. "Quest 3", handed to the game as VR_MODEL like the Unity launcher does
 
 
 ## Calls LauncherApi.<method>(args). Lists and objects come back parsed, everything else as a string.

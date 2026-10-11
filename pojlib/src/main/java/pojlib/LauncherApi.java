@@ -279,6 +279,35 @@ public final class LauncherApi {
         }, "qc-prepare").start();
     }
 
+    /**
+     * {@link #prepare} for a process that starts the game after the launcher's process downloaded and checked
+     * everything: only sets this process up (Java runtime, libraries). Falls back to the full {@link #prepare} if that
+     * does not work, so a missing file is still fetched.
+     */
+    public static void prepareLight(String instanceName) {
+        MinecraftInstances.Instance instance = find(instanceName);
+        if (instance == null || API.currentAcc == null || !begin("Preparing " + instanceName)) {
+            prepare(instanceName);
+            return;
+        }
+        new Thread(() -> {
+            boolean ok = false;
+            try {
+                ok = API.prelaunchLight(activity, instance);
+            } catch (Throwable t) {
+                Logger.getInstance().appendToLog("Light prepare failed | " + t);
+            }
+            if (ok) {
+                readyInstance = instanceName;
+                task = "Ready to start " + instanceName;
+                phase = "ready";
+            } else {
+                finish("");        // idle again, then the full check
+                prepare(instanceName);
+            }
+        }, "qc-prepare-light").start();
+    }
+
     /** Step 2: runs the game in this process. Does not return until the game ends, so it has a thread of its own. */
     public static void startGame() {
         MinecraftInstances.Instance instance = find(readyInstance);

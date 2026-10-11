@@ -224,6 +224,18 @@ public class JREUtils {
     }
 
     /**
+     * What starting the game needs of {@link #prelaunchCheck} without its downloads and checks of the game files: for a
+     * process that was started after another one did all of that (see {@code GameActivity} of the Godot launcher).
+     */
+    public static boolean prelaunchLight(Activity activity, MinecraftInstances.Instance instance) throws Throwable {
+        runtimeDir = activity.getFilesDir() + "/runtimes/JRE";
+        JREUtils.relocateLibPath(activity, instance);
+        setJavaEnvironment(activity, instance);
+        LwjglInstaller.installLWJGL(activity);
+        return initJavaRuntime();
+    }
+
+    /**
      * Runs a java program (for example a mod loader installer) to completion in a JVM without any of the graphics
      * setup the game needs. A JVM can only be created once per process, so this has to be called from a process
      * that is not going to launch the game, see {@link pojlib.install.NeoForgeInstallService}.

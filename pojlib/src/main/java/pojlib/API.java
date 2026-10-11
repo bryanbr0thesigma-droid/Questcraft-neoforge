@@ -262,6 +262,23 @@ public class API {
         return true;
     }
 
+    /** {@link #prelaunch} without the downloads and file checks, see {@link JREUtils#prelaunchLight}. */
+    public static boolean prelaunchLight(Activity activity, MinecraftInstances.Instance instance) {
+        gameReady = false;
+        try {
+            if (!JREUtils.prelaunchLight(activity, instance)) {
+                Logger.getInstance().appendToLog("JVM is not properly installed!");
+                return false;
+            }
+        } catch (Throwable e) {
+            Logger.getInstance().appendToLog("WARN! Instance launch failed!" + e);
+            return false;
+        }
+        DownloadManager.reset();
+        MinecraftInstances.CheckVivecraftConfig(instance);
+        return true;
+    }
+
     /**
      * Launch an instance
      *
