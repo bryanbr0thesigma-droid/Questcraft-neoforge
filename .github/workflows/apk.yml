@@ -1,0 +1,61 @@
+name: Build APK
+
+# Builds the QuestCraft launcher (unity-wrapper, Unity 2022.3.62f3, IL2CPP, arm64) into an installable APK
+# with GameCI. The APK appears as the "QuestCraft-apk" artifact of the run (Actions tab -> the run -> Artifacts).
+#
+# One-time setup: Unity needs a license in the repository secrets (Settings -> Secrets and variables -> Actions)
+#   UNITY_LICENSE                              a Personal license file (.ulf), see https://game.ci/docs/github/activation
+#   or UNITY_EMAIL + UNITY_PASSWORD + UNITY_SERIAL   for a Plus/Pro seat
+# Without ANDROID_KEYSTORE_BASE64 the APK is signed with Unity's debug key, which is fine for sideloading.
+# To sign with your own key add ANDROID_KEYSTORE_BASE64 (base64 of the .keystore), ANDROID_KEYSTORE_PASS,
+# ANDROID_KEYALIAS_NAME and ANDROID_KEYALIAS_PASS.
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version shown in the file name'
+        default: 'neoforge-quilt'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/lib/android /opt/hostedtoolcache/CodeQL
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+      - uses: actions/cache@v4
+        with:
+          path: unity-wrapper/Library
+          key: Library-android-${{ hashFiles('unity-wrapper/Packages/manifest.json', 'unity-wrapper/ProjectSettings/ProjectVersion.txt') }}
+          restore-keys: Library-android-
+      - uses: game-ci/unity-builder@v4
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+          UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
+        with:
+          projectPath: unity-wrapper
+          targetPlatform: Android
+          androidExportType: androidPackage
+          androidKeystoreName: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' && 'questcraft.keystore' || '' }}
+          androidKeystoreBase64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          androidKeystorePass: ${{ secrets.ANDROID_KEYSTORE_PASS }}
+          androidKeyaliasName: ${{ secrets.ANDROID_KEYALIAS_NAME }}
+          androidKeyaliasPass: ${{ secrets.ANDROID_KEYALIAS_PASS }}
+          buildName: QuestCraft
+          versioning: None
+      - name: Name the APK
+        run: |
+          ls -la build/Android
+          mv build/Android/*.apk "build/Android/QuestCraft-${{ inputs.version }}.apk"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: QuestCraft-apk
+          path: build/Android/*.apk

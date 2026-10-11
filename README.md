@@ -75,6 +75,10 @@ QuestCraft's Vivecraft fork has all of its Quest/OpenXR changes in the shared `c
 
 The mod lists link to the jars at `releases/download/vivecraft-<mc>/vivecraft-neoforge-<mc>.jar` of this repository: run the **Build Vivecraft (NeoForge)** workflow with *publish* ticked to create them.
 
+## Getting the APK
+
+The launcher is a Unity project, so the APK is built by the **Build APK** workflow (`.github/workflows/apk.yml`, GameCI, Unity 2022.3.62f3): Actions tab -> *Build APK* -> *Run workflow*, then download `QuestCraft-apk` from the run and sideload the `.apk` (SideQuest or `adb install`). It needs a Unity license once as a repository secret (`UNITY_LICENSE`, or `UNITY_EMAIL`/`UNITY_PASSWORD`/`UNITY_SERIAL`; see the comments in the workflow). The APK is debug-signed unless you add the `ANDROID_KEYSTORE_*` secrets. This workflow has not been run (no Unity here), so expect to fix a first-build problem or two.
+
 ## Building
 
 1. **Pojlib AAR** - `cd pojlib && ./gradlew assembleRelease` (JDK 17, Android SDK 34, build tools 30.0.3, NDK 26.1.10909125; the **Build Pojlib** workflow does this and runs the unit tests). Copy `build/outputs/aar/*-release.aar` to `unity-wrapper/Assets/Plugins/Android/Pojlib-release.aar`. The wrapper calls into that AAR, so **a NeoForge launcher needs this rebuilt AAR**.
