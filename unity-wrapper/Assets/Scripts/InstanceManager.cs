@@ -30,21 +30,60 @@ public class InstanceManager : MonoBehaviour
     [SerializeField] private GameObject modArray;
     [SerializeField] private APIHandler apiHandler;
     
+    private bool loaderRestored;
+
     public void Start()
     {
-        List<string> modLoaders = new List<string>
-        {
-            "NeoForge"
-        };
-        
-        loaderDropdown.AddOptions(modLoaders);
+        EnsureLoaderOptions();
+        // JNIStorage may have gone first and found nothing to refresh yet
+        RefreshVersions();
     }
-    
+
+    private void EnsureLoaderOptions()
+    {
+        if (loaderDropdown.options.Count == 0)
+            loaderDropdown.AddOptions(new List<string>(JNIStorage.GetModLoaders()));
+    }
+
+    private string SelectedLoader()
+    {
+        return loaderDropdown.options[loaderDropdown.value].text;
+    }
+
+    // Called when the loader is toggled
     public void UpdateMenu()
     {
-        string selectedModloader = loaderDropdown.options[loaderDropdown.value].text;
-        defaultModsToggle.interactable = selectedModloader is "NeoForge";
-        defaultModsToggle.isOn = selectedModloader is "NeoForge";
+        // both loaders have a default mod list
+        defaultModsToggle.interactable = true;
+
+        if (loaderRestored)
+            JNIStorage.instance.configHandler.SetLastSelectedLoader(SelectedLoader());
+        RefreshVersions();
+    }
+
+    // Shows the Minecraft versions of the selected loader in the instance creator, and on the first call selects the
+    // loader that was picked last time. Needs the config and the downloaded version lists, JNIStorage calls it then.
+    public void RefreshVersions()
+    {
+        // not ready until JNIStorage has set up Pojlib and loaded the config, it calls this again when it has
+        if (Application.platform != RuntimePlatform.Android || JNIStorage.instance == null || JNIStorage.apiClass == null)
+            return;
+        EnsureLoaderOptions();
+
+        if (!loaderRestored)
+        {
+            int saved = loaderDropdown.options.FindIndex(o => o.text == JNIStorage.instance.configHandler.PreferredLoader);
+            loaderDropdown.SetValueWithoutNotify(Mathf.Max(saved, 0));
+            loaderDropdown.RefreshShownValue();
+            loaderRestored = true;
+        }
+
+        string[] versions = JNIStorage.GetSupportedVersions(SelectedLoader());
+        string previous = versionDropdown.options.Count > 0 ? versionDropdown.options[versionDropdown.value].text : null;
+        versionDropdown.ClearOptions();
+        versionDropdown.AddOptions(new List<string>(versions));
+        versionDropdown.SetValueWithoutNotify(Mathf.Max(Array.IndexOf(versions, previous), 0));
+        versionDropdown.RefreshShownValue();
     }
 
     public void CreateCustomInstance()

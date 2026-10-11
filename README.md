@@ -1,6 +1,6 @@
 # QuestCraft for NeoForge
 
-A port of [QuestCraft](https://github.com/QuestCraftPlusPlus/QuestCraft) (Minecraft: Java Edition in VR on Meta Quest and other standalone headsets) from the **Fabric** mod loader to **NeoForge**.
+A port of [QuestCraft](https://github.com/QuestCraftPlusPlus/QuestCraft) (Minecraft: Java Edition in VR on Meta Quest and other standalone headsets) from the **Fabric** mod loader to **NeoForge**. The launcher has a **loader toggle** between the two, and NeoForge is the default.
 
 ![QC](/QCSimple3.jpg)
 
@@ -19,6 +19,17 @@ QuestCraft itself is not a mod. It is a launcher app (a Unity project that calls
 Upstream QuestCraft also ships 1.21.10 and 1.21.11. NeoForge exists for both, but they are not in this port:
 - **1.21.10**: the fork's `OpenXR-1.21.10` branch does not compile its shared module in this setup even when built exactly as shipped (Fabric only; the Minecraft classes never reach the compiler), so there is nothing a NeoForge build could be based on yet.
 - **1.21.11**: the fork has no source for it (the `6.0.1-1.21.11` tag points at an old Minecraft 1.21 commit), only a prebuilt Fabric jar.
+
+## Loader toggle (Fabric / NeoForge)
+
+The instance creator has a loader dropdown with **Fabric** and **NeoForge**. It decides which Minecraft versions the creator offers (each loader has its own list), what the new instance is installed with, and which mod list its default mods come from. The choice is remembered (`lastSelectedLoader` in `launcher.conf`); a config from before the toggle counts as NeoForge.
+
+- Each instance keeps the loader it was made with (shown next to the version in the instance list). Mod Manager searches Modrinth for, and checks mods and dependencies against, the loader of the selected instance; a modpack becomes an instance of that loader, and a modpack for the other loader is refused.
+- **Quick play** (picking a version in the main dropdown and pressing Play when there is no instance of that name yet) creates the instance with the selected loader, or with the other one if the selected loader does not support that version.
+- Fabric instances use upstream QuestCraft's Fabric mod list and version list as before; NeoForge uses the ones in this repository. A Fabric instance made before the port keeps working unchanged.
+- The loaders live in one place, [`ModLoader`](pojlib/src/main/java/pojlib/install/ModLoader.java): id, display name, Modrinth category, where its mod list and version list are hosted. A further loader needs an entry there, an install branch in `InstanceHandler.create` and its launch arguments; the dropdown, the version lists and Mod Manager follow from the registry.
+
+Limits: a default instance is named after its version (`1.21.1`), so once one exists the main dropdown launches that instance whichever loader is selected now. For the same version on the other loader, create it in the instance creator under another name.
 
 ## How it works
 
@@ -60,7 +71,7 @@ The mod lists link to the jars at `releases/download/vivecraft-<mc>/vivecraft-ne
 3. **Unity wrapper** - open `unity-wrapper/` in Unity and build the Android player as upstream does.
 4. **Mod lists** - `python3 pojlib/tools/update_mods.py`.
 
-`Constants.PORT_RAW_URL` in Pojlib is where the launcher downloads the mod lists and supported versions from. It points at this repository's working branch; point it at the default branch once the port is merged.
+`Constants.PORT_RAW_URL` in Pojlib is where the launcher downloads the NeoForge mod list and supported versions from, and the mod list links to this repository's releases for the Vivecraft jars. **That only works while the repository is public** (anonymous downloads of a private repository return 404), or if you host those files elsewhere and change the URL. It points at this repository's current default branch.
 
 ## What has and has not been verified
 

@@ -16,11 +16,13 @@ import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.stream.Collectors;
 
+import pojlib.install.ModLoader;
 import pojlib.util.Constants;
 import pojlib.util.download.DownloadManager;
 import pojlib.util.download.DownloadUtils;
 import pojlib.util.GsonUtils;
 import pojlib.util.Logger;
+import pojlib.util.MinecraftVersions;
 
 public class APIHandler {
     public final String baseUrl;
@@ -110,29 +112,44 @@ public class APIHandler {
         return new Gson().fromJson(postRaw(url + parseQueries(query), body.toString()), tClass);
     }
 
-    public static final String SUPPORTED_VERSIONS = Constants.PORT_RAW_URL + "/pojlib/supportedVersions.json";
-
+    /** The Minecraft versions every loader supports together, newest first. */
     public static String[] getQCSupportedVersions(Context ctx) {
-        File versionsJson = new File(Constants.USER_HOME + "/supportedVersions.json");
+        String[][] lists = new String[ModLoader.values().length][];
+        for (int i = 0; i < lists.length; i++) {
+            lists[i] = getQCSupportedVersions(ctx, ModLoader.values()[i]);
+        }
+        return MinecraftVersions.union(lists);
+    }
+
+    /** The Minecraft versions one loader supports, newest first. Downloads the list when there is a connection. */
+    public static String[] getQCSupportedVersions(Context ctx, ModLoader loader) {
+        File versionsJson = new File(Constants.USER_HOME + "/" + loader.getSupportedVersionsCacheName());
         if(API.hasConnection(ctx)) {
             try {
-                DownloadUtils.downloadFile(SUPPORTED_VERSIONS, versionsJson);
+                DownloadUtils.downloadFile(loader.getSupportedVersionsUrl(), versionsJson);
             } catch (IOException e) {
-                Logger.getInstance().appendToLog("Error while grabbing supported versions!\n" + e);
+                Logger.getInstance().appendToLog("Error while grabbing supported versions of " + loader.displayName + "!\n" + e);
             }
         } else {
             Logger.getInstance().appendToLog("Skipping supported versions download.");
         }
 
         DownloadManager.reset();
-        SupportedVersions versions = GsonUtils.jsonFileToObject(versionsJson.getAbsolutePath(), SupportedVersions.class);
-        if(versions == null) {
+        return getCachedSupportedVersions(loader);
+    }
+
+    /** What was last downloaded for a loader (or a built in fallback), without touching the network. */
+    public static String[] getCachedSupportedVersions(ModLoader loader) {
+        File versionsJson = new File(Constants.USER_HOME + "/" + loader.getSupportedVersionsCacheName());
+        SupportedVersions versions = versionsJson.exists()
+                ? GsonUtils.jsonFileToObject(versionsJson.getAbsolutePath(), SupportedVersions.class) : null;
+        if(versions == null || versions.supportedVersions == null) {
             return new String[] {
                     "1.21.4"
             };
         }
 
-        return versions.supportedVersions;
+        return MinecraftVersions.union(versions.supportedVersions);
     }
 
     public static class SupportedVersions {

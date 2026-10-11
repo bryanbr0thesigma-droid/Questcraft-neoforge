@@ -30,6 +30,8 @@ public class Constants {
 
     public static final String MINOTAR_URL = "https://minotar.net";
     public static final String GIT_BRANCH = "QuestCraft-6.0.1";
+    // Upstream QuestCraft's Pojlib: its Fabric mod list and supported versions are still the source for Fabric instances
+    public static final String UPSTREAM_RAW_URL = "https://raw.githubusercontent.com/QuestCraftPlusPlus/Pojlib/refs/heads/" + GIT_BRANCH;
     // Where this port hosts the files the launcher downloads at runtime (mod lists, supported versions).
     // TODO: point this at the default branch once the port is merged, the repo has no main yet.
     public static final String PORT_RAW_URL = "https://raw.githubusercontent.com/bryanbr0thesigma-droid/Questcraft-neoforge/claude/fervent-mayer-8idkzr";

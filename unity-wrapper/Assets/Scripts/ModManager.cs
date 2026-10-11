@@ -338,7 +338,7 @@ public class ModManager : MonoBehaviour
             AndroidJavaObject instance = LoadInstance();
             if (instance == null) return;
 
-            JNIStorage.apiClass.CallStatic<AndroidJavaObject>("createNewInstance", JNIStorage.activity, JNIStorage.instancesObj, mp.title, mp.icon_url, "NeoForge", path);
+            JNIStorage.apiClass.CallStatic<AndroidJavaObject>("createNewInstance", JNIStorage.activity, JNIStorage.instancesObj, mp.title, mp.icon_url, JNIStorage.GetInstance(InstanceButton.currInstName)?.LoaderLabel ?? "NeoForge", path);
             JNIStorage.instance.uiHandler.SetAndShowError(mp.title + " is now being created.");
             JNIStorage.instance.UpdateInstances();
         };

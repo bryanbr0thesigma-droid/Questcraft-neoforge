@@ -42,6 +42,7 @@ public class ConfigHandler : MonoBehaviour
                 customRAMValue = "2048",
                 lastSelectedInstance = 0,
                 lastSelectedAccount = 0,
+                lastSelectedLoader = "NeoForge",
                 accounts = new List<Accounts>()
             };
 
@@ -58,6 +59,18 @@ public class ConfigHandler : MonoBehaviour
         string configFile = File.ReadAllText(configPath);
         config = JsonConvert.DeserializeObject<Config>(configFile);
         config.lastSelectedInstance = instance;
+        string JSON = JsonConvert.SerializeObject(config, Formatting.Indented);
+        File.WriteAllText(configPath, JSON);
+    }
+
+    // The loader new instances are made with. Configs from before the loader toggle have none, those were NeoForge.
+    public string PreferredLoader => string.IsNullOrEmpty(config?.lastSelectedLoader) ? "NeoForge" : config.lastSelectedLoader;
+
+    public void SetLastSelectedLoader(string loader)
+    {
+        string configFile = File.ReadAllText(configPath);
+        config = JsonConvert.DeserializeObject<Config>(configFile);
+        config.lastSelectedLoader = loader;
         string JSON = JsonConvert.SerializeObject(config, Formatting.Indented);
         File.WriteAllText(configPath, JSON);
     }
@@ -103,6 +116,7 @@ public class ConfigHandler : MonoBehaviour
         public string customRAMValue;
         public int lastSelectedInstance;
         public int lastSelectedAccount;
+        public string lastSelectedLoader;
         public List<Accounts> accounts;
     }
     

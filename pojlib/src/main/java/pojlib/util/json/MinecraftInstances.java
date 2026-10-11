@@ -12,6 +12,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import pojlib.account.MinecraftAccount;
+import pojlib.install.ModLoader;
 import pojlib.API;
 import pojlib.InstanceHandler;
 import pojlib.util.Constants;
@@ -87,13 +88,17 @@ public class MinecraftInstances {
         public String[] loaderJvmArgs;
         public String[] loaderGameArgs;
 
+        public ModLoader loader() {
+            return ModLoader.fromStored(modLoader);
+        }
+
         public boolean isNeoForge() {
-            return "neoforge".equals(modLoader);
+            return loader() == ModLoader.NEOFORGE;
         }
 
         // The mod list this instance was last updated from, to find out what changed. Each loader has its own list.
         public String modsSnapshotPath() {
-            return Constants.USER_HOME + (isNeoForge() ? "/mods-neoforge.json" : "/mods.json");
+            return Constants.USER_HOME + "/" + loader().getModsSnapshotName();
         }
 
         // One JVM argument per line in <files>/loader_jvm_args.txt. Lets the module setup of NeoForge be adjusted
@@ -145,7 +150,7 @@ public class MinecraftInstances {
 
         private ModsJson downloadCurrentModsJson(String userHome) throws Exception {
             File mods = new File(userHome + "/new_mods.json");
-            DownloadUtils.downloadFile(InstanceHandler.modsUrl(API.developerMods, isNeoForge()), mods);
+            DownloadUtils.downloadFile(loader().getModsUrl(API.developerMods), mods);
 
             return parseModsJson(mods.getAbsolutePath());
         }

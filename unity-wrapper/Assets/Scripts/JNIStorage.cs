@@ -72,6 +72,38 @@ public class JNIStorage : MonoBehaviour
         }
     }
 
+    // Fabric and NeoForge, as Pojlib names them. The launcher passes these names back when it creates an instance.
+    public static string[] GetModLoaders()
+    {
+        if (Application.platform != RuntimePlatform.Android)
+            return new[] { "Fabric", "NeoForge" };
+        AndroidJavaClass api = apiClass ?? new AndroidJavaClass("pojlib.API");
+        return api.CallStatic<string[]>("getModLoaders");
+    }
+
+    // The Minecraft versions one loader supports, newest first, from what was last downloaded
+    public static string[] GetSupportedVersions(string loader)
+    {
+        if (Application.platform != RuntimePlatform.Android)
+            return new string[0];
+        return apiClass.CallStatic<string[]>("getCachedSupportedVersions", loader);
+    }
+
+    // The loader to create an instance of this Minecraft version with: the one picked in the launcher,
+    // or the first other loader that supports the version when the picked one does not
+    public static string LoaderForVersion(string version)
+    {
+        string preferred = instance.configHandler.PreferredLoader;
+        if (Array.IndexOf(GetSupportedVersions(preferred), version) >= 0)
+            return preferred;
+        foreach (string loader in GetModLoaders())
+        {
+            if (Array.IndexOf(GetSupportedVersions(loader), version) >= 0)
+                return loader;
+        }
+        return preferred;
+    }
+
     public static PojlibInstance GetInstance(string name)
     {
         AndroidJavaObject[] instances = instancesObj.Call<AndroidJavaObject[]>("toArray");
@@ -96,6 +128,8 @@ public class JNIStorage : MonoBehaviour
         string[] supportedVersionsArray = apiClass.CallStatic<string[]>("getQCSupportedVersions", activity);
         FillSupportedVersions(supportedVersionsArray);
         uiHandler.UpdateDropdowns(true, supportedVersions);
+        // the instance creator only offers what the selected loader supports
+        FindObjectOfType<InstanceManager>(true)?.RefreshVersions();
     }
     
     public void CheckConnection()

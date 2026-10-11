@@ -12,6 +12,7 @@ import com.google.gson.JsonObject;
 import org.lwjgl.glfw.CallbackBridge;
 
 import pojlib.account.MinecraftAccount;
+import pojlib.install.ModLoader;
 import pojlib.util.FileUtil;
 import pojlib.util.GsonUtils;
 import pojlib.util.JREUtils;
@@ -123,8 +124,34 @@ public class API {
         return InstanceHandler.removeExtraProject(instances, instance, name);
     }
 
+    /**
+     * The mod loaders instances can be made with, as the launcher shows them and passes them back to
+     * {@code createNewInstance}.
+     */
+    public static String[] getModLoaders() {
+        return ModLoader.displayNames();
+    }
+
+    /** All Minecraft versions that at least one loader supports, newest first. Downloads the lists when online. */
     public static String[] getQCSupportedVersions(Activity ctx) {
         return APIHandler.getQCSupportedVersions(ctx);
+    }
+
+    /**
+     * The Minecraft versions one loader supports, newest first. Downloads the list when online.
+     *
+     * @param modLoader a name from {@link #getModLoaders()}
+     * @return the versions, empty if the loader is unknown
+     */
+    public static String[] getQCSupportedVersions(Activity ctx, String modLoader) {
+        ModLoader loader = ModLoader.fromName(modLoader);
+        return loader == null ? new String[0] : APIHandler.getQCSupportedVersions(ctx, loader);
+    }
+
+    /** Same as {@link #getQCSupportedVersions(Activity, String)} from what was downloaded last, never uses the network. */
+    public static String[] getCachedSupportedVersions(String modLoader) {
+        ModLoader loader = ModLoader.fromName(modLoader);
+        return loader == null ? new String[0] : APIHandler.getCachedSupportedVersions(loader);
     }
 
     /**
