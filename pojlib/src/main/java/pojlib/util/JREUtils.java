@@ -1,7 +1,11 @@
 package pojlib.util;
 
 import android.app.Activity;
+import android.app.ActivityManager;
 import android.content.Context;
+import android.net.ConnectivityManager;
+import android.net.LinkProperties;
+import android.net.Network;
 import android.os.Build;
 import android.system.ErrnoException;
 import android.system.Os;
@@ -13,21 +17,25 @@ import com.oracle.dalvik.VMLauncher;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import pojlib.API;
+
+import pojlib.UnityPlayerActivity;
+import pojlib.install.Installer;
+import pojlib.install.MinecraftMeta;
 import pojlib.util.json.MinecraftInstances;
 
 public class JREUtils {
     private JREUtils() {}
 
     public static String LD_LIBRARY_PATH;
-    public static Map<String, String> jreReleaseList;
-    public static String instanceHome;
     public static String jvmLibraryPath;
     private static String sNativeLibDir;
     private static String runtimeDir;
@@ -52,27 +60,8 @@ public class JREUtils {
         return libName;
     }
 
-    public static ArrayList<File> locateLibs(File path) {
-        ArrayList<File> returnValue = new ArrayList<>();
-        File[] list = path.listFiles();
-        if(list != null) {
-            for(File f : list) {
-                if(f.isFile() && f.getName().endsWith(".so")) {
-                    returnValue.add(f);
-                }else if(f.isDirectory()) {
-                    returnValue.addAll(locateLibs(f));
-                }
-            }
-        }
-        return returnValue;
-    }
-
-    public static void initJavaRuntime() {
-        dlopen(findInLdLibPath("libjli.so"));
-        if(!dlopen("libjvm.so")){
-            Log.w("DynamicLoader","Failed to load with no path, trying with full path");
-            dlopen(jvmLibraryPath+"/libjvm.so");
-        }
+    public static boolean initJavaRuntime() {
+        dlopen(findInLdLibPath("server/libjvm.so"));
         dlopen(findInLdLibPath("libverify.so"));
         dlopen(findInLdLibPath("libjava.so"));
         dlopen(findInLdLibPath("libnet.so"));
@@ -81,10 +70,33 @@ public class JREUtils {
         dlopen(findInLdLibPath("libawt_headless.so"));
         dlopen(findInLdLibPath("libfreetype.so"));
         dlopen(findInLdLibPath("libfontmanager.so"));
-        for(File f : locateLibs(new File(runtimeDir + "/lib"))) {
-            dlopen(f.getAbsolutePath());
+        dlopen(findInLdLibPath("libjli.so"));
+
+        String dlerr = dlerror();
+        if(dlerr.contains(runtimeDir)) {
+            Logger.getInstance().appendToLog("ERROR! Could not dlopen libraries! " + dlerr);
+            return false;
         }
-        dlopen(sNativeLibDir + "/libopenal.so");
+
+        return true;
+    }
+
+    public static boolean initializeExtraNatives(MinecraftInstances.Instance instance) {
+        if(instance.extraNatives == null) {
+            return false;
+        }
+
+        for(String nativeLib : instance.extraNatives.split(File.pathSeparator)) {
+            dlopen(nativeLib);
+        }
+
+        String dlerr = dlerror();
+        if(dlerr.contains(runtimeDir)) {
+            Logger.getInstance().appendToLog("ERROR! Could not dlopen extra natives! " + dlerr);
+            return false;
+        }
+
+        return true;
     }
 
     public static void redirectAndPrintJRELog() {
@@ -129,29 +141,30 @@ public class JREUtils {
         Log.i("jrelog-logcat","Logcat thread started");
     }
 
-    public static void relocateLibPath(final Context ctx) {
+    public static void relocateLibPath(final Context ctx, MinecraftInstances.Instance instance) {
         sNativeLibDir = ctx.getApplicationInfo().nativeLibraryDir;
 
-        LD_LIBRARY_PATH = ctx.getFilesDir() + "/runtimes/JRE-22/bin:" + ctx.getFilesDir() + "/runtimes/JRE-22/lib:" +
-                "/system/lib64:/vendor/lib64:/vendor/lib64/hw:" +
+        LD_LIBRARY_PATH = ctx.getFilesDir() + "/runtimes/JRE/bin:" + ctx.getFilesDir() + "/runtimes/JRE/lib:" +
+                "/system/lib64:/vendor/lib64:/vendor/lib64/hw:" + ctx.getDataDir().toPath().resolve(instance.instanceName) + ":" +
                 sNativeLibDir;
     }
 
     public static void setJavaEnvironment(Activity activity, MinecraftInstances.Instance instance) throws Throwable {
-        setJavaEnvironment(activity, instance.gameDir);
-    }
-
-    public static void setJavaEnvironment(Context activity, String home) throws Throwable {
         Map<String, String> envMap = new ArrayMap<>();
         envMap.put("POJLIB_NATIVEDIR", activity.getApplicationInfo().nativeLibraryDir);
-        envMap.put("JAVA_HOME", activity.getFilesDir() + "/runtimes/JRE-22");
-        envMap.put("HOME", home);
+        envMap.put("JAVA_HOME", activity.getFilesDir() + "/runtimes/JRE");
+        envMap.put("HOME", instance.gameDir);
+        //envMap.put("APP_HOME", Constants.USER_HOME);
         envMap.put("TMPDIR", activity.getCacheDir().getAbsolutePath());
         envMap.put("VR_MODEL", API.model);
-        envMap.put("POJLIB_RENDERER", "regal");
+        envMap.put("POJLIB_RENDERER", "MobileGLUES");
+        envMap.put("MG_DIR_PATH", activity.getFilesDir() + "/mg");
 
         envMap.put("LD_LIBRARY_PATH", LD_LIBRARY_PATH);
-        envMap.put("PATH", activity.getFilesDir() + "/runtimes/JRE-22/bin:" + Os.getenv("PATH"));
+        envMap.put("PATH", activity.getFilesDir() + "/runtimes/JRE/bin:" + Os.getenv("PATH"));
+
+        File mg = new File(activity.getFilesDir() + "/mg");
+        mg.mkdirs();
 
         File customEnvFile = new File(Constants.USER_HOME, "custom_env.txt");
         if (customEnvFile.exists() && customEnvFile.isFile()) {
@@ -170,43 +183,66 @@ public class JREUtils {
             Os.setenv(env.getKey(), env.getValue(), true);
         }
 
-        File serverFile = new File(activity.getFilesDir() + "/runtimes/JRE-22/lib/server/libjvm.so");
-        jvmLibraryPath = activity.getFilesDir() + "/runtimes/JRE-22/lib/" + (serverFile.exists() ? "server" : "client");
+        File serverFile = new File(activity.getFilesDir() + "/runtimes/JRE/lib/server/libjvm.so");
+        jvmLibraryPath = activity.getFilesDir() + "/runtimes/JRE/lib/" + (serverFile.exists() ? "server" : "client");
         Log.d("DynamicLoader","Base LD_LIBRARY_PATH: "+LD_LIBRARY_PATH);
         Log.d("DynamicLoader","Internal LD_LIBRARY_PATH: "+jvmLibraryPath+":"+LD_LIBRARY_PATH);
         setLdLibraryPath(jvmLibraryPath+":"+LD_LIBRARY_PATH);
     }
 
-    public static int launchJavaVM(final Activity activity, final List<String> JVMArgs, MinecraftInstances.Instance instance) throws Throwable {
-        JREUtils.relocateLibPath(activity);
+    // Called before game launch to ensure all files are present and correct
+    public static boolean prelaunchCheck(Activity activity, MinecraftInstances.Instance instance) throws Throwable {
+        runtimeDir = activity.getFilesDir() + "/runtimes/JRE";
+        JREUtils.relocateLibPath(activity, instance);
         setJavaEnvironment(activity, instance);
 
+        UnityPlayerActivity.installLWJGL(activity);
+        Installer.installClient(MinecraftMeta.getVersionInfo(instance.versionName), Constants.USER_HOME).get();
+        Installer.installLibraries(MinecraftMeta.getVersionInfo(instance.versionName), Constants.USER_HOME).get();
+        Installer.installAssets(MinecraftMeta.getVersionInfo(instance.versionName), Constants.USER_HOME).get();
+
+        Installer.installJVM(activity, false);
+        if(!initJavaRuntime()) {
+            Installer.installJVM(activity, true);
+            return initJavaRuntime();
+        }
+
+        return true;
+    }
+
+    public static int launchJavaVM(final Activity activity, final List<String> JVMArgs, MinecraftInstances.Instance instance) throws Throwable {
         final String graphicsLib = loadGraphicsLibrary();
         List<String> userArgs = getJavaArgs(activity, instance);
 
         //Add automatically generated args
-
         if (API.customRAMValue) {
+            Logger.getInstance().appendToLog("Setting JVM memory to " + API.memoryValue + "MB (Custom)");
             userArgs.add("-Xms" + API.memoryValue + "M");
             userArgs.add("-Xmx" + API.memoryValue + "M");
         } else {
-            if (API.model.equals("Meta Quest Pro") || API.model.equals("Oculus Headset1")) {
-                userArgs.add("-Xms" + 2048 + "M");
-                userArgs.add("-Xmx" + 3072 + "M");
-            } else {
-                userArgs.add("-Xms" + 512 + "M");
-                userArgs.add("-Xmx" + 4860 + "M");
-            }
+            ActivityManager manager = (ActivityManager) activity.getSystemService(Activity.ACTIVITY_SERVICE);
+            ActivityManager.MemoryInfo ami = new ActivityManager.MemoryInfo();
+            manager.getMemoryInfo(ami);
+            long availMem = (ami.availMem-ami.threshold)/(1024*1024);
+            long allocatedRam = Math.max(availMem, 1536);
+
+            Logger.getInstance().appendToLog("Setting JVM memory to " + allocatedRam + "MB");
+
+            userArgs.add("-Xms" + 1024 + "M");
+            userArgs.add("-Xmx" + allocatedRam + "M");
         }
 
+        if(!initializeExtraNatives(instance)) {
+            Logger.getInstance().appendToLog("Some libraries did not dlopen properly. This can be safely ignored in most cases.");
+        }
+
+        // Garbage collection
+        userArgs.add("-XX:+UnlockExperimentalVMOptions");
         userArgs.add("-XX:+UseZGC");
         userArgs.add("-XX:+ZGenerational");
-        userArgs.add("-XX:+UnlockExperimentalVMOptions");
-        userArgs.add("-XX:+AllowUserSignalHandlers");
+        userArgs.add("-XX:-ZProactive");
         userArgs.add("-XX:+UnlockDiagnosticVMOptions");
-        userArgs.add("-XX:-ImplicitNullChecks");
         userArgs.add("-XX:+DisableExplicitGC");
-        userArgs.add("-XX:+UseCriticalJavaThreadPriority");
 
         userArgs.add("-Dorg.lwjgl.opengl.libname=" + graphicsLib);
         userArgs.add("-Dorg.lwjgl.opengles.libname=" + "/system/lib64/libGLESv3.so");
@@ -215,9 +251,12 @@ public class JREUtils {
         userArgs.addAll(JVMArgs);
         System.out.println(JVMArgs);
 
-        runtimeDir = activity.getFilesDir() + "/runtimes/JRE-22";
+        if (API.currentAcc != null && !API.currentAcc.uuid.isEmpty()) {
+            System.out.println("UUID: " + API.currentAcc.uuid);
+        } else {
+            System.out.println("UUID is null! Make sure to log in!");
+        }
 
-        initJavaRuntime();
         chdir(instance.gameDir);
         userArgs.add(0,"java"); //argv[0] is the program name according to C standard.
 
@@ -226,43 +265,30 @@ public class JREUtils {
         return exitCode;
     }
 
-    /**
-     * Runs a java program (for example a mod loader installer) to completion in a JVM without any of the graphics
-     * setup the game needs. A JVM can only be created once per process, so this has to be called from a process
-     * that is not going to launch the game, see {@link pojlib.install.NeoForgeInstallService}.
-     *
-     * @param ctx         The application context
-     * @param programArgs What goes after {@code java}, for example {@code -jar installer.jar --install-client dir}
-     * @param workDir     Working directory and user home of the program
-     * @return The exit code of the program. Note that a program calling {@code System.exit} ends the process instead.
-     */
-    public static int launchInstallerVM(Context ctx, List<String> programArgs, String workDir) throws Throwable {
-        relocateLibPath(ctx);
-        setJavaEnvironment(ctx, workDir);
+    private static void writeDNS(Context ctx, File out) throws IOException {
+        FileWriter writer = new FileWriter(out);
 
-        List<String> args = new ArrayList<>(Arrays.asList(
-                "java",
-                "-Djava.home=" + new File(ctx.getFilesDir(), "runtimes/JRE-22"),
-                "-Djava.io.tmpdir=" + ctx.getCacheDir().getAbsolutePath(),
-                "-Duser.home=" + workDir,
-                "-Dos.name=Linux",
-                "-Dos.version=Android-" + Build.VERSION.RELEASE,
-                "-Djava.library.path=" + ctx.getApplicationInfo().nativeLibraryDir,
-                "-Djava.awt.headless=true",
-                "-Xms256M",
-                "-Xmx1536M",
-                "-XX:+UseSerialGC",
-                "-XX:+UnlockExperimentalVMOptions",
-                "-XX:+AllowUserSignalHandlers",
-                "-XX:+UnlockDiagnosticVMOptions",
-                "-XX:-ImplicitNullChecks"
-        ));
-        args.addAll(programArgs);
+        if(!API.hasConnection(ctx)) {
+            writer.write("nameserver 8.8.8.8\n");
+            writer.write("nameserver 8.8.4.4");
+            writer.flush();
+            writer.close();
+            return;
+        }
 
-        runtimeDir = ctx.getFilesDir() + "/runtimes/JRE-22";
-        initJavaRuntime();
-        chdir(workDir);
-        return VMLauncher.launchJVM(args.toArray(new String[0]));
+        ConnectivityManager cm = (ConnectivityManager) ctx.getSystemService(Context.CONNECTIVITY_SERVICE);
+        Network activeNetwork = cm.getActiveNetwork();
+        LinkProperties lp = cm.getLinkProperties(activeNetwork);
+        if(lp == null) {
+            throw new IOException("Link properties are null!");
+        }
+
+        List<InetAddress> dnsServers = lp.getDnsServers();
+        for (InetAddress dns : dnsServers) {
+            writer.write(String.format("nameserver %s\n", dns.getHostAddress()));
+        }
+        writer.flush();
+        writer.close();
     }
 
     /**
@@ -272,8 +298,17 @@ public class JREUtils {
      * @return A list filled with args.
      */
     public static List<String> getJavaArgs(Context ctx, MinecraftInstances.Instance instance) {
+        File resConfFile = new File(Constants.USER_HOME + "/hacks/resolv.conf");
+        try {
+            if(!resConfFile.exists()) {
+                resConfFile.createNewFile();
+            }
+            writeDNS(ctx, resConfFile);
+        } catch (IOException e) {
+            Logger.getInstance().appendToLog("Couldn't write DNS servers! " + e.getMessage());
+        }
         return new ArrayList<>(Arrays.asList(
-                "-Djava.home=" + new File(ctx.getFilesDir(), "runtimes/JRE-22"),
+                "-Djava.home=" + new File(ctx.getFilesDir(), "runtimes/JRE"),
                 "-Djava.io.tmpdir=" + ctx.getCacheDir().getAbsolutePath(),
                 "-Duser.home=" + instance.gameDir,
                 "-Duser.language=" + System.getProperty("user.language"),
@@ -288,53 +323,10 @@ public class JREUtils {
                 "-Dglfwstub.initEgl=false",
                 "-Dlog4j2.formatMsgNoLookups=true", //Log4j RCE mitigation
                 "-Dnet.minecraft.clientmodname=" + "QuestCraft",
-                "-Dext.net.resolvPath=" + Constants.USER_HOME + "/hacks/ResConfHack.jar",
-                "-Dsodium.checks.issue2561=false"
+                "-Dext.net.resolvPath=" + resConfFile,
+                "-Dsodium.checks.issue2561=false",
+                "-Dorg.sqlite.lib.path=" + ctx.getApplicationInfo().nativeLibraryDir
         ));
-    }
-
-    /**
-     * Parse and separate java arguments in a user friendly fashion
-     * It supports multi line and absence of spaces between arguments
-     * The function also supports auto-removal of improper arguments, although it may miss some.
-     *
-     * @param args The un-parsed argument list.
-     * @return Parsed args as an ArrayList
-     */
-    public static ArrayList<String> parseJavaArguments(String args){
-        ArrayList<String> parsedArguments = new ArrayList<>(0);
-        args = args.trim().replace(" ", "");
-        //For each prefixes, we separate args.
-        for(String prefix : new String[]{"-XX:-","-XX:+", "-XX:","--","-"}){
-            while (true){
-                int start = args.indexOf(prefix);
-                if(start == -1) break;
-                //Get the end of the current argument
-                int end = args.indexOf("-", start + prefix.length());
-                if(end == -1) end = args.length();
-
-                //Extract it
-                String parsedSubString = args.substring(start, end);
-                args = args.replace(parsedSubString, "");
-
-                //Check if two args aren't bundled together by mistake
-                if(parsedSubString.indexOf('=') == parsedSubString.lastIndexOf('=')) {
-                    int arraySize = parsedArguments.size();
-                    if(arraySize > 0){
-                        String lastString = parsedArguments.get(arraySize - 1);
-                        // Looking for list elements
-                        if(lastString.charAt(lastString.length() - 1) == ',' ||
-                                parsedSubString.contains(",")){
-                            parsedArguments.set(arraySize - 1, lastString + parsedSubString);
-                            continue;
-                        }
-                    }
-                    parsedArguments.add(parsedSubString);
-                }
-                else Log.w("JAVA ARGS PARSER", "Removed improper arguments: " + parsedSubString);
-            }
-        }
-        return parsedArguments;
     }
 
     /**
@@ -343,7 +335,7 @@ public class JREUtils {
      * @return The name of the loaded library
      */
     public static String loadGraphicsLibrary(){
-        return "libtinywrapper.so";
+        return "libmobileglues.so";
     }
 
     public static native long getEGLContextPtr();
@@ -352,6 +344,7 @@ public class JREUtils {
     public static native int chdir(String path);
     public static native void logToLogger(final Logger logger);
     public static native boolean dlopen(String libPath);
+    public static native String dlerror();
     public static native void setLdLibraryPath(String ldLibraryPath);
 
     static {

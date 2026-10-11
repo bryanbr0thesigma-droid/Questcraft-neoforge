@@ -15,44 +15,36 @@ import java.nio.file.StandardCopyOption;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
-import java.util.LinkedHashSet;
 import java.util.Locale;
-import java.util.Map;
-import java.util.Set;
+import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
+import java.util.function.Consumer;
 
 import pojlib.account.MinecraftAccount;
 import pojlib.install.FabricMeta;
 import pojlib.install.Installer;
-import pojlib.install.LaunchArguments;
 import pojlib.install.MinecraftMeta;
-import pojlib.install.NeoForgeInstaller;
-import pojlib.install.NeoForgeMeta;
 import pojlib.install.QuiltMeta;
 import pojlib.install.VersionInfo;
 import pojlib.util.Constants;
 import pojlib.util.FileUtil;
+import pojlib.util.VLoader;
+import pojlib.util.download.DownloadManager;
 import pojlib.util.json.MinecraftInstances;
+import pojlib.util.json.ModsJson;
 import pojlib.util.json.ProjectInfo;
 import pojlib.util.GsonUtils;
 import pojlib.util.JREUtils;
 import pojlib.util.Logger;
-import pojlib.util.VLoader;
 import pojlib.util.json.ModrinthIndexJson;
 
 public class InstanceHandler {
-    // Fabric instances (created before the NeoForge port) keep getting their mods from upstream
-    public static final String MODS = "https://raw.githubusercontent.com/QuestCraftPlusPlus/Pojlib/Testing/mods.json";
-    public static final String DEV_MODS = "https://raw.githubusercontent.com/QuestCraftPlusPlus/Pojlib/Testing/devmods.json";
-    public static final String NEOFORGE_MODS = Constants.PORT_RAW_URL + "/pojlib/mods-neoforge.json";
-    public static final String NEOFORGE_DEV_MODS = Constants.PORT_RAW_URL + "/pojlib/devmods-neoforge.json";
+    public static final String MODS = "https://raw.githubusercontent.com/QuestCraftPlusPlus/Pojlib/refs/heads/" + Constants.GIT_BRANCH + "/mods.json";
+    public static final String DEV_MODS = "https://raw.githubusercontent.com/QuestCraftPlusPlus/Pojlib/refs/heads/" + Constants.GIT_BRANCH + "/devmods.json";
 
-    public static String modsUrl(boolean developerMods, boolean neoForge) {
-        if (neoForge) return developerMods ? NEOFORGE_DEV_MODS : NEOFORGE_MODS;
-        return developerMods ? DEV_MODS : MODS;
-    }
-
-    public static MinecraftInstances.Instance create(Activity activity, MinecraftInstances instances, String instanceName, String userHome, ModLoader modLoader, String mrpackFilePath, String imageURL) {
+    public static MinecraftInstances.Instance create(Activity activity, MinecraftInstances instances, String instanceName, String userHome, String modLoader, String mrpackFilePath, String imageURL) {
         File mrpackJson = new File(Constants.USER_HOME + "/instances/" + instanceName.toLowerCase(Locale.ROOT).replaceAll(" ", "_") + "/setup/modrinth.index.json");
 
         mrpackJson.getParentFile().mkdirs();
@@ -65,30 +57,28 @@ public class InstanceHandler {
             return null;
         }
 
-        if (modLoader == ModLoader.NeoForge && index.dependencies.neoForge == null) {
-            Logger.getInstance().appendToLog("This modpack is not for NeoForge, its mods would not load. Pick a NeoForge modpack.");
-            return null;
-        }
-
-        MinecraftInstances.Instance instance = create(activity, instances, instanceName, userHome, false, index.dependencies.minecraft, modLoader, imageURL);
-        new Thread(() -> {
-            while(!API.finishedDownloading);
-
-            API.finishedDownloading = false;
+        return create(activity, instances, instanceName, userHome, false, index.dependencies.minecraft, modLoader, imageURL, (instance) -> {
+            if (instance.extProjects == null) {
+                instance.extProjects = new ProjectInfo[0];
+            }
+            ArrayList<ProjectInfo> mods = Lists.newArrayList(instance.extProjects);
             for (ModrinthIndexJson.ModpackFile file : index.files) {
                 if (file.path.contains("mods")) {
-                    ArrayList<ProjectInfo> mods = Lists.newArrayList(instance.extProjects);
                     ProjectInfo info = new ProjectInfo();
                     info.slug = file.path
-                            .replaceAll(".*\\/", "")
+                            .replaceAll(".*/", "")
                             .replaceAll("\\..*", "");
                     info.version = "1.0.0";
                     info.download_link = file.downloads[0];
                     info.type = "mod";
+                    if(isCoreMod(instance, info)) {
+                        continue;
+                    }
+
                     mods.add(info);
-                    instance.extProjects = mods.toArray(new ProjectInfo[0]);
                 }
             }
+            instance.extProjects = mods.toArray(new ProjectInfo[0]);
             try {
                 Files.walkFileTree(Paths.get(setupFile + "/overrides"), new FileVisitor<Path>() {
                     @Override
@@ -119,29 +109,13 @@ public class InstanceHandler {
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
-            API.finishedDownloading = false;
+            instance.updateMods(instances);
             GsonUtils.objectToJsonFile(userHome + "/instances.json", instances);
-        }).start();
-
-        return instance;
-    }
-
-    public enum ModLoader {
-        Fabric(0),
-        Quilt(1),
-        Forge(2),
-        NeoForge(3);
-
-        public final int index;
-
-        ModLoader(int i) {
-            this.index = i;
-        }
+        });
     }
 
     //creates a new instance of a minecraft version, install game + mod loader, stores non login related launch info to json
-    public static MinecraftInstances.Instance create(Activity activity, MinecraftInstances instances, String instanceName, String gameDir, boolean useDefaultMods, String minecraftVersion, ModLoader modLoader, String imageURL) {
-        API.finishedDownloading = false;
+    public static MinecraftInstances.Instance create(Activity activity, MinecraftInstances instances, String instanceName, String gameDir, boolean useDefaultMods, String minecraftVersion, String modLoader, String imageURL, Consumer<MinecraftInstances.Instance> postInstall) {
         File instancesFile = new File(gameDir + "/instances.json");
         if (instancesFile.exists()) {
             for (MinecraftInstances.Instance instance : instances.instances) {
@@ -161,14 +135,6 @@ public class InstanceHandler {
         instance.gameDir = Constants.USER_HOME + "/instances/" + instanceName.toLowerCase(Locale.ROOT).replaceAll(" ", "_");
         instance.defaultMods = useDefaultMods;
 
-        instance.modLoader = modLoader.name().toLowerCase(Locale.ROOT);
-
-        if (modLoader == ModLoader.NeoForge && !NeoForgeMeta.isSupported(minecraftVersion)) {
-            Logger.getInstance().appendToLog("NeoForge does not exist for Minecraft " + minecraftVersion + " (it starts at 1.20.2)");
-            API.finishedDownloading = true;
-            return null;
-        }
-
         File gameDirFile = new File(instance.gameDir);
         if(!gameDirFile.exists()) {
             gameDirFile.mkdirs();
@@ -176,26 +142,27 @@ public class InstanceHandler {
 
         VersionInfo modLoaderVersionInfo = null;
         switch (modLoader) {
-            case Fabric: {
-                FabricMeta.FabricVersion fabricVersion = FabricMeta.getLatestStableVersion();
+            case "Fabric": {
+                FabricMeta.FabricVersion fabricVersion = FabricMeta.getLatestVersion();
                 assert fabricVersion != null;
                 modLoaderVersionInfo = FabricMeta.getVersionInfo(fabricVersion, minecraftVersion);
                 break;
             }
-            case Quilt: {
+            case "Quilt": {
                 QuiltMeta.QuiltVersion quiltVersion = QuiltMeta.getLatestVersion();
                 assert quiltVersion != null;
                 modLoaderVersionInfo = QuiltMeta.getVersionInfo(quiltVersion, minecraftVersion);
+                break;
+            }
+            case "Forge":
+            case "NeoForge": {
                 break;
             }
         }
 
         VersionInfo minecraftVersionInfo = MinecraftMeta.getVersionInfo(minecraftVersion);
         instance.versionType = minecraftVersionInfo.type;
-        // NeoForge only knows its main class once the installer has run
-        if (modLoaderVersionInfo != null) {
-            instance.mainClass = modLoaderVersionInfo.mainClass;
-        }
+        instance.mainClass = modLoaderVersionInfo.mainClass;
 
         // Install minecraft
         VersionInfo finalModLoaderVersionInfo = modLoaderVersionInfo;
@@ -208,65 +175,40 @@ public class InstanceHandler {
         instances1.add(instance);
         instances.instances = instances1.toArray(new MinecraftInstances.Instance[0]);
 
-        new Thread(() -> {
+        CompletableFuture.supplyAsync(() ->
+        {
             try {
-                String clientClasspath = Installer.installClient(minecraftVersionInfo, gameDir);
+                CompletableFuture<String> clientClasspath = Installer.installClient(minecraftVersionInfo, gameDir);
+                CompletableFuture<String> minecraftClasspath = Installer.installLibraries(minecraftVersionInfo, gameDir);
+                CompletableFuture<String> modLoaderClasspath = Installer.installLibraries(finalModLoaderVersionInfo, gameDir);
+                CompletableFuture<String> assetsFuture = Installer.installAssets(minecraftVersionInfo, gameDir);
                 String lwjgl = UnityPlayerActivity.installLWJGL(activity);
 
-                if (modLoader == ModLoader.NeoForge) {
-                    // vanilla and NeoForge are one version for the launch, NeoForge's libraries replace vanilla's
-                    VersionInfo neoForge = NeoForgeInstaller.install(activity, minecraftVersionInfo, gameDir);
-                    String libraries = Installer.installLibraries(neoForge, gameDir);
+                CompletableFuture<Void> installFuture = CompletableFuture.allOf(clientClasspath, minecraftClasspath, modLoaderClasspath, assetsFuture);
+                installFuture.get();
 
-                    instance.mainClass = neoForge.mainClass;
-                    instance.classpath = joinClasspath(libraries, clientClasspath, lwjgl);
-                    Map<String, String> variables = new HashMap<>();
-                    variables.put("library_directory", new File(gameDir, "libraries").getAbsolutePath());
-                    variables.put("classpath_separator", File.pathSeparator);
-                    variables.put("version_name", minecraftVersion);
-                    variables.put("launcher_name", "QuestCraft");
-                    variables.put("launcher_version", "1");
-                    instance.loaderJvmArgs = LaunchArguments.resolve(neoForge.arguments.jvm, variables).toArray(new String[0]);
-                    instance.loaderGameArgs = LaunchArguments.resolve(neoForge.arguments.game, variables).toArray(new String[0]);
-                } else {
-                    String minecraftClasspath = Installer.installLibraries(minecraftVersionInfo, gameDir);
-                    String modLoaderClasspath = Installer.installLibraries(finalModLoaderVersionInfo, gameDir);
+                instance.classpath = clientClasspath.get() + File.pathSeparator + minecraftClasspath.get() + File.pathSeparator + modLoaderClasspath.get() + File.pathSeparator + lwjgl;
 
-                    instance.classpath = clientClasspath + File.pathSeparator + minecraftClasspath + File.pathSeparator + modLoaderClasspath + File.pathSeparator + lwjgl;
-                }
-
-                instance.assetsDir = Installer.installAssets(minecraftVersionInfo, gameDir, activity, instance);
-            } catch (IOException e) {
+                instance.assetsDir = assetsFuture.get();
+                Installer.moveLocalAssets(activity, instance);
+            } catch (IOException | ExecutionException | InterruptedException e) {
                 e.printStackTrace();
-                if (modLoader == ModLoader.NeoForge) {
-                    // an instance without a classpath can not be launched, so do not keep it around
-                    Logger.getInstance().appendToLog("Could not create the instance: " + e.getMessage());
-                    instances.instances = Arrays.stream(instances.instances).filter(i -> i != instance).toArray(MinecraftInstances.Instance[]::new);
-                    API.finishedDownloading = true;
-                    return;
-                }
             }
             instance.assetIndex = minecraftVersionInfo.assetIndex.id;
 
             // Write instance to json file
-            GsonUtils.objectToJsonFile(gameDir + "/instances.json", instances);
             instance.updateMods(instances);
+            GsonUtils.objectToJsonFile(gameDir + "/instances.json", instances);
 
-            API.finishedDownloading = true;
-            Logger.getInstance().appendToLog("Finished Downloading!");
-        }).start();
+            if(postInstall != null)
+                postInstall.accept(instance);
+
+            DownloadManager.reset();
+            Logger.getInstance().appendToLog("Finished Creating Instance!");
+            return null;
+        });
 
         return instance;
-    }
-
-    // Joins classpath strings, leaving out entries that are in there more than once.
-    // A jar twice on the classpath would be two modules with the same packages for NeoForge's module layer.
-    static String joinClasspath(String... classpaths) {
-        Set<String> entries = new LinkedHashSet<>();
-        for (String classpath : classpaths) {
-            entries.addAll(Arrays.asList(classpath.split(File.pathSeparator)));
-        }
-        return String.join(File.pathSeparator, entries);
     }
 
     // Load an instance from json
@@ -287,9 +229,10 @@ public class InstanceHandler {
         return instances;
     }
 
-    public static void addExtraProject(MinecraftInstances instances, MinecraftInstances.Instance instance, String name, String version, String url, String type) {
+    public static void addExtraProject(MinecraftInstances instances, MinecraftInstances.Instance instance, String name, String fileName, String version, String url, String type) {
         ProjectInfo info = new ProjectInfo();
         info.slug = name;
+        info.fileName = fileName;
         info.download_link = url;
         info.version = version;
         info.type = type;
@@ -315,42 +258,79 @@ public class InstanceHandler {
         return false;
     }
 
-    public static boolean removeExtraProject(MinecraftInstances instances, MinecraftInstances.Instance instance, String name) {
-        ProjectInfo oldInfo = null;
-        for(ProjectInfo info : instance.extProjects) {
-            if(info.slug.equalsIgnoreCase(name)) {
-                oldInfo = info;
-                break;
+    private static boolean isCoreMod(MinecraftInstances.Instance instance, ProjectInfo oldInfo) {
+        // Check if its a coremod
+        ModsJson oldMods = instance.parseModsJson(Constants.USER_HOME + "/mods.json");
+        if(oldMods != null) {
+            Optional<ModsJson.Version> ver = Arrays.stream(oldMods.versions).filter((v) -> v.name.equals(instance.versionName)).findFirst();
+            if(ver.isPresent()) {
+                ModsJson.Version version = ver.get();
+                Optional<ProjectInfo> info = Arrays.stream(version.coreMods).filter((mod) -> mod.slug.equals(oldInfo.slug)).findFirst();
+                return info.isPresent();
             }
         }
 
+        return false;
+    }
+
+    public static boolean removeExtraProject(MinecraftInstances instances, MinecraftInstances.Instance instance, String name) {
+        ProjectInfo oldInfo = Arrays.stream(instance.extProjects).filter(info -> info.slug.equalsIgnoreCase(name)).findFirst().orElse(null);
+
         if(oldInfo != null) {
             boolean isMod = oldInfo.type.equals("mod");
+            boolean legacyMod = oldInfo.fileName == null;
+
+            if(isCoreMod(instance, oldInfo)) {
+                return false;
+            }
 
             // Delete the mod
-            File modFile = new File(instance.gameDir + (isMod ? "/mods/" : "/resourcepacks/") + name + (isMod ? ".jar" : ".zip"));
+            File modFile = new File(instance.gameDir + (isMod ? "/mods/" : "/resourcepacks/") + (legacyMod ? oldInfo.slug : oldInfo.fileName) + (isMod ? ".jar" : ".zip"));
             modFile.delete();
 
             ArrayList<ProjectInfo> mods = Lists.newArrayList(instance.extProjects);
             mods.remove(oldInfo);
             instance.extProjects = mods.toArray(mods.toArray(new ProjectInfo[0]));
             GsonUtils.objectToJsonFile(Constants.USER_HOME + "/instances.json", instances);
+            return true;
         }
 
-        return oldInfo != null;
+        return false;
     }
 
     // Return true if instance was deleted
-    public static boolean delete(MinecraftInstances instances, MinecraftInstances.Instance instance) {
+    public static boolean delete(MinecraftInstances instances, MinecraftInstances.Instance instance) throws IOException {
         File instanceDir = new File(instance.gameDir);
-        instanceDir.delete();
+        Files.walkFileTree(instanceDir.toPath(), new FileVisitor<Path>() {
+            @Override
+            public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
+                return FileVisitResult.CONTINUE;
+            }
+
+            @Override
+            public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+                Files.delete(file);
+                return FileVisitResult.CONTINUE;
+            }
+
+            @Override
+            public FileVisitResult visitFileFailed(Path file, IOException exc) throws IOException {
+                return FileVisitResult.CONTINUE;
+            }
+
+            @Override
+            public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
+                Files.delete(dir);
+                return FileVisitResult.CONTINUE;
+            }
+        });
 
         ArrayList<MinecraftInstances.Instance> instances1 = Lists.newArrayList(instances.instances);
         instances1.remove(instance);
         instances.instances = instances1.toArray(new MinecraftInstances.Instance[0]);
         GsonUtils.objectToJsonFile(Constants.USER_HOME + "/instances.json", instances);
 
-        return true;
+        return instanceDir.delete();
     }
 
     public static void launchInstance(Activity activity, MinecraftAccount account, MinecraftInstances.Instance instance) {

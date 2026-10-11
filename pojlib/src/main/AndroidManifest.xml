@@ -1,11 +1,5 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="pojlib.android">
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-    <application android:allowNativeHeapPointerTagging="false">
-        <!-- Runs the NeoForge installer in a JVM of its own, see NeoForgeInstallService -->
-        <service
-            android:name="pojlib.install.NeoForgeInstallService"
-            android:exported="false"
-            android:process=":neoforge_installer" />
-    </application>
+    <application android:allowNativeHeapPointerTagging="false"/>
 </manifest>

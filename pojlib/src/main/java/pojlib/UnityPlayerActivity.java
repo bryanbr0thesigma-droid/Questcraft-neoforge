@@ -9,13 +9,17 @@ import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.Activity;
 import android.app.ActivityGroup;
+import android.app.ActivityManager;
 import android.content.ClipData;
 import android.content.ClipboardManager;
+import android.content.Context;
 import android.content.Intent;
 import android.content.res.Configuration;
 import android.os.Build;
 import android.os.Bundle;
-import android.os.PowerManager;
+import android.os.Process;
+import android.util.DisplayMetrics;
+import android.view.InputDevice;
 import android.util.DisplayMetrics;
 import android.view.InputDevice;
 import android.view.KeyEvent;
@@ -30,6 +34,8 @@ import org.lwjgl.glfw.CallbackBridge;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.Objects;
 
 import fr.spse.gamepad_remapper.RemapperManager;
@@ -43,12 +49,13 @@ import pojlib.input.gamepad.Gamepad;
 import pojlib.util.Constants;
 import pojlib.util.FileUtil;
 import pojlib.util.Logger;
+import pojlib.util.download.DownloadManager;
+import pojlib.util.download.DownloadUtils;
 
 public class UnityPlayerActivity extends ActivityGroup implements IUnityPlayerLifecycleEvents, GrabListener
 {
     protected UnityPlayer mUnityPlayer; // don't change the name of this variable; referenced from native code
     public static volatile ClipboardManager GLOBAL_CLIPBOARD;
-    private PowerManager.WakeLock wakeLock;
     private Gamepad mGamepad = null;
 
     private RemapperManager mInputManager;
@@ -78,6 +85,8 @@ public class UnityPlayerActivity extends ActivityGroup implements IUnityPlayerLi
 
     // Setup activity layout
     @Override protected void onCreate(Bundle savedInstanceState) {
+        Constants.initConstants(this);
+
         requestWindowFeature(Window.FEATURE_NO_TITLE);
         super.onCreate(savedInstanceState);
 
@@ -88,17 +97,6 @@ public class UnityPlayerActivity extends ActivityGroup implements IUnityPlayerLi
         setContentView(mUnityPlayer);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         mUnityPlayer.requestFocus();
-
-        File jre = new File(this.getFilesDir() + "/runtimes/JRE-22");
-        if (!jre.exists()) {
-            FileUtil.unzipArchiveFromAsset(this, "JRE-22.zip", this.getFilesDir() + "/runtimes/JRE-22");
-        }
-
-        try {
-            installLWJGL(this);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
 
         updateWindowSize(this);
         GLOBAL_CLIPBOARD = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
@@ -123,6 +121,7 @@ public class UnityPlayerActivity extends ActivityGroup implements IUnityPlayerLi
     }
 
     public static String installLWJGL(Activity activity) throws IOException {
+        Logger.getInstance().appendToLog("Checking LWJGL");
         File lwjgl = new File(Constants.USER_HOME + "/lwjgl3/lwjgl-glfw-classes.jar");
         byte[] lwjglAsset = FileUtil.loadFromAssetToByte(activity, "lwjgl/lwjgl-glfw-classes.jar");
 
@@ -130,11 +129,23 @@ public class UnityPlayerActivity extends ActivityGroup implements IUnityPlayerLi
             Objects.requireNonNull(lwjgl.getParentFile()).mkdirs();
             FileUtil.write(lwjgl.getAbsolutePath(), lwjglAsset);
         } else if (!FileUtil.matchingAssetFile(lwjgl, lwjglAsset)) {
+            lwjgl.delete();
             Objects.requireNonNull(lwjgl.getParentFile()).mkdirs();
             FileUtil.write(lwjgl.getAbsolutePath(), lwjglAsset);
         }
 
+        Logger.getInstance().appendToLog("LWJGL installed");
         return lwjgl.getAbsolutePath();
+    }
+
+    public void reinitUnity() {
+        this.runOnUiThread(() -> {
+            Intent start = this.getPackageManager().getLaunchIntentForPackage(getApplicationInfo().packageName);
+            start.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+            this.startActivity(start);
+            this.finish();
+            Process.killProcess(Process.myPid());
+        });
     }
 
     public static DisplayMetrics getDisplayMetrics(Activity activity) {
@@ -378,7 +389,6 @@ public class UnityPlayerActivity extends ActivityGroup implements IUnityPlayerLi
     @Override protected void onDestroy ()
     {
         mUnityPlayer.destroy();
-        wakeLock.release();
         super.onDestroy();
     }
 

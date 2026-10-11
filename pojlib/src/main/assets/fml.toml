@@ -1,3 +1,0 @@
-# QuestCraft: FML's early loading screen opens its own GLFW window and GL context.
-# On the headset the only context is the one Vivecraft renders into, so it has to stay off.
-earlyWindowControl = false

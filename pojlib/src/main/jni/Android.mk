@@ -13,45 +13,27 @@ LOCAL_SRC_FILES := libopenxr_loader.so
 include $(PREBUILT_SHARED_LIBRARY)
 
 include $(CLEAR_VARS)
-LOCAL_MODULE := occore
-LOCAL_SRC_FILES := ./OpenOVR/libOCCore.a
-include $(PREBUILT_STATIC_LIBRARY)
-
-include $(CLEAR_VARS)
-LOCAL_SHARED_LIBRARIES := openxr_loader
-LOCAL_MODULE := drvopenxr
-LOCAL_SRC_FILES := ./OpenOVR/libDrvOpenXR.a
-include $(PREBUILT_STATIC_LIBRARY)
-
-include $(CLEAR_VARS)
-LOCAL_MODULE := ocovr
-LOCAL_STATIC_LIBRARIES := drvopenxr occore drvopenxr
-LOCAL_SRC_FILES := ./OpenOVR/OCOVR.a
-include $(PREBUILT_STATIC_LIBRARY)
-
-include $(CLEAR_VARS)
-LOCAL_LDLIBS := -llog -landroid -lGLESv3 -lvulkan -lEGL
-LOCAL_CFLAGS := -DXR_USE_PLATFORM_ANDROID -DXR_USE_GRAPHICS_API_OPENGL_ES
-LOCAL_SHARED_LIBRARIES := openxr_loader
-LOCAL_WHOLE_STATIC_LIBRARIES := ocovr
-LOCAL_MODULE := openvr_api
-        LOCAL_SRC_FILES := \
-                    vloader.cpp
-include $(BUILD_SHARED_LIBRARY)
-
-include $(CLEAR_VARS)
 # Link GLESv2 for test
 LOCAL_LDLIBS := -ldl -llog -landroid -lGLESv3 -lEGL
+LOCAL_CFLAGS := -DXR_USE_PLATFORM_ANDROID -DXR_USE_GRAPHICS_API_OPENGL_ES
 # -lGLESv2
 LOCAL_MODULE := pojavexec
 # LOCAL_CFLAGS += -DDEBUG
-LOCAL_SHARED_LIBRARIES := openvr_api
 # -DGLES_TEST
 LOCAL_SRC_FILES := \
     egl_bridge.c \
     utils.c \
     environ/environ.c \
     input_bridge_v3.c
+include $(BUILD_SHARED_LIBRARY)
+
+include $(CLEAR_VARS)
+LOCAL_LDLIBS := -llog -landroid -lGLESv3 -lvulkan -lEGL
+LOCAL_CFLAGS := -DXR_USE_PLATFORM_ANDROID -DXR_USE_GRAPHICS_API_OPENGL_ES
+LOCAL_SHARED_LIBRARIES := pojavexec openxr_loader
+LOCAL_MODULE := vloader
+LOCAL_SRC_FILES := \
+            vloader.cpp
 include $(BUILD_SHARED_LIBRARY)
 
 include $(CLEAR_VARS)
@@ -79,4 +61,22 @@ include $(BUILD_SHARED_LIBRARY)
 # LOCAL_MODULE := thread64helper
 # LOCAL_SRC_FILES := thread_helper.cpp
 # include $(BUILD_SHARED_LIBRARY)
+
+# fake lib for linker
+include $(CLEAR_VARS)
+LOCAL_MODULE := awt_headless
+include $(BUILD_SHARED_LIBRARY)
+
+# libawt_xawt without X11, used to get Caciocavallo working
+LOCAL_PATH := $(HERE_PATH)/awt_xawt
+include $(CLEAR_VARS)
+LOCAL_MODULE := awt_xawt
+# LOCAL_CFLAGS += -DHEADLESS
+LOCAL_EXPORT_C_INCLUDES := $(LOCAL_PATH)
+LOCAL_SHARED_LIBRARIES := awt_headless
+LOCAL_SRC_FILES := xawt_fake.c
+include $(BUILD_SHARED_LIBRARY)
+
+# delete fake libs after linked
+$(info $(shell (rm $(HERE_PATH)/../jniLibs/*/libawt_headless.so)))
 

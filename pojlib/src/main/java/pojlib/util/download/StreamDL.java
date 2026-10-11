@@ -1,4 +1,4 @@
-package pojlib.util;
+package pojlib.util.download;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -6,13 +6,13 @@ import java.util.ArrayList;
 import java.util.Collection;
 
 public class StreamDL extends InputStream {
-
     private final InputStream in;
     private int count;
-    private final Collection<StreamListener> listeners = new ArrayList<StreamListener>();
+    private final Collection<StreamListener> listeners = new ArrayList<>();
 
-    StreamDL(InputStream in) {
+    public StreamDL(InputStream in, long totalBytes) {
         this.in = in;
+        DownloadManager.addTotalBytes(totalBytes);
     }
 
     @Override
@@ -27,9 +27,14 @@ public class StreamDL extends InputStream {
     }
 
     private void byteReceived(int b) {
-        for (StreamListener l: listeners) {
-            l.byteReceived(b, ++count);
+        if (b != -1) {
+            count++;
+            DownloadManager.addBytes(1);
+        }
+
+        for (StreamListener l : listeners) {
+            l.byteReceived(b, count);
         }
     }
-
 }
+

@@ -42,21 +42,23 @@ public class Msa {
         XSTS_ERRORS.put(2148916238L, "Your account is a child account, and needs to be added into a Family in order to log in.");
     }
 
+    private final Activity activity;
+
     /* Fields used to fill the account  */
-    public static String mcName;
+    public String mcName;
     public String mcToken;
-    public static String mcUuid;
-    public static boolean doesOwnGame;
-    public long expiresAt;
-    private Activity activity;
+    public String mcUuid;
+    public boolean doesOwnGame;
+    private long mcExpiresOn;
 
     public Msa(Activity currentActivity) {
-        this.activity = activity;
+        this.activity = currentActivity;
     }
 
     /** Performs a full login, calling back listeners appropriately  */
-    public MinecraftAccount performLogin(String xblToken) throws MSAException {
+    public MinecraftAccount performLogin(String msToken) throws MSAException {
         try {
+            String xblToken = acquireXBLToken(msToken);
             String[] xsts = acquireXsts(xblToken);
             if(xsts == null) {
                 return null;
@@ -65,22 +67,28 @@ public class Msa {
             fetchOwnedItems(mcToken);
             checkMcProfile(mcToken);
 
-            MinecraftAccount acc = MinecraftAccount.load(activity.getFilesDir() + "/accounts", null, null);
+            MinecraftAccount acc = MinecraftAccount.load(activity.getFilesDir() + "/accounts", mcUuid);
             if (acc == null) acc = new MinecraftAccount();
             if (doesOwnGame) {
                 acc.accessToken = mcToken;
                 acc.username = mcName;
                 acc.uuid = mcUuid;
-                acc.expiresIn = expiresAt;
+                acc.expiresOn = mcExpiresOn;
+                acc.isDemoMode = false;
+                API.isDemoMode = false;
             } else {
-                Logger.getInstance().appendToLog("MicrosoftLogin | Unknown Error occurred.");
-                throw new MSAException("MicrosoftLogin | Unknown Error occurred.");
+                acc.accessToken = "0";
+                acc.username = "DemoMode";
+                acc.uuid = "00000000-0000-0000-0000-000000000000";
+                acc.expiresOn = 0;
+                acc.isDemoMode = true;
+                API.isDemoMode = true;
             }
 
             return acc;
         } catch (Exception e) {
             Logger.getInstance().appendToLog("MicrosoftLogin | Exception thrown during authentication " + e);
-            throw new MSAException("MicrosoftLogin | Exception thrown during authentication ");
+            throw new MSAException("MicrosoftLogin | Exception thrown during authentication " + e);
         }
     }
 
@@ -149,7 +157,9 @@ public class Msa {
             String locale_id = XSTS_ERRORS.get(xerr);
             if(locale_id != null) {
                 Logger.getInstance().appendToLog(responseContents);
-                throw new MSAException(responseContents);
+                Logger.getInstance().appendToLog(locale_id);
+
+                throw new MSAException(locale_id);
             }
             // Logger.getInstance().appendToLog("Unknown error returned from Xbox Live\n" + responseContents);
             throw new MSAException("Unknown error returned from Xbox Live");
@@ -176,8 +186,8 @@ public class Msa {
         if(conn.getResponseCode() >= 200 && conn.getResponseCode() < 300) {
             JSONObject jo = new JSONObject(FileUtil.read(conn.getInputStream()));
             conn.disconnect();
-            expiresAt = System.currentTimeMillis() + (jo.getInt("expires_in") * 1000L);
             mcToken = jo.getString("access_token");
+            mcExpiresOn = System.currentTimeMillis() + (jo.getInt("expires_in") * 1000L);
         }else{
             throw getResponseThrowable(conn);
         }
@@ -199,7 +209,7 @@ public class Msa {
     }
 
     // Returns false for failure //
-    public static boolean checkMcProfile(String mcAccessToken) throws IOException, MSAException, JSONException {
+    public boolean checkMcProfile(String mcAccessToken) throws IOException, MSAException, JSONException {
         URL url = new URL(Constants.MC_PROFILE_URL);
 
         HttpURLConnection conn = (HttpURLConnection)url.openConnection();
@@ -210,7 +220,7 @@ public class Msa {
         if(conn.getResponseCode() >= 200 && conn.getResponseCode() < 300) {
             String s = FileUtil.read(conn.getInputStream());
             conn.disconnect();
-            Logger.getInstance().appendToLog("MicrosoftLogin | profile:" + s);
+            Logger.getInstance().appendToLog("MicrosoftLogin | Profile:" + s);
             JSONObject jsonObject = new JSONObject(s);
             String name = (String) jsonObject.get("name");
             String uuid = (String) jsonObject.get("id");
@@ -224,9 +234,9 @@ public class Msa {
             mcUuid = uuidDashes;
             return true;
         } else {
-            Logger.getInstance().appendToLog("MicrosoftLogin | It seems that this Microsoft Account does not own the game.");
+            Logger.getInstance().appendToLog("MicrosoftLogin | It seems that this Microsoft Account does not own the game, setting game to demo mode.");
             doesOwnGame = false;
-            throw new MSAException("It seems like this account does not have a Minecraft profile. If you have Xbox Game Pass, please log in on https://minecraft.net/ and set it up.");
+            return false;
         }
     }
 

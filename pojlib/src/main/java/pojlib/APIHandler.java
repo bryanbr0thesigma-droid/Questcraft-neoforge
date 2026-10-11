@@ -1,5 +1,7 @@
 package pojlib;
 
+import android.content.Context;
+
 import com.google.gson.Gson;
 
 import java.io.BufferedReader;
@@ -15,7 +17,8 @@ import java.util.HashMap;
 import java.util.stream.Collectors;
 
 import pojlib.util.Constants;
-import pojlib.util.DownloadUtils;
+import pojlib.util.download.DownloadManager;
+import pojlib.util.download.DownloadUtils;
 import pojlib.util.GsonUtils;
 import pojlib.util.Logger;
 
@@ -107,17 +110,29 @@ public class APIHandler {
         return new Gson().fromJson(postRaw(url + parseQueries(query), body.toString()), tClass);
     }
 
-    public static final String SUPPORTED_VERSIONS = Constants.PORT_RAW_URL + "/pojlib/supportedVersions.json";
+    public static final String SUPPORTED_VERSIONS = "https://raw.githubusercontent.com/QuestCraftPlusPlus/Pojlib/refs/heads/" + Constants.GIT_BRANCH + "/supportedVersions.json";
 
-    public static String[] getQCSupportedVersions() {
+    public static String[] getQCSupportedVersions(Context ctx) {
         File versionsJson = new File(Constants.USER_HOME + "/supportedVersions.json");
-        try {
-            DownloadUtils.downloadFile(SUPPORTED_VERSIONS, versionsJson);
-        } catch (IOException e) {
-            Logger.getInstance().appendToLog("Error while grabbing supported versions!\n" + e);
+        if(API.hasConnection(ctx)) {
+            try {
+                DownloadUtils.downloadFile(SUPPORTED_VERSIONS, versionsJson);
+            } catch (IOException e) {
+                Logger.getInstance().appendToLog("Error while grabbing supported versions!\n" + e);
+            }
+        } else {
+            Logger.getInstance().appendToLog("Skipping supported versions download.");
         }
 
-        return GsonUtils.jsonFileToObject(versionsJson.getAbsolutePath(), SupportedVersions.class).supportedVersions;
+        DownloadManager.reset();
+        SupportedVersions versions = GsonUtils.jsonFileToObject(versionsJson.getAbsolutePath(), SupportedVersions.class);
+        if(versions == null) {
+            return new String[] {
+                    "1.21.4"
+            };
+        }
+
+        return versions.supportedVersions;
     }
 
     public static class SupportedVersions {

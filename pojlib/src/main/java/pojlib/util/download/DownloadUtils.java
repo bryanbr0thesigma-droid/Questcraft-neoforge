@@ -1,9 +1,11 @@
-package pojlib.util;
+package pojlib.util.download;
 
 import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.IOUtils;
+
 import pojlib.API;
+import pojlib.util.Logger;
 
 import javax.net.ssl.SSLException;
 import java.io.*;
@@ -14,8 +16,7 @@ import java.util.Objects;
 import javax.annotation.Nullable;
 
 public class DownloadUtils {
-
-    private static void download(URL url, OutputStream os) throws IOException {
+    private static void download(URL url, OutputStream os, long size) throws IOException {
         final int MAX_RETRIES = 3;
         int attempts = 0;
 
@@ -26,27 +27,17 @@ public class DownloadUtils {
                 conn.setConnectTimeout(10000);
                 conn.setDoInput(true);
                 conn.connect();
+
                 if (conn.getResponseCode() == HttpURLConnection.HTTP_OK) {
-                    try (InputStream is = new StreamDL(conn.getInputStream())) {
-                        String[] segments = url.getPath().split("/");
-                        API.currentDownload = segments[segments.length - 1];
+                    if(size == -1) {
+                        size = conn.getContentLengthLong();
+                    }
 
-                        ((StreamDL)is).addListener((b, count) -> {
-
-                            if (b == -1) {
-                                API.downloadStatus = 0;
-                                API.currentDownload = null;
-                            } else {
-                                API.downloadStatus = count * 0.000001;
-                            }
-
-                        });
-
+                    try (InputStream is = new StreamDL(conn.getInputStream(), size)) {
                         IOUtils.copy(is, os);
                     }
                     return;
                 }
-
             } catch (IOException e) {
                 if (++attempts >= MAX_RETRIES || e instanceof SSLException) {
                     throw new IOException("Unable to download from " + url, e);
@@ -56,26 +47,28 @@ public class DownloadUtils {
     }
 
     public static void downloadFile(String url, File out) throws IOException {
+        downloadFile(url, out, -1);
+    }
+
+    public static void downloadFile(String url, File out, long size) throws IOException {
         Objects.requireNonNull(out.getParentFile()).mkdirs();
         File tempOut = File.createTempFile(out.getName(), ".part", out.getParentFile());
-        BufferedOutputStream bos = null;
         try {
-            OutputStream bos2 = new BufferedOutputStream(Files.newOutputStream(tempOut.toPath()));
-            try {
-                download(new URL(url), bos2);
+            try (OutputStream bos2 = new BufferedOutputStream(Files.newOutputStream(tempOut.toPath()))) {
+                download(new URL(url), bos2, size);
                 tempOut.renameTo(out);
                 bos2.close();
                 if (tempOut.exists()) tempOut.delete();
-
             } catch (IOException th2) {
                 if (tempOut.exists()) tempOut.delete();
                 throw th2;
             }
-        } catch (IOException th3) {
+        } catch (IOException e) {
             if (tempOut.exists()) tempOut.delete();
-            throw th3;
+            throw e;
         }
     }
+
     public static boolean compareSHA1(File f, @Nullable String sourceSHA) {
         try {
             String sha1_dst;
