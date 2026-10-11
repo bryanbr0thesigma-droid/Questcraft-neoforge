@@ -26,5 +26,6 @@
     "cpus": 2,
     "memory": "4gb"
   },
-  "postStartCommand": "bash .devcontainer/autostart.sh"
+  "postStartCommand": "bash .devcontainer/autostart.sh",
+  "postAttachCommand": "bash .devcontainer/autostart.sh"
 }
