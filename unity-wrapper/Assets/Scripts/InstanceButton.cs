@@ -43,7 +43,7 @@ public class InstanceButton : MonoBehaviour
 
     private static void CreateDefaultInstance(string name)
     {
-        JNIStorage.apiClass.CallStatic<AndroidJavaObject>("createNewInstance", JNIStorage.activity, JNIStorage.instancesObj, name, true, name, "Fabric", null);
+        JNIStorage.apiClass.CallStatic<AndroidJavaObject>("createNewInstance", JNIStorage.activity, JNIStorage.instancesObj, name, true, name, "NeoForge", null);
         JNIStorage.instance.uiHandler.SetAndShowError(currInstName + " is now installing.");
         JNIStorage.instance.UpdateInstances();
     }

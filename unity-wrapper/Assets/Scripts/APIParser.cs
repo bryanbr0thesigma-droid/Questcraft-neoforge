@@ -76,7 +76,13 @@ public class PojlibInstance
     public string mainClass;
     public string extraNatives;
     public bool defaultMods;
+    // "neoforge", or "fabric"/null for instances made before the NeoForge port
+    public string modLoader;
     public AndroidJavaObject raw;
+
+    // Name of the loader as Modrinth calls it, used to only offer mods that load in this instance
+    public string LoaderSlug => modLoader == "neoforge" ? "neoforge" : "fabric";
+    public string LoaderLabel => modLoader == "neoforge" ? "NeoForge" : "Fabric";
 
     public static PojlibInstance Parse(AndroidJavaObject raw)
     {
@@ -93,6 +99,7 @@ public class PojlibInstance
         instance.mainClass = raw.Get<string>("mainClass");
         instance.extraNatives = raw.Get<string>("extraNatives");
         instance.defaultMods = raw.Get<bool>("defaultMods");
+        instance.modLoader = raw.Get<string>("modLoader");
         return instance;
     }
 

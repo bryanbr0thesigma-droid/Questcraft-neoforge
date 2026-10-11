@@ -108,7 +108,7 @@ public class ModManager : MonoBehaviour
             };
 
             if (filterOption != "datapack" && filterOption != "resourcepack")
-                facets.Add("[\"categories:fabric\"]");
+                facets.Add("[\"categories:" + (JNIStorage.GetInstance(InstanceButton.currInstName)?.LoaderSlug ?? "neoforge") + "\"]");
 
             //https://docs.modrinth.com/#tag/projects/operation/searchProjects
             
@@ -291,12 +291,18 @@ public class ModManager : MonoBehaviour
         }
     }
     
+    // The loader of the instance mods are added to, mods for another loader would not load
+    private static string LoaderSlugOfCurrentInstance()
+    {
+        return JNIStorage.GetInstance(InstanceButton.currInstName)?.LoaderSlug ?? "neoforge";
+    }
+
     private bool IsValidModFile(MetaInfo metaInfo, MetaParser metaParser, string instanceVersion)
     {
         if (metaParser.project_type is "mod" or "modpack")
         {
             return metaInfo.game_versions.Contains(instanceVersion)
-                   && metaInfo.loaders.Contains("fabric"); 
+                   && metaInfo.loaders.Contains(LoaderSlugOfCurrentInstance());
         }
         else
         {
@@ -332,7 +338,7 @@ public class ModManager : MonoBehaviour
             AndroidJavaObject instance = LoadInstance();
             if (instance == null) return;
 
-            JNIStorage.apiClass.CallStatic<AndroidJavaObject>("createNewInstance", JNIStorage.activity, JNIStorage.instancesObj, mp.title, mp.icon_url, "Fabric", path);
+            JNIStorage.apiClass.CallStatic<AndroidJavaObject>("createNewInstance", JNIStorage.activity, JNIStorage.instancesObj, mp.title, mp.icon_url, "NeoForge", path);
             JNIStorage.instance.uiHandler.SetAndShowError(mp.title + " is now being created.");
             JNIStorage.instance.UpdateInstances();
         };
@@ -383,7 +389,7 @@ public class ModManager : MonoBehaviour
     {
         return depInfo.game_versions.Contains(currentInstanceVer)
                && !depFile.url.Contains(".mrpack")
-               && depInfo.loaders.Contains("fabric")
+               && depInfo.loaders.Contains(LoaderSlugOfCurrentInstance())
                && !JNIStorage.apiClass.CallStatic<bool>("hasExtraProject", JNIStorage.GetInstance(InstanceButton.currInstName).raw, slug);
     }
 
