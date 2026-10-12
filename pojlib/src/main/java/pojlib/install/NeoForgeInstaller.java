@@ -110,6 +110,7 @@ public class NeoForgeInstaller {
             FileUtils.writeStringToFile(profiles, "{\"profiles\":{}}", StandardCharsets.UTF_8);
         }
         logOf(installer).delete();
+        serviceLogOf(installer).delete();
 
         // the JRE is downloaded on first use, the installer is the first thing that needs it
         Installer.installJVM(activity, false);
@@ -152,7 +153,32 @@ public class NeoForgeInstaller {
 
         File log = logOf(installer);
         if (!log.exists() || !FileUtils.readFileToString(log, StandardCharsets.UTF_8).contains(SUCCESS_MARKER)) {
-            throw new IOException("NeoForge installer did not finish:\n" + tail(log, 12));
+            String why = tail(log, 12);
+            if (!log.exists()) {
+                // the installer never wrote anything: say what the process around it did and how Android ended it
+                why = "(no installer log)\n" + tail(serviceLogOf(installer), 8) + "\n" + exitReason(activity);
+            }
+            throw new IOException("NeoForge installer did not finish:\n" + why);
+        }
+    }
+
+    private static File serviceLogOf(File installer) {
+        return new File(installer.getAbsolutePath() + NeoForgeInstallService.SERVICE_LOG_SUFFIX);
+    }
+
+    /** Why Android says the installer process ended last (a crash, a signal, low memory, ...), if it says. */
+    private static String exitReason(Context context) {
+        try {
+            android.app.ActivityManager am = (android.app.ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
+            for (android.app.ApplicationExitInfo info : am.getHistoricalProcessExitReasons(context.getPackageName(), 0, 10)) {
+                if (info.getProcessName() != null && info.getProcessName().endsWith(":neoforge_installer")) {
+                    return "Android: process ended with reason " + info.getReason() + ", status " + info.getStatus()
+                            + (info.getDescription() != null ? ", " + info.getDescription() : "");
+                }
+            }
+            return "Android: no record of the installer process ending";
+        } catch (Throwable t) {
+            return "Android: exit reason not available (" + t + ")";
         }
     }
 
@@ -166,7 +192,7 @@ public class NeoForgeInstaller {
             List<String> all = FileUtils.readLines(file, StandardCharsets.UTF_8);
             return String.join("\n", all.subList(Math.max(0, all.size() - lines), all.size()));
         } catch (IOException e) {
-            return "(no installer log)";
+            return "(nothing written)";
         }
     }
 }
