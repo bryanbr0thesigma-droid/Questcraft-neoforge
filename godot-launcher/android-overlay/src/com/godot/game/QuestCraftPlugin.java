@@ -78,6 +78,7 @@ public class QuestCraftPlugin extends GodotPlugin {
                 case "progress": return LauncherApi.progress();
                 case "acknowledge": LauncherApi.acknowledge(); return "";
                 case "logTail": return LauncherApi.logTail(a.optInt(0, 10));
+                case "crashInfo": return LauncherApi.crashInfo();
                 default:
                     Log.w(TAG, "Unknown call " + method);
                     return "";

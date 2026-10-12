@@ -717,7 +717,11 @@ func show_log(only_problems := true) -> void:
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	body.add_child(scroll)
-	var logbox := _label("\n".join(shown) if shown.size() > 0 else "Nothing in the log yet.", 15, TEXT_DIM)
+	var crash := str(Bridge.api("crashInfo")).strip_edges()   # how the last game ended, always shown first
+	var text := "\n".join(shown) if shown.size() > 0 else "Nothing in the log yet."
+	if crash != "":
+		text = crash + "\n\n" + text
+	var logbox := _label(text, 15, TEXT_DIM)
 	logbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	logbox.autowrap_mode = TextServer.AUTOWRAP_ARBITRARY
 	scroll.add_child(logbox)

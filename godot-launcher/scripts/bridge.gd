@@ -93,5 +93,6 @@ func _mock(method: String, args: Array) -> Variant:
 			print("MOCK startGameProcess ", args)
 			return ""
 		"logTail": return "Mock log line 1\nMock log line 2"
+		"crashInfo": return ""
 		"hasConnection": return "true"
 		_: return ""

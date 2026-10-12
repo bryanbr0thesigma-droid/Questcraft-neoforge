@@ -380,6 +380,94 @@ public final class LauncherApi {
         }
     }
 
+    /**
+     * What is known about how the last game ended, for a launcher's log screen: how Android says the game process ended
+     * (it is the only one that can tell a native crash from an out-of-memory kill), the crash file of the Java VM
+     * and the log of the game, as far as there is a recent one. Empty if there is nothing.
+     */
+    public static String crashInfo() {
+        StringBuilder out = new StringBuilder();
+        try {
+            android.content.Context context = Constants.APP_CONTEXT;
+            android.app.ActivityManager am = (android.app.ActivityManager) context.getSystemService(android.content.Context.ACTIVITY_SERVICE);
+            for (android.app.ApplicationExitInfo info : am.getHistoricalProcessExitReasons(context.getPackageName(), 0, 10)) {
+                if (info.getProcessName() != null && info.getProcessName().endsWith(":game")) {
+                    out.append("Android says the game process ended: reason ").append(info.getReason())
+                            .append(" (").append(exitReasonName(info.getReason())).append("), status ").append(info.getStatus());
+                    if (info.getDescription() != null) out.append(", ").append(info.getDescription());
+                    out.append("\n");
+                    break;
+                }
+            }
+        } catch (Throwable t) {
+            out.append("(exit reason not available: ").append(t).append(")\n");
+        }
+        try {
+            File newestCrash = null;
+            File newestLog = null;
+            File[] dirs = new File(Constants.USER_HOME, "instances").listFiles();
+            if (dirs != null) {
+                for (File dir : dirs) {
+                    File[] files = dir.listFiles();
+                    if (files != null) {
+                        for (File f : files) {
+                            if (f.getName().startsWith("hs_err_pid") && (newestCrash == null || f.lastModified() > newestCrash.lastModified())) newestCrash = f;
+                        }
+                    }
+                    File log = new File(dir, "logs/latest.log");
+                    if (log.isFile() && (newestLog == null || log.lastModified() > newestLog.lastModified())) newestLog = log;
+                }
+            }
+            long recent = System.currentTimeMillis() - 30 * 60 * 1000L;
+            if (newestCrash != null && newestCrash.lastModified() > recent) {
+                out.append("--- ").append(newestCrash.getName()).append(" (Java VM crash report) ---\n")
+                        .append(head(newestCrash, 24));
+            }
+            if (newestLog != null && newestLog.lastModified() > recent) {
+                out.append("--- ").append(newestLog.getParentFile().getParentFile().getName()).append("/logs/latest.log ---\n")
+                        .append(tailOf(newestLog, 25));
+            }
+        } catch (Throwable t) {
+            out.append("(logs not available: ").append(t).append(")\n");
+        }
+        return out.toString();
+    }
+
+    private static String exitReasonName(int reason) {
+        switch (reason) {
+            case 1: return "exit by itself";
+            case 2: return "signal";
+            case 3: return "low memory";
+            case 4: return "crash (Java)";
+            case 5: return "crash (native)";
+            case 6: return "ANR";
+            case 7: return "initialization failure";
+            case 8: return "permission change";
+            case 9: return "excessive resource usage";
+            case 10: return "user request";
+            case 11: return "user stopped";
+            case 12: return "dependency died";
+            case 13: return "other";
+            default: return "unknown";
+        }
+    }
+
+    private static String head(File file, int lines) throws java.io.IOException {
+        java.util.List<String> all = java.nio.file.Files.readAllLines(file.toPath(), StandardCharsets.UTF_8);
+        return String.join("\n", all.subList(0, Math.min(lines, all.size()))) + "\n";
+    }
+
+    private static String tailOf(File file, int lines) throws java.io.IOException {
+        try (RandomAccessFile f = new RandomAccessFile(file, "r")) {
+            int want = (int) Math.min(f.length(), 8 * 1024);
+            byte[] bytes = new byte[want];
+            f.seek(f.length() - want);
+            f.readFully(bytes);
+            String[] all = new String(bytes, StandardCharsets.UTF_8).split("\\r?\\n");
+            return String.join("\n", java.util.Arrays.copyOfRange(all, Math.max(0, all.length - lines), all.length)) + "\n";
+        }
+    }
+
     // ---- helpers ----
 
     private static synchronized MinecraftInstances.Instance find(String name) {
