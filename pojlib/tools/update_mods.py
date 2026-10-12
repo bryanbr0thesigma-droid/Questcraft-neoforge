@@ -69,10 +69,10 @@ IGNORED_REQUIREMENTS = {"P7dR8mSH"}
 
 # QuestCraft's Vivecraft fork (QuestCraftPlusPlus/VivecraftMod, OpenXR branches), its NeoForge module built by
 # .github/workflows/vivecraft.yml. Upstream only publishes the Fabric jar.
-# The jars are committed to vivecraft-jars/neoforge/ (copied from vivecraft-builder/dist/ after a build) and linked by
+# The jars are committed to pojlib/src/main/assets/vivecraft-jars/neoforge/ (bundled in the app as .jar.bin) (copied from vivecraft-builder/dist/ after a build) and linked by
 # their raw URL, which works for anyone who can read the repository without signing in, that is, once it is public.
 VIVECRAFT_URL = ("https://raw.githubusercontent.com/bryanbr0thesigma-droid/Questcraft-neoforge/"
-                 "claude/fervent-mayer-8idkzr/vivecraft-jars/neoforge/vivecraft-neoforge-{mc}.jar")
+                 "claude/fervent-mayer-8idkzr/pojlib/src/main/assets/vivecraft-jars/neoforge/vivecraft-neoforge-{mc}.jar.bin")
 
 
 def newest(slug, mc):

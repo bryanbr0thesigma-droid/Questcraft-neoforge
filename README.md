@@ -85,7 +85,7 @@ The room's lighting is baked into the model's vertex colours by `godot-launcher/
 
 ### Where the NeoForge and Quilt lists and the NeoForge Vivecraft jars come from
 
-The lists (Minecraft versions per loader, the NeoForge mod lists) are downloaded from this repository, and the app also carries copies (`pojlib/src/main/assets/loaders/`, refreshed by `update_mods.py`) that it uses when the download fails, so version lists work even while the repository is private. Quilt then needs nothing else from here (it uses Fabric's mod list and Vivecraft jar). The Vivecraft jars for NeoForge are committed to `vivecraft-jars/neoforge/` and linked by raw URL, which only works without signing in once the repository is **public**: until then a NeoForge instance can be made and started but gets no Vivecraft (so no VR).
+The lists (Minecraft versions per loader, the NeoForge mod lists) are downloaded from this repository, and the app also carries copies (`pojlib/src/main/assets/loaders/`, refreshed by `update_mods.py`) that it uses when the download fails, so version lists work even while the repository is private. Quilt then needs nothing else from here (it uses Fabric's mod list and Vivecraft jar). The Vivecraft jars for NeoForge are committed to `pojlib/src/main/assets/vivecraft-jars/neoforge/` and bundled in the app (about 43 MB), so a NeoForge instance gets its Vivecraft without downloading anything from this repository, which can stay private.
 
 ## Getting the APK
 

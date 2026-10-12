@@ -5,6 +5,7 @@ import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.IOUtils;
 
 import pojlib.API;
+import pojlib.util.Constants;
 import pojlib.util.Logger;
 
 import javax.net.ssl.SSLException;
@@ -50,8 +51,28 @@ public class DownloadUtils {
         downloadFile(url, out, -1);
     }
 
+    // The NeoForge builds of Vivecraft are bundled in the app (assets/vivecraft-jars/neoforge/), so they do not depend on
+    // the repository being readable. Their download links point at the same files in the repository. They are stored as
+    // .jar.bin: the build tools would otherwise open the jars inside the AAR and trip over their Java 21 classes.
+    private static final String BUNDLED_MARKER = "/pojlib/src/main/assets/vivecraft-jars/";
+
+    private static boolean copyBundled(String url, File out) {
+        int at = url.indexOf(BUNDLED_MARKER);
+        if (at < 0 || Constants.APP_CONTEXT == null) return false;
+        String path = "vivecraft-jars/" + url.substring(at + BUNDLED_MARKER.length());
+        try (InputStream is = Constants.APP_CONTEXT.getAssets().open(path);
+             OutputStream os = new BufferedOutputStream(Files.newOutputStream(out.toPath()))) {
+            IOUtils.copy(is, os);
+            return true;
+        } catch (IOException e) {
+            Logger.getInstance().appendToLog("Bundled file " + path + " not available, downloading: " + e.getMessage());
+            return false;
+        }
+    }
+
     public static void downloadFile(String url, File out, long size) throws IOException {
         Objects.requireNonNull(out.getParentFile()).mkdirs();
+        if (copyBundled(url, out)) return;
         File tempOut = File.createTempFile(out.getName(), ".part", out.getParentFile());
         try {
             try (OutputStream bos2 = new BufferedOutputStream(Files.newOutputStream(tempOut.toPath()))) {
