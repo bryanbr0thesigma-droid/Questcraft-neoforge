@@ -1,5 +1,5 @@
 diff --git a/build.gradle b/build.gradle
-index 8f0750a5..0ee97814 100644
+index 8f0750a..0ee9781 100644
 --- a/build.gradle
 +++ b/build.gradle
 @@ -28,10 +28,8 @@ subprojects {
@@ -51,7 +51,7 @@ index 8f0750a5..0ee97814 100644
          }
      }
 diff --git a/common/src/main/java/org/vivecraft/client/extensions/GlDeviceExtension.java b/common/src/main/java/org/vivecraft/client/extensions/GlDeviceExtension.java
-index 7933d05b..1d6c911e 100644
+index 7933d05..1d6c911 100644
 --- a/common/src/main/java/org/vivecraft/client/extensions/GlDeviceExtension.java
 +++ b/common/src/main/java/org/vivecraft/client/extensions/GlDeviceExtension.java
 @@ -13,4 +13,7 @@ public interface GlDeviceExtension {
@@ -63,7 +63,7 @@ index 7933d05b..1d6c911e 100644
 +        int height, int depthLayers, int mipmapLevels, int texId);
  }
 diff --git a/common/src/main/java/org/vivecraft/client_vr/VRData.java b/common/src/main/java/org/vivecraft/client_vr/VRData.java
-index 7b6c0df5..a260d762 100644
+index 7b6c0df..a260d76 100644
 --- a/common/src/main/java/org/vivecraft/client_vr/VRData.java
 +++ b/common/src/main/java/org/vivecraft/client_vr/VRData.java
 @@ -93,7 +93,7 @@ public class VRData {
@@ -76,7 +76,7 @@ index 7b6c0df5..a260d762 100644
          // smoothed headset, only when needed
          float smoothing = dataHolder.vrSettings.displayMirrorCenterSmooth;
 diff --git a/common/src/main/java/org/vivecraft/client_vr/VRState.java b/common/src/main/java/org/vivecraft/client_vr/VRState.java
-index 30fb7e84..42e2798d 100644
+index 30fb7e8..42e2798 100644
 --- a/common/src/main/java/org/vivecraft/client_vr/VRState.java
 +++ b/common/src/main/java/org/vivecraft/client_vr/VRState.java
 @@ -14,6 +14,7 @@ import org.vivecraft.client_vr.gameplay.VRPlayer;
@@ -116,7 +116,7 @@ index 30fb7e84..42e2798d 100644
  
              dh.vrPlayer = new VRPlayer();
 diff --git a/common/src/main/java/org/vivecraft/client_vr/gameplay/interact_modules/InteractiveHotbarModule.java b/common/src/main/java/org/vivecraft/client_vr/gameplay/interact_modules/InteractiveHotbarModule.java
-index fdddd96e..aad98310 100644
+index fdddd96..aad9831 100644
 --- a/common/src/main/java/org/vivecraft/client_vr/gameplay/interact_modules/InteractiveHotbarModule.java
 +++ b/common/src/main/java/org/vivecraft/client_vr/gameplay/interact_modules/InteractiveHotbarModule.java
 @@ -185,6 +185,7 @@ public class InteractiveHotbarModule implements DebugRenderModule, InteractModul
@@ -135,7 +135,7 @@ index fdddd96e..aad98310 100644
      }
  }
 diff --git a/common/src/main/java/org/vivecraft/client_vr/gameplay/interact_modules/ScreenshotCameraModule.java b/common/src/main/java/org/vivecraft/client_vr/gameplay/interact_modules/ScreenshotCameraModule.java
-index ee7102ec..932a64c5 100644
+index ee7102e..932a64c 100644
 --- a/common/src/main/java/org/vivecraft/client_vr/gameplay/interact_modules/ScreenshotCameraModule.java
 +++ b/common/src/main/java/org/vivecraft/client_vr/gameplay/interact_modules/ScreenshotCameraModule.java
 @@ -79,9 +79,9 @@ public class ScreenshotCameraModule implements DebugRenderModule, HeldInteractMo
@@ -152,7 +152,7 @@ index ee7102ec..932a64c5 100644
      }
  }
 diff --git a/common/src/main/java/org/vivecraft/client_vr/gameplay/interact_modules/ThirdPersonCameraModule.java b/common/src/main/java/org/vivecraft/client_vr/gameplay/interact_modules/ThirdPersonCameraModule.java
-index 8cc15563..3bbac15a 100644
+index 8cc1556..3bbac15 100644
 --- a/common/src/main/java/org/vivecraft/client_vr/gameplay/interact_modules/ThirdPersonCameraModule.java
 +++ b/common/src/main/java/org/vivecraft/client_vr/gameplay/interact_modules/ThirdPersonCameraModule.java
 @@ -93,9 +93,9 @@ public class ThirdPersonCameraModule implements DebugRenderModule, HeldInteractM
@@ -169,7 +169,7 @@ index 8cc15563..3bbac15a 100644
      }
  }
 diff --git a/common/src/main/java/org/vivecraft/client_vr/gameplay/screenhandlers/GuiHandler.java b/common/src/main/java/org/vivecraft/client_vr/gameplay/screenhandlers/GuiHandler.java
-index 4e6405a3..37a42734 100644
+index 4e6405a..37a4273 100644
 --- a/common/src/main/java/org/vivecraft/client_vr/gameplay/screenhandlers/GuiHandler.java
 +++ b/common/src/main/java/org/vivecraft/client_vr/gameplay/screenhandlers/GuiHandler.java
 @@ -555,7 +555,7 @@ public class GuiHandler {
@@ -182,7 +182,7 @@ index 4e6405a3..37a42734 100644
  
                      guipos = new Vec3(
 diff --git a/common/src/main/java/org/vivecraft/client_vr/gameplay/trackers/BackpackTracker.java b/common/src/main/java/org/vivecraft/client_vr/gameplay/trackers/BackpackTracker.java
-index 1d4f79ff..f661ba12 100644
+index 1d4f79f..f661ba1 100644
 --- a/common/src/main/java/org/vivecraft/client_vr/gameplay/trackers/BackpackTracker.java
 +++ b/common/src/main/java/org/vivecraft/client_vr/gameplay/trackers/BackpackTracker.java
 @@ -10,7 +10,7 @@ import org.vivecraft.client.VivecraftVRMod;
@@ -195,7 +195,7 @@ index 1d4f79ff..f661ba12 100644
  
  import java.util.Arrays;
 diff --git a/common/src/main/java/org/vivecraft/client_vr/gameplay/trackers/BowTracker.java b/common/src/main/java/org/vivecraft/client_vr/gameplay/trackers/BowTracker.java
-index 4c837532..d93027df 100644
+index 4c83753..d93027d 100644
 --- a/common/src/main/java/org/vivecraft/client_vr/gameplay/trackers/BowTracker.java
 +++ b/common/src/main/java/org/vivecraft/client_vr/gameplay/trackers/BowTracker.java
 @@ -267,6 +267,7 @@ public class BowTracker implements ItemInUseTracker, DebugRenderTracker {
@@ -214,7 +214,7 @@ index 4c837532..d93027df 100644
      }
  }
 diff --git a/common/src/main/java/org/vivecraft/client_vr/gameplay/trackers/EatingTracker.java b/common/src/main/java/org/vivecraft/client_vr/gameplay/trackers/EatingTracker.java
-index 724d031e..00e563c3 100644
+index 724d031..00e563c 100644
 --- a/common/src/main/java/org/vivecraft/client_vr/gameplay/trackers/EatingTracker.java
 +++ b/common/src/main/java/org/vivecraft/client_vr/gameplay/trackers/EatingTracker.java
 @@ -145,6 +145,7 @@ public class EatingTracker implements ItemInUseTracker, DebugRenderTracker {
@@ -233,7 +233,7 @@ index 724d031e..00e563c3 100644
      }
  }
 diff --git a/common/src/main/java/org/vivecraft/client_vr/gameplay/trackers/SwingTracker.java b/common/src/main/java/org/vivecraft/client_vr/gameplay/trackers/SwingTracker.java
-index b6c96c4c..c4482435 100644
+index b6c96c4..c448243 100644
 --- a/common/src/main/java/org/vivecraft/client_vr/gameplay/trackers/SwingTracker.java
 +++ b/common/src/main/java/org/vivecraft/client_vr/gameplay/trackers/SwingTracker.java
 @@ -743,6 +743,7 @@ public class SwingTracker implements ItemInUseTracker, DebugRenderTracker {
@@ -252,7 +252,7 @@ index b6c96c4c..c4482435 100644
      }
  }
 diff --git a/common/src/main/java/org/vivecraft/client_vr/gui/GuiRadial.java b/common/src/main/java/org/vivecraft/client_vr/gui/GuiRadial.java
-index 17909cff..7b8956c8 100644
+index 17909cf..7b8956c 100644
 --- a/common/src/main/java/org/vivecraft/client_vr/gui/GuiRadial.java
 +++ b/common/src/main/java/org/vivecraft/client_vr/gui/GuiRadial.java
 @@ -9,7 +9,11 @@ import org.vivecraft.client.gui.framework.screens.TwoHandedScreen;
@@ -269,7 +269,7 @@ index 17909cff..7b8956c8 100644
  import java.util.Arrays;
  
 diff --git a/common/src/main/java/org/vivecraft/client_vr/provider/ActionParams.java b/common/src/main/java/org/vivecraft/client_vr/provider/ActionParams.java
-index 1c6b9138..4e99173d 100644
+index 1c6b913..4e99173 100644
 --- a/common/src/main/java/org/vivecraft/client_vr/provider/ActionParams.java
 +++ b/common/src/main/java/org/vivecraft/client_vr/provider/ActionParams.java
 @@ -1,6 +1,6 @@
@@ -281,7 +281,7 @@ index 1c6b9138..4e99173d 100644
  /**
   * holds the parameters for a VR action key
 diff --git a/common/src/main/java/org/vivecraft/client_vr/provider/MCVR.java b/common/src/main/java/org/vivecraft/client_vr/provider/MCVR.java
-index 84d9312e..41483e2c 100644
+index 84d9312..41483e2 100644
 --- a/common/src/main/java/org/vivecraft/client_vr/provider/MCVR.java
 +++ b/common/src/main/java/org/vivecraft/client_vr/provider/MCVR.java
 @@ -31,8 +31,9 @@ import org.vivecraft.client_vr.extensions.WindowExtension;
@@ -306,7 +306,7 @@ index 84d9312e..41483e2c 100644
 +    public abstract ControllerType getOriginControllerType(long lastOrigin);
  }
 diff --git a/common/src/main/java/org/vivecraft/client_vr/provider/VRRenderer.java b/common/src/main/java/org/vivecraft/client_vr/provider/VRRenderer.java
-index 3c216b93..881ec99a 100644
+index 3c216b9..881ec99 100644
 --- a/common/src/main/java/org/vivecraft/client_vr/provider/VRRenderer.java
 +++ b/common/src/main/java/org/vivecraft/client_vr/provider/VRRenderer.java
 @@ -574,7 +574,7 @@ public abstract class VRRenderer {
@@ -334,7 +334,7 @@ diff --git a/common/src/main/java/org/vivecraft/client_vr/provider/openvr_lwjgl/
 similarity index 76%
 rename from common/src/main/java/org/vivecraft/client_vr/provider/openvr_lwjgl/control/HapticMusicPlayer.java
 rename to common/src/main/java/org/vivecraft/client_vr/provider/control/HapticMusicPlayer.java
-index c3ff80a0..b391ebe8 100644
+index c3ff80a..b391ebe 100644
 --- a/common/src/main/java/org/vivecraft/client_vr/provider/openvr_lwjgl/control/HapticMusicPlayer.java
 +++ b/common/src/main/java/org/vivecraft/client_vr/provider/control/HapticMusicPlayer.java
 @@ -1,7 +1,7 @@
@@ -372,7 +372,7 @@ diff --git a/common/src/main/java/org/vivecraft/client_vr/provider/openvr_lwjgl/
 similarity index 95%
 rename from common/src/main/java/org/vivecraft/client_vr/provider/openvr_lwjgl/control/TrackpadSwipeSampler.java
 rename to common/src/main/java/org/vivecraft/client_vr/provider/control/TrackpadSwipeSampler.java
-index 40cbd3f0..5dfaa3b8 100644
+index 40cbd3f..5dfaa3b 100644
 --- a/common/src/main/java/org/vivecraft/client_vr/provider/openvr_lwjgl/control/TrackpadSwipeSampler.java
 +++ b/common/src/main/java/org/vivecraft/client_vr/provider/control/TrackpadSwipeSampler.java
 @@ -1,11 +1,11 @@
@@ -393,7 +393,7 @@ diff --git a/common/src/main/java/org/vivecraft/client_vr/provider/openvr_lwjgl/
 similarity index 97%
 rename from common/src/main/java/org/vivecraft/client_vr/provider/openvr_lwjgl/VRInputAction.java
 rename to common/src/main/java/org/vivecraft/client_vr/provider/control/VRInputAction.java
-index 6b2d86c6..2291c1d1 100644
+index 6b2d86c..2291c1d 100644
 --- a/common/src/main/java/org/vivecraft/client_vr/provider/openvr_lwjgl/VRInputAction.java
 +++ b/common/src/main/java/org/vivecraft/client_vr/provider/control/VRInputAction.java
 @@ -1,4 +1,4 @@
@@ -442,7 +442,7 @@ diff --git a/common/src/main/java/org/vivecraft/client_vr/provider/openvr_lwjgl/
 similarity index 97%
 rename from common/src/main/java/org/vivecraft/client_vr/provider/openvr_lwjgl/control/VRInputActionSet.java
 rename to common/src/main/java/org/vivecraft/client_vr/provider/control/VRInputActionSet.java
-index 254b7848..93fd7123 100644
+index 254b784..93fd712 100644
 --- a/common/src/main/java/org/vivecraft/client_vr/provider/openvr_lwjgl/control/VRInputActionSet.java
 +++ b/common/src/main/java/org/vivecraft/client_vr/provider/control/VRInputActionSet.java
 @@ -1,4 +1,4 @@
@@ -452,7 +452,7 @@ index 254b7848..93fd7123 100644
  import net.minecraft.client.KeyMapping;
  import org.vivecraft.client.VivecraftVRMod;
 diff --git a/common/src/main/java/org/vivecraft/client_vr/provider/nullvr/NullVR.java b/common/src/main/java/org/vivecraft/client_vr/provider/nullvr/NullVR.java
-index 97777bf4..3b695e63 100644
+index 97777bf..3b695e6 100644
 --- a/common/src/main/java/org/vivecraft/client_vr/provider/nullvr/NullVR.java
 +++ b/common/src/main/java/org/vivecraft/client_vr/provider/nullvr/NullVR.java
 @@ -14,7 +14,7 @@ import org.vivecraft.client_vr.ClientDataHolderVR;
@@ -489,7 +489,7 @@ index 97777bf4..3b695e63 100644
      public boolean capFPS() {
          return true;
 diff --git a/common/src/main/java/org/vivecraft/client_vr/provider/openvr_lwjgl/MCOpenVR.java b/common/src/main/java/org/vivecraft/client_vr/provider/openvr_lwjgl/MCOpenVR.java
-index e345c5f7..c8270bf7 100644
+index e345c5f..c8270bf 100644
 --- a/common/src/main/java/org/vivecraft/client_vr/provider/openvr_lwjgl/MCOpenVR.java
 +++ b/common/src/main/java/org/vivecraft/client_vr/provider/openvr_lwjgl/MCOpenVR.java
 @@ -31,8 +31,9 @@ import org.vivecraft.client_vr.gameplay.screenhandlers.GuiHandler;
@@ -540,7 +540,7 @@ index e345c5f7..c8270bf7 100644
  }
 diff --git a/common/src/main/java/org/vivecraft/client_vr/provider/openxr/DeviceCompat.java b/common/src/main/java/org/vivecraft/client_vr/provider/openxr/DeviceCompat.java
 new file mode 100644
-index 00000000..72161eec
+index 0000000..72161ee
 --- /dev/null
 +++ b/common/src/main/java/org/vivecraft/client_vr/provider/openxr/DeviceCompat.java
 @@ -0,0 +1,169 @@
@@ -715,12 +715,13 @@ index 00000000..72161eec
 +}
 diff --git a/common/src/main/java/org/vivecraft/client_vr/provider/openxr/MCOpenXR.java b/common/src/main/java/org/vivecraft/client_vr/provider/openxr/MCOpenXR.java
 new file mode 100644
-index 00000000..d5902ba9
+index 0000000..54d3ac8
 --- /dev/null
 +++ b/common/src/main/java/org/vivecraft/client_vr/provider/openxr/MCOpenXR.java
-@@ -0,0 +1,1356 @@
+@@ -0,0 +1,1528 @@
 +package org.vivecraft.client_vr.provider.openxr;
 +
++import com.mojang.blaze3d.platform.InputConstants;
 +import net.minecraft.client.KeyMapping;
 +import net.minecraft.client.Minecraft;
 +import net.minecraft.util.Mth;
@@ -731,6 +732,7 @@ index 00000000..d5902ba9
 +import org.joml.Vector2f;
 +import org.joml.Vector3f;
 +import org.lwjgl.PointerBuffer;
++import org.lwjgl.glfw.GLFW;
 +import org.lwjgl.opengl.GL11;
 +import org.lwjgl.opengl.GL21;
 +import org.lwjgl.opengl.GL30;
@@ -742,13 +744,16 @@ index 00000000..d5902ba9
 +import org.vivecraft.client.VivecraftVRMod;
 +import org.vivecraft.client_vr.ClientDataHolderVR;
 +import org.vivecraft.client_vr.VRState;
++import org.vivecraft.client_vr.gameplay.screenhandlers.GuiHandler;
 +import org.vivecraft.client_vr.gameplay.screenhandlers.KeyboardHandler;
 +import org.vivecraft.client_vr.gameplay.screenhandlers.RadialHandler;
 +import org.vivecraft.client_vr.provider.ControllerType;
++import org.vivecraft.client_vr.provider.InputSimulator;
 +import org.vivecraft.client_vr.provider.MCVR;
 +import org.vivecraft.client_vr.provider.VRRenderer;
 +import org.vivecraft.client_vr.provider.control.VRInputAction;
 +import org.vivecraft.client_vr.provider.control.VRInputActionSet;
++import org.vivecraft.client_vr.provider.control.TrackpadSwipeSampler;
 +import org.vivecraft.client_vr.settings.VRSettings;
 +import org.vivecraft.common.utils.MathUtils;
 +
@@ -782,6 +787,16 @@ index 00000000..d5902ba9
 +    private final Map<VRInputActionSet, Long> actionSetHandles = new EnumMap<>(VRInputActionSet.class);
 +    // TODO Move to MCVR
 +    private XrActiveActionSet.Buffer activeActionSetsBuffer;
++    // keys that were held when their action set got deactivated, they may be pressed again when it comes back
++    private final Map<VRInputActionSet, Set<VRInputAction>> unpressedSetKeys = new EnumMap<>(VRInputActionSet.class);
++    private List<VRInputActionSet> activeActionSets = new ArrayList<>();
++    private final Map<String, TrackpadSwipeSampler> trackpadSwipeSamplers = new HashMap<>();
++
++    {
++        for (VRInputActionSet set : VRInputActionSet.values()) {
++            this.unpressedSetKeys.put(set, new HashSet<>());
++        }
++    }
 +    private boolean isActive;
 +    private final HashMap<String, Long> paths = new HashMap<>();
 +    private final long[] grip = new long[2];
@@ -810,9 +825,159 @@ index 00000000..d5902ba9
 +        return "OpenXR";
 +    }
 +
++    /**
++     * maps the fetched OpenXR actions to the ingame keys. MCVR leaves this to the runtime classes (MCOpenVR has its own
++     * copy of what follows), an empty method here meant that no button press ever reached the game.
++     */
 +    @Override
 +    public void processInputs() {
++        if (this.dh.vrSettings.seated || this.dh.viewOnly || !this.inputInitialized) {
++            this.ignorePressesNextFrame = false;
++            return;
++        }
 +
++        for (VRInputAction action : this.inputActions.values()) {
++            if (action.isHanded()) {
++                for (ControllerType controllertype : ControllerType.values()) {
++                    action.setCurrentHand(controllertype);
++                    this.processInputAction(action);
++                }
++            } else {
++                this.processInputAction(action);
++            }
++        }
++
++        this.processScrollInput(GuiHandler.KEY_SCROLL_AXIS,
++            () -> InputSimulator.scrollMouse(0.0D, 1.0D),
++            () -> InputSimulator.scrollMouse(0.0D, -1.0D));
++        this.processScrollInput(VivecraftVRMod.INSTANCE.keyHotbarScroll,
++            () -> this.changeHotbar(-1),
++            () -> this.changeHotbar(1));
++        this.processSwipeInput(VivecraftVRMod.INSTANCE.keyHotbarSwipeX,
++            () -> this.changeHotbar(1),
++            () -> this.changeHotbar(-1), null, null);
++        this.processSwipeInput(VivecraftVRMod.INSTANCE.keyHotbarSwipeY, null, null,
++            () -> this.changeHotbar(-1),
++            () -> this.changeHotbar(1));
++        this.ignorePressesNextFrame = false;
++    }
++
++    /**
++     * updates the KeyMapping state that is linked to the given VRInputAction
++     */
++    private void processInputAction(VRInputAction action) {
++        if (action.isActive() && action.isEnabledRaw() &&
++            // try to prevent double left clicks
++            (!ClientDataHolderVR.getInstance().vrSettings.ingameBindingsInGui ||
++                !(action.actionSet == VRInputActionSet.INGAME &&
++                    action.keyBinding.key == InputConstants.Type.MOUSE.getOrCreate(GLFW.GLFW_MOUSE_BUTTON_LEFT) &&
++                    this.mc.screen != null
++                )
++            ))
++        {
++            if (action.isButtonChanged()) {
++                if (action.isButtonPressed() && action.isEnabled()) {
++                    // so closing a GUI by clicking a button won't also click in the world immediately after
++                    if (!this.ignorePressesNextFrame || this.canActionBeRepressed(action)) {
++                        this.pressAction(action);
++                    }
++                } else {
++                    this.unpressAction(action);
++                }
++            } else if (action.isButtonPressed() && action.isEnabled() && !action.keyBinding.isDown() &&
++                this.canActionBeRepressed(action))
++            {
++                // allow repressing ingame buttons that were held before
++                this.pressAction(action);
++            }
++        } else if (this.checkIfNotMovement(action)) {
++            this.unpressAction(action);
++        }
++    }
++
++    /**
++     * @return if the given VRInputAction was pressed before actionset changes and can be repressed
++     */
++    private boolean canActionBeRepressed(VRInputAction action) {
++        return action.actionSet == VRInputActionSet.INGAME &&
++            this.unpressedSetKeys.get(action.actionSet).contains(action);
++    }
++
++    private void pressAction(VRInputAction action) {
++        action.pressBinding();
++        this.unpressedSetKeys.get(action.actionSet).remove(action);
++    }
++
++    private void unpressAction(VRInputAction action) {
++        if (!this.activeActionSets.contains(action.actionSet) && action.isButtonChanged()) {
++            this.unpressedSetKeys.get(action.actionSet).add(action);
++        }
++        action.unpressBinding();
++    }
++
++    /**
++     * @return if the given action does not correspond to one of the movement keys, or if the player didn't move
++     */
++    private boolean checkIfNotMovement(VRInputAction action) {
++        return action.keyBinding != this.mc.options.keyLeft &&
++            action.keyBinding != this.mc.options.keyRight &&
++            action.keyBinding != this.mc.options.keyUp &&
++            action.keyBinding != this.mc.options.keyDown || !this.isMovement;
++    }
++
++    /**
++     * checks the axis input of the VRInputAction linked to {@code keyMapping} and runs the callbacks when it's non 0
++     */
++    private void processScrollInput(KeyMapping keyMapping, Runnable upCallback, Runnable downCallback) {
++        VRInputAction action = this.getInputAction(keyMapping);
++
++        if (action.isEnabled() && action.getLastOrigin() != NULL) {
++            float value = action.getAxis2D(false).y();
++            if (value != 0.0F) {
++                if (value > 0.0F) {
++                    upCallback.run();
++                } else {
++                    downCallback.run();
++                }
++            }
++        }
++    }
++
++    /**
++     * checks the stick/trackpad input of the controller the {@code keyMapping} is on
++     */
++    private void processSwipeInput(
++        KeyMapping keyMapping, Runnable leftCallback, Runnable rightCallback, Runnable upCallback,
++        Runnable downCallback)
++    {
++        VRInputAction action = this.getInputAction(keyMapping);
++
++        if (action.isEnabled() && action.getLastOrigin() != NULL) {
++            ControllerType controller = this.findActiveBindingControllerType(keyMapping);
++
++            if (controller != null) {
++                TrackpadSwipeSampler sampler = this.trackpadSwipeSamplers.computeIfAbsent(keyMapping.getName(),
++                    name -> new TrackpadSwipeSampler());
++                sampler.update(controller, action.getAxis2D(false));
++
++                if (sampler.isSwipedUp() && upCallback != null) {
++                    this.triggerHapticPulse(controller, 0.001F, 400.0F, 0.5F);
++                    upCallback.run();
++                }
++                if (sampler.isSwipedDown() && downCallback != null) {
++                    this.triggerHapticPulse(controller, 0.001F, 400.0F, 0.5F);
++                    downCallback.run();
++                }
++                if (sampler.isSwipedLeft() && leftCallback != null) {
++                    this.triggerHapticPulse(controller, 0.001F, 400.0F, 0.5F);
++                    leftCallback.run();
++                }
++                if (sampler.isSwipedRight() && rightCallback != null) {
++                    this.triggerHapticPulse(controller, 0.001F, 400.0F, 0.5F);
++                    rightCallback.run();
++                }
++            }
++        }
 +    }
 +
 +    @Override
@@ -1207,6 +1372,13 @@ index 00000000..d5902ba9
 +            this.activeActionSetsBuffer.get(i)
 +                .set(new XrActionSet(this.getActionSetHandle(vrinputactionset), this.instance), NULL);
 +        }
++
++        // forget the held keys of the sets that got deactivated
++        this.activeActionSets.removeAll(arraylist);
++        for (VRInputActionSet set : this.activeActionSets) {
++            this.unpressedSetKeys.get(set).clear();
++        }
++        this.activeActionSets = arraylist;
 +
 +        return !arraylist.isEmpty();
 +    }
@@ -2077,7 +2249,7 @@ index 00000000..d5902ba9
 +}
 diff --git a/common/src/main/java/org/vivecraft/client_vr/provider/openxr/OpenXRHapticScheduler.java b/common/src/main/java/org/vivecraft/client_vr/provider/openxr/OpenXRHapticScheduler.java
 new file mode 100644
-index 00000000..a0022a67
+index 0000000..a0022a6
 --- /dev/null
 +++ b/common/src/main/java/org/vivecraft/client_vr/provider/openxr/OpenXRHapticScheduler.java
 @@ -0,0 +1,49 @@
@@ -2132,7 +2304,7 @@ index 00000000..a0022a67
 +}
 diff --git a/common/src/main/java/org/vivecraft/client_vr/provider/openxr/OpenXRStereoRenderer.java b/common/src/main/java/org/vivecraft/client_vr/provider/openxr/OpenXRStereoRenderer.java
 new file mode 100644
-index 00000000..4beb9ee3
+index 0000000..4beb9ee
 --- /dev/null
 +++ b/common/src/main/java/org/vivecraft/client_vr/provider/openxr/OpenXRStereoRenderer.java
 @@ -0,0 +1,253 @@
@@ -2391,7 +2563,7 @@ index 00000000..4beb9ee3
 +}
 diff --git a/common/src/main/java/org/vivecraft/client_vr/provider/openxr/OpenXRUtil.java b/common/src/main/java/org/vivecraft/client_vr/provider/openxr/OpenXRUtil.java
 new file mode 100644
-index 00000000..eaa865b2
+index 0000000..eaa865b
 --- /dev/null
 +++ b/common/src/main/java/org/vivecraft/client_vr/provider/openxr/OpenXRUtil.java
 @@ -0,0 +1,20 @@
@@ -2417,7 +2589,7 @@ index 00000000..eaa865b2
 +}
 diff --git a/common/src/main/java/org/vivecraft/client_vr/provider/openxr/XRBindings.java b/common/src/main/java/org/vivecraft/client_vr/provider/openxr/XRBindings.java
 new file mode 100644
-index 00000000..d3d13b09
+index 0000000..d3d13b0
 --- /dev/null
 +++ b/common/src/main/java/org/vivecraft/client_vr/provider/openxr/XRBindings.java
 @@ -0,0 +1,163 @@
@@ -2585,7 +2757,7 @@ index 00000000..d3d13b09
 +    }
 +}
 diff --git a/common/src/main/java/org/vivecraft/client_vr/render/helpers/VRPassHelper.java b/common/src/main/java/org/vivecraft/client_vr/render/helpers/VRPassHelper.java
-index 47b0c8b4..1062e8ab 100644
+index 47b0c8b..1062e8a 100644
 --- a/common/src/main/java/org/vivecraft/client_vr/render/helpers/VRPassHelper.java
 +++ b/common/src/main/java/org/vivecraft/client_vr/render/helpers/VRPassHelper.java
 @@ -214,19 +214,26 @@ public class VRPassHelper {
@@ -2624,7 +2796,7 @@ index 47b0c8b4..1062e8ab 100644
      }
  }
 diff --git a/common/src/main/java/org/vivecraft/client_vr/settings/VRSettings.java b/common/src/main/java/org/vivecraft/client_vr/settings/VRSettings.java
-index 7d24e6de..e38fb91f 100644
+index 7d24e6d..e38fb91 100644
 --- a/common/src/main/java/org/vivecraft/client_vr/settings/VRSettings.java
 +++ b/common/src/main/java/org/vivecraft/client_vr/settings/VRSettings.java
 @@ -178,6 +178,7 @@ public class VRSettings {
@@ -2682,7 +2854,7 @@ index 7d24e6de..e38fb91f 100644
      public boolean selfButtSparklesInFirstPerson = false;
      @SettingField
 diff --git a/common/src/main/java/org/vivecraft/mixin/client/blaze3d/opengl/GlDeviceMixin.java b/common/src/main/java/org/vivecraft/mixin/client/blaze3d/opengl/GlDeviceMixin.java
-index 5b1d10b4..d3bb6650 100644
+index 5b1d10b..d3bb665 100644
 --- a/common/src/main/java/org/vivecraft/mixin/client/blaze3d/opengl/GlDeviceMixin.java
 +++ b/common/src/main/java/org/vivecraft/mixin/client/blaze3d/opengl/GlDeviceMixin.java
 @@ -71,4 +71,24 @@ public class GlDeviceMixin implements GlDeviceExtension {
@@ -2711,7 +2883,7 @@ index 5b1d10b4..d3bb6650 100644
 +    }
  }
 diff --git a/common/src/main/java/org/vivecraft/mixin/client_vr/KeyboardInputVRMixin.java b/common/src/main/java/org/vivecraft/mixin/client_vr/KeyboardInputVRMixin.java
-index a9f153ca..0ad233da 100644
+index a9f153c..0ad233d 100644
 --- a/common/src/main/java/org/vivecraft/mixin/client_vr/KeyboardInputVRMixin.java
 +++ b/common/src/main/java/org/vivecraft/mixin/client_vr/KeyboardInputVRMixin.java
 @@ -4,31 +4,62 @@ import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
@@ -2899,7 +3071,7 @@ index a9f153ca..0ad233da 100644
      }
  }
 diff --git a/common/src/main/java/org/vivecraft/mixin/client_vr/MinecraftVRMixin.java b/common/src/main/java/org/vivecraft/mixin/client_vr/MinecraftVRMixin.java
-index 2976ae0c..840d8f32 100644
+index 2976ae0..840d8f3 100644
 --- a/common/src/main/java/org/vivecraft/mixin/client_vr/MinecraftVRMixin.java
 +++ b/common/src/main/java/org/vivecraft/mixin/client_vr/MinecraftVRMixin.java
 @@ -69,7 +69,7 @@ import org.vivecraft.client_vr.gameplay.KeybindHandler;
@@ -2975,7 +3147,7 @@ index 2976ae0c..840d8f32 100644
              try {
                  Profiler.get().push("setupRenderConfiguration");
 diff --git a/common/src/main/java/org/vivecraft/mod_compat_vr/iris/IrisHelper.java b/common/src/main/java/org/vivecraft/mod_compat_vr/iris/IrisHelper.java
-index f457ba83..79faa966 100644
+index f457ba8..79faa96 100644
 --- a/common/src/main/java/org/vivecraft/mod_compat_vr/iris/IrisHelper.java
 +++ b/common/src/main/java/org/vivecraft/mod_compat_vr/iris/IrisHelper.java
 @@ -366,7 +366,6 @@ public class IrisHelper {
@@ -2987,7 +3159,7 @@ index f457ba83..79faa966 100644
  
          INITIALIZED = true;
 diff --git a/common/src/main/java/org/vivecraft/mod_compat_vr/iris/mixin/irisshaders/IrisCommonUniformsMixin.java b/common/src/main/java/org/vivecraft/mod_compat_vr/iris/mixin/irisshaders/IrisCommonUniformsMixin.java
-index 52bec26d..9a5a5bb3 100644
+index 52bec26..9a5a5bb 100644
 --- a/common/src/main/java/org/vivecraft/mod_compat_vr/iris/mixin/irisshaders/IrisCommonUniformsMixin.java
 +++ b/common/src/main/java/org/vivecraft/mod_compat_vr/iris/mixin/irisshaders/IrisCommonUniformsMixin.java
 @@ -15,6 +15,8 @@ import org.vivecraft.mod_compat_vr.shaders.ShadersHelper;
@@ -3000,7 +3172,7 @@ index 52bec26d..9a5a5bb3 100644
  @Mixin(targets = "net.irisshaders.iris.uniforms.CommonUniforms", remap = false)
  public class IrisCommonUniformsMixin {
 diff --git a/common/src/main/java/org/vivecraft/mod_compat_vr/iris/mixin/irisshaders/IrisPipelineManagerVRMixin.java b/common/src/main/java/org/vivecraft/mod_compat_vr/iris/mixin/irisshaders/IrisPipelineManagerVRMixin.java
-index bc2a926e..5da93b23 100644
+index bc2a926..5da93b2 100644
 --- a/common/src/main/java/org/vivecraft/mod_compat_vr/iris/mixin/irisshaders/IrisPipelineManagerVRMixin.java
 +++ b/common/src/main/java/org/vivecraft/mod_compat_vr/iris/mixin/irisshaders/IrisPipelineManagerVRMixin.java
 @@ -146,7 +146,6 @@ public class IrisPipelineManagerVRMixin implements PipelineManagerExtension {
@@ -3023,7 +3195,7 @@ index bc2a926e..5da93b23 100644
      }
  
 diff --git a/common/src/main/java/org/vivecraft/mod_compat_vr/optifine/mixin/ShaderMacrosVRMixin.java b/common/src/main/java/org/vivecraft/mod_compat_vr/optifine/mixin/ShaderMacrosVRMixin.java
-index 11847ef3..ecfff7b7 100644
+index 11847ef..ecfff7b 100644
 --- a/common/src/main/java/org/vivecraft/mod_compat_vr/optifine/mixin/ShaderMacrosVRMixin.java
 +++ b/common/src/main/java/org/vivecraft/mod_compat_vr/optifine/mixin/ShaderMacrosVRMixin.java
 @@ -21,7 +21,7 @@ public class ShaderMacrosVRMixin {
@@ -3037,7 +3209,7 @@ index 11847ef3..ecfff7b7 100644
              (string) -> addMacroLine(stringBuilder, string),
 diff --git a/common/src/main/java/org/vivecraft/util/VLoader.java b/common/src/main/java/org/vivecraft/util/VLoader.java
 new file mode 100644
-index 00000000..cecdd9a1
+index 0000000..cecdd9a
 --- /dev/null
 +++ b/common/src/main/java/org/vivecraft/util/VLoader.java
 @@ -0,0 +1,14 @@
@@ -3056,7 +3228,7 @@ index 00000000..cecdd9a1
 +    public static native void setupAndroid();
 +}
 diff --git a/common/src/main/resources/assets/vivecraft/lang/en_us.json b/common/src/main/resources/assets/vivecraft/lang/en_us.json
-index dc729800..a9c885b1 100644
+index dc72980..a9c885b 100644
 --- a/common/src/main/resources/assets/vivecraft/lang/en_us.json
 +++ b/common/src/main/resources/assets/vivecraft/lang/en_us.json
 @@ -196,7 +196,6 @@
@@ -3234,7 +3406,7 @@ index dc729800..a9c885b1 100644
    "vivecraft.messages.tracker.rightFoot": "Right Foot",
 diff --git a/common/src/main/resources/assets/vivecraft/shaders/core/blit_vr.fsh b/common/src/main/resources/assets/vivecraft/shaders/core/blit_vr.fsh
 deleted file mode 100644
-index 72185769..00000000
+index 7218576..0000000
 --- a/common/src/main/resources/assets/vivecraft/shaders/core/blit_vr.fsh
 +++ /dev/null
 @@ -1,11 +0,0 @@
@@ -3250,7 +3422,7 @@ index 72185769..00000000
 -    fragColor = texture(DiffuseSampler, texCoordinates.st);
 -}
 diff --git a/fabric/build.gradle b/fabric/build.gradle
-index bd129f8a..7d781195 100644
+index bd129f8..7d78119 100644
 --- a/fabric/build.gradle
 +++ b/fabric/build.gradle
 @@ -69,6 +69,13 @@ dependencies {
@@ -3268,7 +3440,7 @@ index bd129f8a..7d781195 100644
      include(implementation("com.github.bhaptics:tact-java:0.1.4"))
      include(implementation("org.java-websocket:Java-WebSocket:1.5.1"))
 diff --git a/forge/build.gradle b/forge/build.gradle
-index 17130661..b063c657 100644
+index 1713066..b063c65 100644
 --- a/forge/build.gradle
 +++ b/forge/build.gradle
 @@ -76,12 +76,21 @@ dependencies {
@@ -3294,7 +3466,7 @@ index 17130661..b063c657 100644
      implementation(include("io.github.llamalad7:mixinextras-forge:${rootProject.mixin_extras_version}"))
  
 diff --git a/neoforge/build.gradle b/neoforge/build.gradle
-index 6a99267f..e65f4e6d 100644
+index 6a99267..e65f4e6 100644
 --- a/neoforge/build.gradle
 +++ b/neoforge/build.gradle
 @@ -38,12 +38,21 @@ dependencies {
@@ -3320,7 +3492,7 @@ index 6a99267f..e65f4e6d 100644
      implementation(include("io.github.llamalad7:mixinextras-neoforge:${rootProject.mixin_extras_version}"))
  
 diff --git a/stubs/src/main/java/net/irisshaders/iris/gl/uniform/UniformHolder.java b/stubs/src/main/java/net/irisshaders/iris/gl/uniform/UniformHolder.java
-index d455f52e..7325d99a 100644
+index d455f52..7325d99 100644
 --- a/stubs/src/main/java/net/irisshaders/iris/gl/uniform/UniformHolder.java
 +++ b/stubs/src/main/java/net/irisshaders/iris/gl/uniform/UniformHolder.java
 @@ -7,7 +7,7 @@ import java.util.function.BooleanSupplier;
