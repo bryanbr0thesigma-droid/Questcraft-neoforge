@@ -694,7 +694,11 @@ func show_settings() -> void:
 		if Config.memory_mb != "":
 			Bridge.api("setMemory", [Config.memory_mb])
 		show_home()
-	body.add_child(_button("Save", do_save, Vector2(200, 56)))
+	var buttons := HBoxContainer.new()
+	buttons.add_theme_constant_override("separation", 14)
+	body.add_child(buttons)
+	buttons.add_child(_button("Save", do_save, Vector2(200, 56)))
+	buttons.add_child(_button("Open the log", func(): show_log(false), Vector2(260, 56)))
 
 
 func show_log(only_problems := true) -> void:
