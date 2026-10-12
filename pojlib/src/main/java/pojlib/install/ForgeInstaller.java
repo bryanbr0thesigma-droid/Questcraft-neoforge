@@ -19,6 +19,9 @@ import java.nio.charset.StandardCharsets;
  * {@link NeoForgeInstaller#runInstaller} sets up for both.
  */
 public class ForgeInstaller {
+    /** Forge's installer spells it like this, NeoForge's has a dash in it (--install-client), see the installers' --help. */
+    static final String INSTALL_ARG = "--installClient";
+
 
     /**
      * Makes sure Forge is installed for a Minecraft version, running the installer if necessary.
@@ -44,7 +47,7 @@ public class ForgeInstaller {
             File installer = NeoForgeInstaller.downloadInstaller(
                     new File(gameDir + "/installers/forge-" + minecraftVersion + "-" + forgeVersion + "-installer.jar"),
                     ForgeMeta.getInstallerUrl(minecraftVersion, forgeVersion), "Forge");
-            NeoForgeInstaller.runInstaller(activity, installer, gameDir);
+            NeoForgeInstaller.runInstaller(activity, installer, gameDir, INSTALL_ARG);
 
             if (!isInstalled(gameDir, minecraftVersion, forgeVersion)) {
                 throw new IOException("Forge " + forgeVersion + " failed to install:\n"

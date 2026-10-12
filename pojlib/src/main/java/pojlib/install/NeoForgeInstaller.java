@@ -115,7 +115,12 @@ public class NeoForgeInstaller {
         throw new IOException(what + " installer download is corrupt: " + url);
     }
 
-    static void runInstaller(Activity activity, File installer, String gameDir) throws IOException {
+    private static void runInstaller(Activity activity, File installer, String gameDir) throws IOException {
+        runInstaller(activity, installer, gameDir, "--install-client");
+    }
+
+    /** @param installArg the installer's own spelling of the option that installs the client */
+    static void runInstaller(Activity activity, File installer, String gameDir, String installArg) throws IOException {
         // the installer refuses to run without a launcher profile it can add itself to
         File profiles = new File(gameDir + "/launcher_profiles.json");
         if (!profiles.exists()) {
@@ -147,7 +152,8 @@ public class NeoForgeInstaller {
 
         Intent intent = new Intent(activity, NeoForgeInstallService.class)
                 .putExtra(NeoForgeInstallService.EXTRA_INSTALLER, installer.getAbsolutePath())
-                .putExtra(NeoForgeInstallService.EXTRA_GAME_DIR, gameDir);
+                .putExtra(NeoForgeInstallService.EXTRA_GAME_DIR, gameDir)
+                .putExtra(NeoForgeInstallService.EXTRA_INSTALL_ARG, installArg);
         if (!activity.bindService(intent, connection, Context.BIND_AUTO_CREATE)) {
             throw new IOException("Could not start the mod loader installer process");
         }

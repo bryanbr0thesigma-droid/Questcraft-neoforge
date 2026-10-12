@@ -20,6 +20,8 @@ import java.util.Arrays;
 public class NeoForgeInstallService extends Service {
     public static final String EXTRA_INSTALLER = "installer";
     public static final String EXTRA_GAME_DIR = "gameDir";
+    /** The option that makes the installer install the client: NeoForge calls it --install-client, Forge --installClient. */
+    public static final String EXTRA_INSTALL_ARG = "installArg";
 
     /** Next to the installer's own log: what this process itself did and printed, see {@link NeoForgeInstaller} */
     public static final String SERVICE_LOG_SUFFIX = ".service.log";
@@ -41,12 +43,13 @@ public class NeoForgeInstallService extends Service {
             started = true;
             final String installer = intent.getStringExtra(EXTRA_INSTALLER);
             final String gameDir = intent.getStringExtra(EXTRA_GAME_DIR);
-            new Thread(() -> run(installer, gameDir), "neoforge-installer").start();
+            final String installArg = intent.hasExtra(EXTRA_INSTALL_ARG) ? intent.getStringExtra(EXTRA_INSTALL_ARG) : "--install-client";
+            new Thread(() -> run(installer, gameDir, installArg), "neoforge-installer").start();
         }
         return new Binder();
     }
 
-    private void run(String installer, String gameDir) {
+    private void run(String installer, String gameDir, String installArg) {
         // The statics of the main process (Pojlib's home directory, which the logger writes into) do not exist in this
         // process. Give it a directory of its own so the logger works and does not touch the log of the main process.
         java.io.File logDir = new java.io.File(gameDir, "installers");
@@ -65,7 +68,7 @@ public class NeoForgeInstallService extends Service {
         note(serviceLog, "service started, starting the JVM");
         try {
             int exitCode = JREUtils.launchInstallerVM(this,
-                    Arrays.asList("-jar", installer, "--install-client", gameDir), gameDir);
+                    Arrays.asList("-jar", installer, installArg, gameDir), gameDir);
             Log.i(TAG, "Installer returned with exit code " + exitCode);
             note(serviceLog, "the JVM returned with exit code " + exitCode);
         } catch (Throwable t) {
