@@ -64,10 +64,11 @@ public class NeoForgeInstaller {
             runInstaller(activity, installer, gameDir);
 
             if (!isInstalled(gameDir, neoForgeVersion)) {
-                throw new IOException("NeoForge " + neoForgeVersion + " failed to install:\n" + tail(logOf(installer), 12));
+                throw new IOException("NeoForge " + neoForgeVersion + " failed to install:\n" + tail(serviceLogOf(installer), 12));
             }
             installer.delete();
             logOf(installer).delete();
+            serviceLogOf(installer).delete();
         }
 
         VersionInfo neoForge = new Gson().fromJson(FileUtils.readFileToString(versionJson, StandardCharsets.UTF_8), VersionInfo.class);
@@ -151,14 +152,25 @@ public class NeoForgeInstaller {
             activity.unbindService(connection);
         }
 
+        // The installer prints to its stdout, which the installer process wrote to the service log (a file of its own
+        // is only written by some installer versions), so either one can hold the success line.
         File log = logOf(installer);
-        if (!log.exists() || !FileUtils.readFileToString(log, StandardCharsets.UTF_8).contains(SUCCESS_MARKER)) {
-            String why = tail(log, 12);
-            if (!log.exists()) {
-                // the installer never wrote anything: say what the process around it did and how Android ended it
-                why = "(no installer log)\n" + tail(serviceLogOf(installer), 8) + "\n" + exitReason(activity);
+        File serviceLog = serviceLogOf(installer);
+        if (!contains(log, SUCCESS_MARKER) && !contains(serviceLog, SUCCESS_MARKER)) {
+            String why = log.exists() ? tail(log, 12) : tail(serviceLog, 12);
+            if (!log.exists() && !serviceLog.exists()) {
+                // the installer never wrote anything: say how Android ended its process
+                why = "(no installer output)\n" + exitReason(activity);
             }
             throw new IOException("NeoForge installer did not finish:\n" + why);
+        }
+    }
+
+    private static boolean contains(File file, String text) {
+        try {
+            return file.exists() && FileUtils.readFileToString(file, StandardCharsets.UTF_8).contains(text);
+        } catch (IOException e) {
+            return false;
         }
     }
 
