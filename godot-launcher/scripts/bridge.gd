@@ -15,6 +15,10 @@ var _mock_login_polls := 0
 var _mock_logged_in := false
 var _mock_task_polls := 0
 var _mock_phase := "idle"
+# how many progress polls creating an instance takes in the mock, then it is "idle" again (0: done before the first poll)
+var mock_create_polls := 3
+var _mock_creating := false
+var _mock_prepared := ""   # the instance the last "prepare" was for
 
 
 func _ready() -> void:
@@ -74,14 +78,25 @@ func _mock(method: String, args: Array) -> Variant:
 		"createInstance":
 			_mock_instances.append({"name": args[0], "version": args[1], "loader": args[2], "image": "", "mods": 0})
 			_mock_phase = "working"
+			_mock_creating = true
 			_mock_task_polls = 0
+			if mock_create_polls == 0:
+				_mock_phase = "idle"   # the work was over before anyone looked
+				_mock_creating = false
 			return ""
 		"prepare":
 			_mock_phase = "working"
+			_mock_creating = false
+			_mock_prepared = str(args[0])
 			_mock_task_polls = 0
 			return ""
 		"progress":
-			if _mock_phase == "working":
+			if _mock_phase == "working" and _mock_creating:
+				_mock_task_polls += 1
+				if _mock_task_polls > mock_create_polls:
+					_mock_phase = "idle"
+					_mock_creating = false
+			elif _mock_phase == "working":
 				_mock_task_polls += 1
 				if _mock_task_polls > 8:
 					_mock_phase = "ready"

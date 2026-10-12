@@ -49,6 +49,11 @@ import pojlib.util.Logger;
 import pojlib.util.json.ModrinthIndexJson;
 
 public class InstanceHandler {
+    /** The background work of the last {@code create}: the instance is only usable once it is done. */
+    public static volatile CompletableFuture<Void> creation;
+    /** Why the last {@code create} failed, empty if it did not (only reported for loaders that can fail, see create). */
+    public static volatile String lastCreateError = "";
+
     public static MinecraftInstances.Instance create(Activity activity, MinecraftInstances instances, String instanceName, String userHome, String modLoader, String mrpackFilePath, String imageURL) {
         File mrpackJson = new File(Constants.USER_HOME + "/instances/" + instanceName.toLowerCase(Locale.ROOT).replaceAll(" ", "_") + "/setup/modrinth.index.json");
 
@@ -212,7 +217,8 @@ public class InstanceHandler {
         instances1.add(instance);
         instances.instances = instances1.toArray(new MinecraftInstances.Instance[0]);
 
-        CompletableFuture.supplyAsync(() ->
+        lastCreateError = "";
+        creation = CompletableFuture.supplyAsync(() ->
         {
             try {
                 CompletableFuture<String> clientClasspath = Installer.installClient(minecraftVersionInfo, gameDir);
@@ -254,6 +260,7 @@ public class InstanceHandler {
                 if (loader == ModLoader.NEOFORGE) {
                     // an instance without a classpath can not be launched, so do not keep it around
                     Logger.getInstance().appendToLog("Could not create the instance: " + e.getMessage());
+                    lastCreateError = String.valueOf(e.getMessage());
                     instances.instances = Arrays.stream(instances.instances).filter(i -> i != instance).toArray(MinecraftInstances.Instance[]::new);
                     DownloadManager.reset();
                     return null;

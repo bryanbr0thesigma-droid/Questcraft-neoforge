@@ -138,13 +138,28 @@ public final class LauncherApi {
                     throw new IOException("Instance names cannot be empty or contain / or !");
                 }
                 if (find(name) != null) throw new IOException("There already is an instance called " + name);
-                API.createNewInstance(activity, instances, name, true, minecraftVersion, loader, null);
+                MinecraftInstances.Instance created = API.createNewInstance(activity, instances, name, true, minecraftVersion, loader, null);
+                awaitCreation(created, InstanceHandler.creation, () -> find(name) != null, () -> InstanceHandler.lastCreateError);
                 finish("");
             } catch (Throwable t) {
                 Logger.getInstance().appendToLog("Instance creation failed | " + t);
                 finish(String.valueOf(t.getMessage() != null ? t.getMessage() : t));
             }
         }, "qc-create").start();
+    }
+
+    /**
+     * An instance is made in the background, it is done when that is. Fails if it was not made (the creation returned
+     * nothing, or the instance is not there at the end, with the reason the creation gave if it gave one).
+     */
+    static void awaitCreation(MinecraftInstances.Instance created, java.util.concurrent.CompletableFuture<?> creation,
+                              java.util.function.BooleanSupplier exists, java.util.function.Supplier<String> failure) throws Exception {
+        if (created == null) throw new IOException("The instance could not be created (see the log)");
+        if (creation != null) creation.get();
+        if (!exists.getAsBoolean()) {
+            String why = failure.get();
+            throw new IOException(why == null || why.isEmpty() ? "The instance could not be created (see the log)" : why);
+        }
     }
 
     public static synchronized boolean deleteInstance(String name) {

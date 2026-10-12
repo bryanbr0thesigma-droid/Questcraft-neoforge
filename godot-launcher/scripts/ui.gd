@@ -643,11 +643,15 @@ func show_progress(title: String, when_done: Callable) -> void:
 	var logbox := _label("", 18, TEXT_DIM)
 	logbox.max_lines_visible = 10
 	body.add_child(logbox)
+	# the screen is only shown right after a task was started, so "idle" means it is over already, even if it was over
+	# before the first poll saw it running (kept in a dictionary, a lambda copies plain variables)
+	var seen := {"idle_polls": 0}
 	_poll = func():
 		var p = Bridge.api("progress")
 		if typeof(p) != TYPE_DICTIONARY:
 			return
 		var phase := str(p.get("phase", ""))
+		seen["idle_polls"] = seen["idle_polls"] + 1 if phase == "idle" else 0
 		task.text = str(p.get("task", ""))
 		bar.value = float(p.get("percent", 0.0))
 		logbox.text = str(Bridge.api("logTail", [10]))
@@ -661,7 +665,7 @@ func show_progress(title: String, when_done: Callable) -> void:
 			_poll = Callable()
 			task.text = "Starting Minecraft..."
 			request_start_game.emit()
-		elif phase == "idle" and _saw_working:
+		elif phase == "idle" and (_saw_working or seen["idle_polls"] >= 3):
 			_poll = Callable()
 			when_done.call()
 
