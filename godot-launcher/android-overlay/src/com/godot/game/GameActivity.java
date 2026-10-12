@@ -23,6 +23,9 @@ public class GameActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        // this process logs to a file of its own: the launcher starts again when the game ends, and its log would
+        // otherwise wipe the game's (the launcher's Log screen shows this one, see LauncherApi.crashInfo)
+        pojlib.util.Logger.fileName = "game_log.txt";
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         setContentView(new View(this));   // nothing to show: the game draws into the headset's own session
         final String instance = getIntent().getStringExtra("instance");
@@ -49,6 +52,10 @@ public class GameActivity extends Activity {
             LauncherApi.runGameBlocking();
         } catch (Throwable t) {
             Log.e(TAG, "The game did not start", t);
+            try {
+                pojlib.util.Logger.getInstance().appendToLog("The game did not start: " + Log.getStackTraceString(t));
+            } catch (Throwable ignored) {
+            }
         } finally {
             // back to the menu: the launcher's process was ended when the game started (so that its OpenXR session and
             // its memory are gone), start it again from scratch, then end this one

@@ -307,6 +307,9 @@ public class JREUtils {
         userArgs.add("-XX:-ZProactive");
         userArgs.add("-XX:+UnlockDiagnosticVMOptions");
         userArgs.add("-XX:+DisableExplicitGC");
+        // if the VM itself crashes, its report goes where the launcher's Log screen looks for it
+        new File(Constants.USER_HOME, "hs_err_game.log").delete();   // the one of an earlier run
+        userArgs.add("-XX:ErrorFile=" + Constants.USER_HOME + "/hs_err_game.log");
 
         userArgs.add("-Dorg.lwjgl.opengl.libname=" + graphicsLib);
         userArgs.add("-Dorg.lwjgl.opengles.libname=" + "/system/lib64/libGLESv3.so");

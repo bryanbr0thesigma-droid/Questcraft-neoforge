@@ -18,9 +18,16 @@ public class Logger {
     private PrintStream mLogStream;
     private WeakReference<eventLogListener> mLogListenerWeakReference = null;
 
+    /**
+     * The file the log goes to, in Pojlib's home directory. Has to be set before the first use of the logger. A process
+     * of its own (like the game's, see the Godot launcher) uses a different file, so that starting the launcher again
+     * does not wipe what the game logged.
+     */
+    public static String fileName = "latestlog.txt";
+
     /* No public construction */
     private Logger(){
-        this("latestlog.txt");
+        this(fileName);
     }
 
     private Logger(String fileName){

@@ -418,6 +418,14 @@ public final class LauncherApi {
                     if (log.isFile() && (newestLog == null || log.lastModified() > newestLog.lastModified())) newestLog = log;
                 }
             }
+            File gameLog = new File(Constants.USER_HOME, "game_log.txt");
+            if (gameLog.isFile()) {
+                out.append("--- game_log.txt (what the game process logged) ---\n").append(tailOf(gameLog, 30));
+            }
+            File vmCrash = new File(Constants.USER_HOME, "hs_err_game.log");
+            if (vmCrash.isFile()) {
+                out.append("--- hs_err_game.log (Java VM crash report) ---\n").append(head(vmCrash, 24));
+            }
             long recent = System.currentTimeMillis() - 30 * 60 * 1000L;
             if (newestCrash != null && newestCrash.lastModified() > recent) {
                 out.append("--- ").append(newestCrash.getName()).append(" (Java VM crash report) ---\n")
