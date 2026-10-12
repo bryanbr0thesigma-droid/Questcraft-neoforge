@@ -75,11 +75,17 @@ public class NeoForgeInstaller {
         return VersionInfo.merge(minecraftVersionInfo, neoForge);
     }
 
-    /** The installer writes the version json first and the patched client last, so the client decides. */
+    /**
+     * The installer writes the version json first and the patched client last, so the client decides. Where it puts
+     * the client depends on the NeoForge version: older ones write {@code neoforge/<v>/neoforge-<v>-client.jar}, newer
+     * ones (21.11 and later) {@code minecraft-client-patched/<v>/minecraft-client-patched-<v>.jar}.
+     */
     static boolean isInstalled(String gameDir, String neoForgeVersion) {
+        String libraries = gameDir + "/libraries/net/neoforged/";
         return versionJson(gameDir, neoForgeVersion).exists()
-                && new File(gameDir + "/libraries/net/neoforged/neoforge/" + neoForgeVersion
-                + "/neoforge-" + neoForgeVersion + "-client.jar").exists();
+                && (new File(libraries + "neoforge/" + neoForgeVersion + "/neoforge-" + neoForgeVersion + "-client.jar").exists()
+                || new File(libraries + "minecraft-client-patched/" + neoForgeVersion
+                + "/minecraft-client-patched-" + neoForgeVersion + ".jar").exists());
     }
 
     private static File versionJson(String gameDir, String neoForgeVersion) {
