@@ -2,3 +2,4 @@
 android/
 build/
 *.keystore
+build_info.txt

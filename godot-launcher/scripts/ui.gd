@@ -718,6 +718,10 @@ func show_log(only_problems := true) -> void:
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	body.add_child(scroll)
 	var crash := str(Bridge.api("crashInfo")).strip_edges()   # how the last game ended, always shown first
+	var build := "dev"
+	if FileAccess.file_exists("res://build_info.txt"):
+		build = FileAccess.get_file_as_string("res://build_info.txt").strip_edges()
+	crash = ("Launcher build: " + build + "\n" + crash).strip_edges()
 	var text := "\n".join(shown) if shown.size() > 0 else "Nothing in the log yet."
 	if crash != "":
 		text = crash + "\n\n" + text

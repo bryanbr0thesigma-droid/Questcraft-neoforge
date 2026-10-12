@@ -67,6 +67,9 @@ sed -i 's/JavaVersion.current() != versions.javaVersion/JavaVersion.current() < 
 ndk="$(ls "$ANDROID_HOME/ndk" 2>/dev/null | head -1 || true)"
 [ -n "$ndk" ] && sed -i "s/ndkVersion         : '[0-9.]*'/ndkVersion         : '$ndk'/" "$build/config.gradle"
 
+# which build is this? the launcher shows it on its Log screen
+echo "$(date -u '+%Y-%m-%d %H:%M UTC') $(git -C "$repo" rev-parse --short HEAD 2>/dev/null)" > "$here/build_info.txt"
+
 # 4. import and export
 "$GODOT" --headless --path "$here" --import >/dev/null 2>&1 || true
 mkdir -p "$(dirname "$OUT")"
