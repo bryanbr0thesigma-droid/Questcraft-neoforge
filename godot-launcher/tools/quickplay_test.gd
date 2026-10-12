@@ -12,7 +12,7 @@ func _initialize() -> void:
 	var instances: Array = bridge.api("listInstances")
 	cfg.last_is_version = true
 	cfg.last_version = "1.21.1"
-	for loader in ["Fabric", "NeoForge", "Quilt"]:
+	for loader in ["Fabric", "NeoForge", "Quilt", "Forge"]:
 		cfg.last_loader = loader
 		var name: String = ui._quick_name("1.21.1", loader, instances)
 		var label: String = ui._selection_label(instances)
@@ -20,6 +20,7 @@ func _initialize() -> void:
 	ok = ok and ui._quick_name("1.21.1", "Fabric", instances) == "1.21.1"
 	ok = ok and ui._quick_name("1.21.1", "NeoForge", instances) == "1.21.1 NeoForge"
 	ok = ok and ui._quick_name("1.21.1", "Quilt", instances) == "1.21.1 Quilt"
+	ok = ok and ui._quick_name("1.21.1", "Forge", instances) == "1.21.1 Forge"
 	# playing with NeoForge picked creates a NeoForge instance and does not start the Fabric one
 	cfg.last_loader = "NeoForge"
 	ui._play_selected()

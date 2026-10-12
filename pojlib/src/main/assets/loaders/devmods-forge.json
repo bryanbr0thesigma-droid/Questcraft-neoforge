@@ -1,0 +1,188 @@
+{
+	"versions": [
+		{
+			"name": "1.21.11",
+			"coreMods": [
+				{
+					"slug": "Vivecraft",
+					"version": "1.0",
+					"download_link": "https://raw.githubusercontent.com/bryanbr0thesigma-droid/Questcraft-neoforge/claude/fervent-mayer-8idkzr/pojlib/src/main/assets/vivecraft-jars/forge/vivecraft-forge-1.21.11.jar.bin"
+				}
+			],
+			"defaultMods": [
+				{
+					"slug": "Simple-Voice-Chat",
+					"version": "forge-1.21.11-2.6.22",
+					"download_link": "https://cdn.modrinth.com/data/9eGKb6K1/versions/ljFLo76d/voicechat-forge-1.21.11-2.6.22.jar"
+				}
+			]
+		},
+		{
+			"name": "1.21.8",
+			"coreMods": [
+				{
+					"slug": "Vivecraft",
+					"version": "1.0",
+					"download_link": "https://raw.githubusercontent.com/bryanbr0thesigma-droid/Questcraft-neoforge/claude/fervent-mayer-8idkzr/pojlib/src/main/assets/vivecraft-jars/forge/vivecraft-forge-1.21.8.jar.bin"
+				}
+			],
+			"defaultMods": [
+				{
+					"slug": "Simple-Voice-Chat",
+					"version": "forge-1.21.8-2.6.22",
+					"download_link": "https://cdn.modrinth.com/data/9eGKb6K1/versions/oLqrO9Jf/voicechat-forge-1.21.8-2.6.22.jar"
+				},
+				{
+					"slug": "EntityCulling",
+					"version": "1.11.3",
+					"download_link": "https://cdn.modrinth.com/data/NNAgCjsB/versions/WRDlnUIB/entityculling-forge-1.11.3-mc1.21.8.jar"
+				}
+			]
+		},
+		{
+			"name": "1.21.5",
+			"coreMods": [
+				{
+					"slug": "Vivecraft",
+					"version": "1.0",
+					"download_link": "https://raw.githubusercontent.com/bryanbr0thesigma-droid/Questcraft-neoforge/claude/fervent-mayer-8idkzr/pojlib/src/main/assets/vivecraft-jars/forge/vivecraft-forge-1.21.5.jar.bin"
+				}
+			],
+			"defaultMods": [
+				{
+					"slug": "Simple-Voice-Chat",
+					"version": "forge-1.21.5-2.6.22",
+					"download_link": "https://cdn.modrinth.com/data/9eGKb6K1/versions/G7DKf2Ru/voicechat-forge-1.21.5-2.6.22.jar"
+				},
+				{
+					"slug": "EntityCulling",
+					"version": "1.11.3",
+					"download_link": "https://cdn.modrinth.com/data/NNAgCjsB/versions/YUi4TeYR/entityculling-forge-1.11.3-mc1.21.5.jar"
+				}
+			]
+		},
+		{
+			"name": "1.21.4",
+			"coreMods": [
+				{
+					"slug": "Vivecraft",
+					"version": "1.0",
+					"download_link": "https://raw.githubusercontent.com/bryanbr0thesigma-droid/Questcraft-neoforge/claude/fervent-mayer-8idkzr/pojlib/src/main/assets/vivecraft-jars/forge/vivecraft-forge-1.21.4.jar.bin"
+				}
+			],
+			"defaultMods": [
+				{
+					"slug": "ImmediatelyFast",
+					"version": "1.8.7+1.21.4-forge",
+					"download_link": "https://cdn.modrinth.com/data/5ZwdcRci/versions/6uDAsbov/ImmediatelyFast-Forge-1.8.7%2B1.21.4.jar"
+				},
+				{
+					"slug": "Simple-Voice-Chat",
+					"version": "forge-1.21.4-2.6.22",
+					"download_link": "https://cdn.modrinth.com/data/9eGKb6K1/versions/BAw5BJ3a/voicechat-forge-1.21.4-2.6.22.jar"
+				},
+				{
+					"slug": "EntityCulling",
+					"version": "1.11.3",
+					"download_link": "https://cdn.modrinth.com/data/NNAgCjsB/versions/F65hYmT0/entityculling-forge-1.11.3-mc1.21.4.jar"
+				}
+			]
+		},
+		{
+			"name": "1.21.1",
+			"coreMods": [
+				{
+					"slug": "Vivecraft",
+					"version": "1.0",
+					"download_link": "https://raw.githubusercontent.com/bryanbr0thesigma-droid/Questcraft-neoforge/claude/fervent-mayer-8idkzr/pojlib/src/main/assets/vivecraft-jars/forge/vivecraft-forge-1.21.1.jar.bin"
+				}
+			],
+			"defaultMods": [
+				{
+					"slug": "Simple-Voice-Chat",
+					"version": "forge-1.21.1-2.6.22",
+					"download_link": "https://cdn.modrinth.com/data/9eGKb6K1/versions/4LuAeiNl/voicechat-forge-1.21.1-2.6.22.jar"
+				},
+				{
+					"slug": "Cloth-Config",
+					"version": "15.0.140+forge",
+					"download_link": "https://cdn.modrinth.com/data/9s6osm5g/versions/XMYFN6Zc/cloth-config-15.0.140-forge.jar"
+				},
+				{
+					"slug": "ImmediatelyFast",
+					"version": "1.6.14+1.21.1-forge",
+					"download_link": "https://cdn.modrinth.com/data/5ZwdcRci/versions/MEq3Zttz/ImmediatelyFast-Forge-1.6.14%2B1.21.1.jar"
+				},
+				{
+					"slug": "EntityCulling",
+					"version": "1.11.3",
+					"download_link": "https://cdn.modrinth.com/data/NNAgCjsB/versions/lWf0fUMm/entityculling-forge-1.11.3-mc1.21.1.jar"
+				}
+			]
+		},
+		{
+			"name": "1.20.6",
+			"coreMods": [
+				{
+					"slug": "Vivecraft",
+					"version": "1.0",
+					"download_link": "https://raw.githubusercontent.com/bryanbr0thesigma-droid/Questcraft-neoforge/claude/fervent-mayer-8idkzr/pojlib/src/main/assets/vivecraft-jars/forge/vivecraft-forge-1.20.6.jar.bin"
+				}
+			],
+			"defaultMods": [
+				{
+					"slug": "Cloth-Config",
+					"version": "14.0.139+forge",
+					"download_link": "https://cdn.modrinth.com/data/9s6osm5g/versions/nUTOGFsJ/cloth-config-14.0.139-forge.jar"
+				},
+				{
+					"slug": "Simple-Voice-Chat",
+					"version": "forge-1.20.6-2.5.22",
+					"download_link": "https://cdn.modrinth.com/data/9eGKb6K1/versions/qN7T4ZuZ/voicechat-forge-1.20.6-2.5.22.jar"
+				},
+				{
+					"slug": "EntityCulling",
+					"version": "1.11.3",
+					"download_link": "https://cdn.modrinth.com/data/NNAgCjsB/versions/PeIzqvOM/entityculling-forge-1.11.3-mc1.20.6.jar"
+				}
+			]
+		},
+		{
+			"name": "1.20.4",
+			"coreMods": [
+				{
+					"slug": "Vivecraft",
+					"version": "1.0",
+					"download_link": "https://raw.githubusercontent.com/bryanbr0thesigma-droid/Questcraft-neoforge/claude/fervent-mayer-8idkzr/pojlib/src/main/assets/vivecraft-jars/forge/vivecraft-forge-1.20.4.jar.bin"
+				}
+			],
+			"defaultMods": [
+				{
+					"slug": "Cloth-Config",
+					"version": "13.0.138+forge",
+					"download_link": "https://cdn.modrinth.com/data/9s6osm5g/versions/YTNEzkHf/cloth-config-13.0.138-forge.jar"
+				},
+				{
+					"slug": "ImmediatelyFast",
+					"version": "1.5.5+1.20.4-forge",
+					"download_link": "https://cdn.modrinth.com/data/5ZwdcRci/versions/rvsLEEZU/ImmediatelyFast-Forge-1.5.5%2B1.20.4.jar"
+				},
+				{
+					"slug": "Simple-Voice-Chat",
+					"version": "forge-1.20.4-2.5.22",
+					"download_link": "https://cdn.modrinth.com/data/9eGKb6K1/versions/MKUrTIYB/voicechat-forge-1.20.4-2.5.22.jar"
+				},
+				{
+					"slug": "Noisium",
+					"version": "2.3.0+mc1.20.2-1.20.4",
+					"download_link": "https://cdn.modrinth.com/data/KuNKN7d2/versions/ivLgwUFH/noisium-forge-2.3.0%2Bmc1.20.2-1.20.4.jar"
+				},
+				{
+					"slug": "EntityCulling",
+					"version": "1.11.3",
+					"download_link": "https://cdn.modrinth.com/data/NNAgCjsB/versions/h9cgbviW/entityculling-forge-1.11.3-mc1.20.4.jar"
+				}
+			]
+		}
+	]
+}

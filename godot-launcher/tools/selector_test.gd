@@ -28,11 +28,17 @@ func _initialize() -> void:
 	var changed: bool = cfg.last_loader != before
 	print("loader ", before, " -> ", cfg.last_loader, " ", changed)
 	ok = ok and changed
+	# one full round through every loader ends where it started, and visits each loader once
+	var count: int = (root.get_node("Bridge").api("modLoaders") as Array).size()
 	var cycle := [cfg.last_loader]
-	for i in range(3):
+	for i in range(count):
 		ui._cycle_loader()
 		cycle.append(cfg.last_loader)
 	print("cycle ", cycle)
-	ok = ok and cycle.size() == 4 and cycle[0] == cycle[3] and cycle[0] != cycle[1]
+	ok = ok and cycle.size() == count + 1 and cycle[0] == cycle[count] and cycle[0] != cycle[1]
+	var visited := {}
+	for l in cycle:
+		visited[l] = true
+	ok = ok and visited.size() == count
 	print("SELECTOR OK" if ok else "SELECTOR FAILED")
 	quit()

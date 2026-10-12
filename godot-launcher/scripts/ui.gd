@@ -382,7 +382,7 @@ func show_home() -> void:
 	page.add_child(version_button)
 	version_button.pressed.connect(_open_version_menu.bind(version_button))
 
-	# which mod loader quick-play versions are made with (Fabric, NeoForge, Quilt); the version list follows it
+	# which mod loader quick-play versions are made with (Fabric, NeoForge, Quilt, Forge); the version list follows it
 	var loader_button := _button("Loader: " + Config.last_loader, _cycle_loader, Vector2(330, 44))
 	loader_button.position = Vector2(26, H - 176)
 	loader_button.size = Vector2(330, 44)
@@ -410,7 +410,7 @@ func show_home() -> void:
 	page.add_child(gear)
 
 
-## Switches the loader for new quick-play instances to the next one (Fabric -> NeoForge -> Quilt -> ...).
+## Switches the loader for new quick-play instances to the next one (Fabric -> NeoForge -> Quilt -> Forge -> ...).
 func _cycle_loader() -> void:
 	if _loaders.is_empty():
 		return

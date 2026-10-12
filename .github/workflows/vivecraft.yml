@@ -1,6 +1,6 @@
-name: Build Vivecraft (NeoForge)
+name: Build Vivecraft (NeoForge, Forge)
 
-# Builds the NeoForge jar of QuestCraft's Vivecraft fork for every supported Minecraft version.
+# Builds the NeoForge and Forge jars of QuestCraft's Vivecraft fork for every supported Minecraft version.
 # Run it by hand with "publish" ticked to attach the jars to the releases the mod lists link to
 # (pojlib/mods-neoforge.json -> releases/download/vivecraft-<mc>/vivecraft-neoforge-<mc>.jar).
 on:
@@ -49,3 +49,22 @@ jobs:
           tag_name: vivecraft-${{ matrix.mc }}
           name: Vivecraft for Minecraft ${{ matrix.mc }} (NeoForge)
           files: vivecraft-builder/dist/*-${{ matrix.mc }}.jar
+
+  build-forge:
+    runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        mc: ['1.20.4', '1.20.6', '1.21.1', '1.21.4', '1.21.5', '1.21.8', '1.21.11']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+      - name: Build
+        run: ./vivecraft-builder/build.sh ${{ matrix.mc }} forge
+      - uses: actions/upload-artifact@v4
+        with:
+          name: vivecraft-forge-${{ matrix.mc }}
+          path: vivecraft-builder/dist/vivecraft-forge-${{ matrix.mc }}.jar

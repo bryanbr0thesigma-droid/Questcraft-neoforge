@@ -97,7 +97,7 @@ public class Installer {
             for (VersionInfo.Library library : versionInfo.libraries) {
                 // vanilla does not use ASM, the loaders do (NeoForge even loads it from its module path)
                 boolean isLoader = versionInfo.id.contains("fabric") || versionInfo.id.contains("neoforge")
-                        || versionInfo.id.contains("quilt");
+                        || versionInfo.id.contains("forge") || versionInfo.id.contains("quilt");
                 if (library.name.contains("lwjgl") || (library.name.contains("org.ow2.asm") && !isLoader)) {
                     continue;
                 }
@@ -238,7 +238,7 @@ public class Installer {
             FileUtils.writeByteArrayToFile(new File(instance.gameDir + "/config/immediatelyfast.json"), FileUtil.loadFromAssetToByte(activity, "immediatelyfast.json"));
             FileUtils.writeByteArrayToFile(new File(instance.gameDir + "/config/moreculling.toml"), FileUtil.loadFromAssetToByte(activity,"moreculling.toml"));
             writeModernFixConfig(activity, instance);
-            if (instance.isNeoForge()) {
+            if (instance.usesLoaderInstaller()) {
                 FileUtils.writeByteArrayToFile(new File(instance.gameDir + "/config/fml.toml"), FileUtil.loadFromAssetToByte(activity, "fml.toml"));
             }
             FileUtils.writeByteArrayToFile(new File(instance.gameDir + "/options.txt"), FileUtil.loadFromAssetToByte(activity, "options.txt"));

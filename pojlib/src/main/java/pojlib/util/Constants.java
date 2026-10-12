@@ -15,6 +15,8 @@ public class Constants {
     public static final String NEOFORGE_MAVEN_URL = "https://maven.neoforged.net/releases";
 
     public static final String NEOFORGE_API_URL = "https://maven.neoforged.net/api/maven";
+    public static final String FORGE_MAVEN_URL = "https://maven.minecraftforge.net";
+    public static final String FORGE_PROMOTIONS_URL = "https://files.minecraftforge.net/net/minecraftforge/forge/promotions_slim.json";
 
     public static final String OAUTH_TOKEN_URL = "https://login.live.com/oauth20_token.srf";
 

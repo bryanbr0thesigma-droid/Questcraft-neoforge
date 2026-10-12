@@ -19,7 +19,7 @@ class ModLoaderTest {
         assertEquals(ModLoader.FABRIC, ModLoader.fromName("Fabric"));
         assertEquals(ModLoader.FABRIC, ModLoader.fromName(" fabric "));
         assertEquals(ModLoader.QUILT, ModLoader.fromName("Quilt"));
-        assertNull(ModLoader.fromName("Forge"));
+        assertNull(ModLoader.fromName("LiteLoader"));
         assertNull(ModLoader.fromName(""));
         assertNull(ModLoader.fromName(null));
     }
@@ -32,8 +32,8 @@ class ModLoaderTest {
     }
 
     @Test
-    void theLauncherListsFabricNeoForgeAndQuilt() {
-        assertArrayEquals(new String[]{"Fabric", "NeoForge", "Quilt"}, ModLoader.displayNames());
+    void theLauncherListsFabricNeoForgeQuiltAndForge() {
+        assertArrayEquals(new String[]{"Fabric", "NeoForge", "Quilt", "Forge"}, ModLoader.displayNames());
         // what the launcher shows is accepted again when it passes it back
         for (String name : ModLoader.displayNames()) {
             assertEquals(name, ModLoader.fromName(name).displayName);
@@ -82,5 +82,17 @@ class ModLoaderTest {
     void fabricComesFromUpstreamAndNeoForgeFromThisPort() {
         assertTrue(ModLoader.FABRIC.getModsUrl(false).contains("QuestCraftPlusPlus/Pojlib"));
         assertTrue(ModLoader.NEOFORGE.getModsUrl(false).endsWith("/pojlib/mods-neoforge.json"));
+    }
+
+    @Test
+    void forgeIsItsOwnLoaderNotNeoForge() {
+        assertEquals(ModLoader.FORGE, ModLoader.fromName("Forge"));
+        assertEquals(ModLoader.FORGE, ModLoader.fromName("forge"));
+        assertEquals(ModLoader.FORGE, ModLoader.fromStored("forge"));
+        assertEquals(ModLoader.NEOFORGE, ModLoader.fromName("neoforge"));
+        assertArrayEquals(new String[]{"forge"}, ModLoader.FORGE.getModrinthCategories());
+        assertEquals("mods-forge.json", ModLoader.FORGE.getModsSnapshotName());
+        assertTrue(ModLoader.FORGE.getModsUrl(false).endsWith("/pojlib/mods-forge.json"));
+        assertTrue(ModLoader.FORGE.getSupportedVersionsUrl().endsWith("/pojlib/supportedVersions-forge.json"));
     }
 }

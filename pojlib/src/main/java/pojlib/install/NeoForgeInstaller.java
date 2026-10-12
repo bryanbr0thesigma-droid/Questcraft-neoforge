@@ -94,23 +94,28 @@ public class NeoForgeInstaller {
     }
 
     private static File downloadInstaller(String neoForgeVersion, String gameDir) throws IOException {
-        File installer = new File(gameDir + "/installers/neoforge-" + neoForgeVersion + "-installer.jar");
-        String url = NeoForgeMeta.getInstallerUrl(neoForgeVersion);
+        return downloadInstaller(new File(gameDir + "/installers/neoforge-" + neoForgeVersion + "-installer.jar"),
+                NeoForgeMeta.getInstallerUrl(neoForgeVersion), "NeoForge");
+    }
+
+    /** Downloads a loader installer (its maven publishes a .sha1 next to it) unless it is there already. */
+    static File downloadInstaller(File installer, String url, String what) throws IOException {
         String sha1 = APIHandler.getRaw(url + ".sha1");
+        if (sha1 != null) sha1 = sha1.trim();
 
         for (int i = 0; i < 3; i++) {
             if (!installer.exists()) {
-                Logger.getInstance().appendToLog("Downloading NeoForge installer");
+                Logger.getInstance().appendToLog("Downloading " + what + " installer");
                 DownloadUtils.downloadFile(url, installer);
                 DownloadManager.reset();
             }
             if (DownloadUtils.compareSHA1(installer, sha1)) return installer;
             installer.delete();
         }
-        throw new IOException("NeoForge installer download is corrupt: " + url);
+        throw new IOException(what + " installer download is corrupt: " + url);
     }
 
-    private static void runInstaller(Activity activity, File installer, String gameDir) throws IOException {
+    static void runInstaller(Activity activity, File installer, String gameDir) throws IOException {
         // the installer refuses to run without a launcher profile it can add itself to
         File profiles = new File(gameDir + "/launcher_profiles.json");
         if (!profiles.exists()) {
@@ -122,7 +127,7 @@ public class NeoForgeInstaller {
         // the JRE is downloaded on first use, the installer is the first thing that needs it
         Installer.installJVM(activity, false);
 
-        Logger.getInstance().appendToLog("Installing NeoForge, this takes a few minutes");
+        Logger.getInstance().appendToLog("Installing the mod loader, this takes a few minutes");
         final CountDownLatch finished = new CountDownLatch(1);
         ServiceConnection connection = new ServiceConnection() {
             @Override
@@ -144,16 +149,16 @@ public class NeoForgeInstaller {
                 .putExtra(NeoForgeInstallService.EXTRA_INSTALLER, installer.getAbsolutePath())
                 .putExtra(NeoForgeInstallService.EXTRA_GAME_DIR, gameDir);
         if (!activity.bindService(intent, connection, Context.BIND_AUTO_CREATE)) {
-            throw new IOException("Could not start the NeoForge installer process");
+            throw new IOException("Could not start the mod loader installer process");
         }
 
         try {
             if (!finished.await(TIMEOUT_MINUTES, TimeUnit.MINUTES)) {
-                throw new IOException("NeoForge installer timed out after " + TIMEOUT_MINUTES + " minutes");
+                throw new IOException("The mod loader installer timed out after " + TIMEOUT_MINUTES + " minutes");
             }
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            throw new IOException("Interrupted while installing NeoForge", e);
+            throw new IOException("Interrupted while installing the mod loader", e);
         } finally {
             activity.unbindService(connection);
         }
@@ -168,7 +173,7 @@ public class NeoForgeInstaller {
                 // the installer never wrote anything: say how Android ended its process
                 why = "(no installer output)\n" + exitReason(activity);
             }
-            throw new IOException("NeoForge installer did not finish:\n" + why);
+            throw new IOException("The mod loader installer did not finish:\n" + why);
         }
     }
 
@@ -180,7 +185,7 @@ public class NeoForgeInstaller {
         }
     }
 
-    private static File serviceLogOf(File installer) {
+    static File serviceLogOf(File installer) {
         return new File(installer.getAbsolutePath() + NeoForgeInstallService.SERVICE_LOG_SUFFIX);
     }
 
@@ -201,11 +206,11 @@ public class NeoForgeInstaller {
     }
 
     /** The installer writes its log next to itself. */
-    private static File logOf(File installer) {
+    static File logOf(File installer) {
         return new File(installer.getAbsolutePath() + ".log");
     }
 
-    private static String tail(File file, int lines) {
+    static String tail(File file, int lines) {
         try {
             List<String> all = FileUtils.readLines(file, StandardCharsets.UTF_8);
             return String.join("\n", all.subList(Math.max(0, all.size() - lines), all.size()));

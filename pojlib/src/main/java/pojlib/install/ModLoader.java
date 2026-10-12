@@ -32,7 +32,13 @@ public enum ModLoader {
             Constants.UPSTREAM_RAW_URL + "/mods.json",
             Constants.UPSTREAM_RAW_URL + "/devmods.json",
             Constants.PORT_RAW_URL + "/pojlib/supportedVersions-quilt.json",
-            "quilt", "fabric");
+            "quilt", "fabric"),
+    // Same game versions as NeoForge, but its own mods (Embeddium instead of Sodium, ...)
+    FORGE("forge", "Forge",
+            Constants.PORT_RAW_URL + "/pojlib/mods-forge.json",
+            Constants.PORT_RAW_URL + "/pojlib/devmods-forge.json",
+            Constants.PORT_RAW_URL + "/pojlib/supportedVersions-forge.json",
+            "forge");
 
     /** Stored in instances.json and the Modrinth category of the loader itself: lower case. */
     public final String id;

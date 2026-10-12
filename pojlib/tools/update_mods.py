@@ -82,17 +82,36 @@ PATCHED = {
     ("1.21.11", "Modernfix-mVUS"): ("5.21.0-qc1", "modernfix-neoforge-5.21.0-qc1.jar.bin"),
     ("1.21.4", "ModernFix"): ("5.20.3+mc1.21.4-qc1", "modernfix-neoforge-5.20.3-mc1.21.4-qc1.jar.bin"),
 }
+# The same for Forge's builds of ModernFix, filled in once they are checked (see tools/patch_modernfix.py)
+FORGE_PATCHED = {}
 PATCHED_URL = ("https://raw.githubusercontent.com/bryanbr0thesigma-droid/Questcraft-neoforge/"
                "claude/fervent-mayer-8idkzr/pojlib/src/main/assets/bundled-mods/neoforge/{file}")
 
 
 # Raise this when the bundled jar of a version changes: instances only fetch a mod again when its version differs.
 # 1.21.11 1.1: eye poses relative to the head (stereo view was wrong before); 1.2: OpenXR input reaches the game (processInputs)
-VIVECRAFT_VERSIONS = {"1.21.11": "1.2"}
+VIVECRAFT_VERSIONS = {("neoforge", "1.21.11"): "1.2"}
 
 
-def newest(slug, mc):
-    query = urllib.parse.urlencode({"loaders": json.dumps(["neoforge"]), "game_versions": json.dumps([mc])})
+# Forge: the same game versions as NeoForge (the ones QuestCraft's Vivecraft is built for). Forge exists for older
+# Minecraft versions too, those start through a launch wrapper the launcher does not handle (see ForgeMeta.isSupported).
+FORGE_VERSIONS = list(VERSIONS)
+
+# Forge has its own builds of some mods under other projects, and no build at all of some (Lithium, BadOptimizations)
+FORGE_MODRINTH = {
+    "Sodium": ["embeddium"],
+    "Lithium": [],
+    "BadOptimizations": [],
+    "Krypton": [],
+    "zFastNoise": [],
+}
+
+FORGE_VIVECRAFT_URL = ("https://raw.githubusercontent.com/bryanbr0thesigma-droid/Questcraft-neoforge/"
+                       "claude/fervent-mayer-8idkzr/pojlib/src/main/assets/vivecraft-jars/forge/vivecraft-forge-{mc}.jar.bin")
+
+
+def newest(slug, mc, loader="neoforge"):
+    query = urllib.parse.urlencode({"loaders": json.dumps([loader]), "game_versions": json.dumps([mc])})
     request = urllib.request.Request(f"https://api.modrinth.com/v2/project/{slug}/version?{query}", headers=UA)
     versions = json.load(urllib.request.urlopen(request, timeout=30))
     rank = {"release": 0, "beta": 1, "alpha": 2}
@@ -109,25 +128,30 @@ def newest(slug, mc):
             "project_id": version["project_id"], "required": required}
 
 
-def main():
+def build(loader, versions, vivecraft_url, candidates):
+    """The mod list of one loader: Vivecraft plus the loader's builds of QuestCraft's default mods."""
+    label = {"neoforge": "NeoForge", "forge": "Forge"}[loader]
     result = {"versions": []}
-    for mc in VERSIONS:
+    for mc in versions:
         entry = {"name": mc,
-                 "coreMods": [{"slug": "Vivecraft", "version": VIVECRAFT_VERSIONS.get(mc, "1.0"),
-                               "download_link": VIVECRAFT_URL.format(mc=mc)}],
+                 "coreMods": [{"slug": "Vivecraft", "version": VIVECRAFT_VERSIONS.get((loader, mc), "1.0"),
+                               "download_link": vivecraft_url.format(mc=mc)}],
                  "defaultMods": []}
         for slug in FABRIC_SETS[mc]:
-            for candidate in MODRINTH[slug]:
-                build = newest(candidate, mc)
+            for candidate in candidates.get(slug, MODRINTH[slug]):
+                build = newest(candidate, mc, loader)
                 if build:
-                    if (mc, slug) in PATCHED:
+                    if loader == "neoforge" and (mc, slug) in PATCHED:
                         version, file = PATCHED[(mc, slug)]
+                        build = {**build, "version": version, "download_link": PATCHED_URL.format(file=file)}
+                    elif loader == "forge" and (mc, slug) in FORGE_PATCHED:
+                        version, file = FORGE_PATCHED[(mc, slug)]
                         build = {**build, "version": version, "download_link": PATCHED_URL.format(file=file)}
                     entry["defaultMods"].append({"slug": slug, **build})
                     break
             else:
-                print(f"{mc}: no NeoForge build of {slug}, left out", file=sys.stderr)
-        # NeoForge refuses to start when a required mod is missing, so check what the picks ask for
+                print(f"{mc}: no {label} build of {slug}, left out", file=sys.stderr)
+        # the loader refuses to start when a required mod is missing, so check what the picks ask for
         have = {m["project_id"] for m in entry["defaultMods"]}
         for mod in entry["defaultMods"]:
             for dep in mod["required"]:
@@ -137,23 +161,38 @@ def main():
         for mod in entry["defaultMods"]:  # only needed for the check
             del mod["project_id"], mod["required"]
         result["versions"].append(entry)
+    return result
 
-    for name in ("mods-neoforge.json", "devmods-neoforge.json"):
-        with open(os.path.join(OUT, name), "w") as f:
-            json.dump(result, f, indent="\t")
-            f.write("\n")
-    with open(os.path.join(OUT, "supportedVersions.json"), "w") as f:
-        json.dump({"supportedVersions": VERSIONS}, f, indent=2)
+
+def write(name, data):
+    with open(os.path.join(OUT, name), "w") as f:
+        json.dump(data, f, indent="\t" if name.startswith(("mods-", "devmods-")) else 2)
         f.write("\n")
-    # the app carries copies of the lists, used when the repository cannot be read (see APIHandler, MinecraftInstances)
+
+
+def main():
+    # "forge" on the command line only regenerates the Forge lists (the others change with every Modrinth release)
+    only_forge = "forge" in sys.argv[1:]
+    forge = build("forge", FORGE_VERSIONS, FORGE_VIVECRAFT_URL, FORGE_MODRINTH)
+    for name in ("mods-forge.json", "devmods-forge.json"):
+        write(name, forge)
+    write("supportedVersions-forge.json", {"supportedVersions": FORGE_VERSIONS})
     bundled = os.path.join(OUT, "src", "main", "assets", "loaders")
     os.makedirs(bundled, exist_ok=True)
-    with open(os.path.join(OUT, "supportedVersions-quilt.json"), "w") as f:
-        json.dump({"supportedVersions": QUILT_VERSIONS}, f, indent=2)
-        f.write("\n")
-    for src, dst in (("mods-neoforge.json", "mods-neoforge.json"), ("devmods-neoforge.json", "devmods-neoforge.json"),
-                     ("supportedVersions.json", "supportedVersions-neoforge.json"),
-                     ("supportedVersions-quilt.json", "supportedVersions-quilt.json")):
+    copies = [("mods-forge.json", "mods-forge.json"), ("devmods-forge.json", "devmods-forge.json"),
+              ("supportedVersions-forge.json", "supportedVersions-forge.json")]
+
+    if not only_forge:
+        neoforge = build("neoforge", VERSIONS, VIVECRAFT_URL, {})
+        for name in ("mods-neoforge.json", "devmods-neoforge.json"):
+            write(name, neoforge)
+        write("supportedVersions.json", {"supportedVersions": VERSIONS})
+        write("supportedVersions-quilt.json", {"supportedVersions": QUILT_VERSIONS})
+        copies += [("mods-neoforge.json", "mods-neoforge.json"), ("devmods-neoforge.json", "devmods-neoforge.json"),
+                   ("supportedVersions.json", "supportedVersions-neoforge.json"),
+                   ("supportedVersions-quilt.json", "supportedVersions-quilt.json")]
+    # the app carries copies of the lists, used when the repository cannot be read (see APIHandler, MinecraftInstances)
+    for src, dst in copies:
         shutil.copy(os.path.join(OUT, src), os.path.join(bundled, dst))
 
 

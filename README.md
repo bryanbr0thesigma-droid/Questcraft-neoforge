@@ -16,13 +16,15 @@ QuestCraft itself is not a mod. It is a launcher app (a Unity project that calls
 
 **NeoForge: 1.20.4, 1.20.6, 1.21.1, 1.21.4, 1.21.5, 1.21.8 and 1.21.11.** NeoForge only exists from Minecraft 1.20.2 (older versions only have Forge), so QuestCraft's 1.19.x and 1.20.1 cannot be ported to it.
 
+**Forge: the same seven versions as NeoForge** (1.20.4 to 1.21.11), see [Forge](#forge).
+
 **Quilt: every version QuestCraft's Fabric list has** (1.19.2, 1.19.4, 1.20.1, 1.20.4, 1.20.6, 1.21.1, 1.21.4, 1.21.5, 1.21.8, 1.21.10, 1.21.11), see [Quilt](#quilt).
 
 Left out of NeoForge: **1.21.10**. Upstream QuestCraft ships it, but the fork's `OpenXR-1.21.10` branch does not compile its shared module in this setup even when built exactly as shipped (Fabric only; the Minecraft classes never reach the compiler), so there is no working source to start from. (1.21.11 is newer and does not depend on it, see below.)
 
-## Loader toggle (Fabric / NeoForge / Quilt)
+## Loader toggle (Fabric / NeoForge / Quilt / Forge)
 
-The instance creator has a loader dropdown with **Fabric**, **NeoForge** and **Quilt**. It decides which Minecraft versions the creator offers (each loader has its own list), what the new instance is installed with, and which mod list its default mods come from. The choice is remembered (`lastSelectedLoader` in `launcher.conf`); a config from before the toggle counts as NeoForge.
+The instance creator has a loader dropdown with **Fabric**, **NeoForge**, **Quilt** and **Forge**. It decides which Minecraft versions the creator offers (each loader has its own list), what the new instance is installed with, and which mod list its default mods come from. The choice is remembered (`lastSelectedLoader` in `launcher.conf`); a config from before the toggle counts as NeoForge.
 
 - Each instance keeps the loader it was made with (shown next to the version in the instance list). Mod Manager searches Modrinth for, and checks mods and dependencies against, the loader of the selected instance; a modpack becomes an instance of that loader, and a modpack for the other loader is refused.
 - **Quick play** (picking a version in the main dropdown and pressing Play when there is no instance of that name yet) creates the instance with the selected loader, or with the other one if the selected loader does not support that version.
@@ -146,6 +148,23 @@ Everything below describes QuestCraft itself and still applies, except where it 
 | Menu Button | Pause / Esc |
 | Meta Button | Meta Home |
 
+
+## Forge
+
+Forge is a fourth loader next to Fabric, NeoForge and Quilt, for the same seven Minecraft versions as NeoForge (1.20.4, 1.20.6, 1.21.1, 1.21.4, 1.21.5, 1.21.8, 1.21.11).
+
+- **Install and launch** work like NeoForge's (`ForgeMeta`, `ForgeInstaller`, sharing the installer process of `NeoForgeInstaller`): the newest Forge build of the Minecraft version is taken from Forge's promotions file, its installer runs headless in a process of its own, and the profile it writes (`<minecraft>-forge-<forge>`) is merged over the vanilla one. Every current Forge installer of these versions starts through `net.minecraftforge.bootstrap.ForgeBootstrap` with the single argument `--launchTarget forge_client`, so there is no module-path setup to carry over (unlike older NeoForge profiles). The patched client the installer writes (`libraries/net/minecraftforge/forge/<mc>-<forge>/forge-<mc>-<forge>-client.jar`) is listed in the profile without a download address, the installer is what makes it.
+- **Mods** come from [`pojlib/mods-forge.json`](pojlib/mods-forge.json), generated with `python3 pojlib/tools/update_mods.py forge`. Forge's mod scene thinned out after 1.20: Embeddium (Sodium for Forge) and ModernFix stop at 1.20.2, Lithium and BadOptimizations have no Forge build at all, so Forge instances get Vivecraft plus what exists for their version (Simple Voice Chat, Entity Culling, Cloth Config, ImmediatelyFast where there is a build). If you want performance mods, NeoForge is the better choice for the same versions.
+- **Vivecraft** is QuestCraft's build of the `forge` module of the same sources as the NeoForge jars (`./vivecraft-builder/build.sh <mc> forge`), bundled in the app like the NeoForge ones (`pojlib/src/main/assets/vivecraft-jars/forge/`).
+- **Checked on a desktop JVM** (the real Forge installer, the launch command Pojlib builds, a virtual screen with software OpenGL): Forge 1.21.11 reaches the main menu with Vivecraft and Simple Voice Chat loaded. Not checked on a headset.
+
+### Forge 1.12.2 (not possible with what exists)
+
+Forge for 1.12.2 is a different generation, and none of what QuestCraft runs on exists for it:
+
+- **Java 8.** Forge 1.12.2 starts through LaunchWrapper, which needs the system class loader to be a `URLClassLoader` (gone in Java 9). The app ships Java 22.
+- **LWJGL 2.** 1.12.2 uses LWJGL 2 (`Display`, `Keyboard`, `Mouse`), the app ships LWJGL 3 and a GLFW stand-in.
+- **No OpenXR Vivecraft.** The Vivecraft for 1.12.2 is the original OpenVR-only one; QuestCraft's fork starts at 1.18, and Vivecraft's own `openxr-legacy` branch is 1.20.4. A VR 1.12.2 would be a new Vivecraft port (OpenXR on Android) written from the 1.12.2 sources.
 
 ## Minecraft 26.x (not supported, and why)
 

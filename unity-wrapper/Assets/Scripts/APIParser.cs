@@ -76,7 +76,7 @@ public class PojlibInstance
     public string mainClass;
     public string extraNatives;
     public bool defaultMods;
-    // "neoforge" or "quilt", or "fabric"/null for instances made before the NeoForge port
+    // "neoforge", "quilt" or "forge", or "fabric"/null for instances made before the NeoForge port
     public string modLoader;
     public AndroidJavaObject raw;
 

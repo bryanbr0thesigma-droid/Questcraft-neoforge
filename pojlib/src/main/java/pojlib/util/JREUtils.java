@@ -29,6 +29,7 @@ import pojlib.API;
 
 import pojlib.install.Installer;
 import pojlib.install.MinecraftMeta;
+import pojlib.install.ForgeInstaller;
 import pojlib.install.NeoForgeInstaller;
 import pojlib.util.json.MinecraftInstances;
 
@@ -214,6 +215,8 @@ public class JREUtils {
         if (instance.isNeoForge()) {
             // brings back what was deleted or never finished, nothing happens if it is all there
             NeoForgeInstaller.install(activity, MinecraftMeta.getVersionInfo(instance.versionName), Constants.USER_HOME, instance.loaderVersion);
+        } else if (instance.isForge()) {
+            ForgeInstaller.install(activity, MinecraftMeta.getVersionInfo(instance.versionName), Constants.USER_HOME, instance.loaderVersion);
         }
 
         Installer.installJVM(activity, false);

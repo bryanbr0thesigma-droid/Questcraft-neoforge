@@ -32,6 +32,8 @@ import pojlib.install.Installer;
 import pojlib.install.LaunchArguments;
 import pojlib.install.MinecraftMeta;
 import pojlib.install.ModLoader;
+import pojlib.install.ForgeInstaller;
+import pojlib.install.ForgeMeta;
 import pojlib.install.NeoForgeInstaller;
 import pojlib.install.NeoForgeMeta;
 import pojlib.install.QuiltMeta;
@@ -76,6 +78,7 @@ public class InstanceHandler {
         boolean packMatches;
         switch (loader) {
             case NEOFORGE: packMatches = index.dependencies.neoForge != null; break;
+            case FORGE: packMatches = index.dependencies.forge != null; break;
             // Quilt runs Fabric modpacks too
             case QUILT: packMatches = index.dependencies.quiltLoader != null || index.dependencies.fabricLoader != null; break;
             default: packMatches = index.dependencies.fabricLoader != null;
@@ -169,6 +172,11 @@ public class InstanceHandler {
         }
         instance.modLoader = loader.id;
 
+        if (loader == ModLoader.FORGE && !ForgeMeta.isSupported(minecraftVersion)) {
+            Logger.getInstance().appendToLog("Forge is only offered from Minecraft 1.20 on, not for " + minecraftVersion);
+            return null;
+        }
+
         if (loader == ModLoader.NEOFORGE && !NeoForgeMeta.isSupported(minecraftVersion)) {
             Logger.getInstance().appendToLog("NeoForge does not exist for Minecraft " + minecraftVersion + " (it starts at 1.20.2)");
             return null;
@@ -193,8 +201,9 @@ public class InstanceHandler {
                 modLoaderVersionInfo = QuiltMeta.getVersionInfo(quiltVersion, minecraftVersion);
                 break;
             }
-            case NEOFORGE: {
-                // NeoForge is installed with its installer, which needs the game files, see below
+            case NEOFORGE:
+            case FORGE: {
+                // installed with their own installer, which needs the game files, see below
                 break;
             }
         }
@@ -225,11 +234,17 @@ public class InstanceHandler {
                 CompletableFuture<String> assetsFuture = Installer.installAssets(minecraftVersionInfo, gameDir);
                 String lwjgl = pojlib.util.LwjglInstaller.installLWJGL(activity);
 
-                if (loader == ModLoader.NEOFORGE) {
-                    // the installer needs the vanilla client, and the instance is vanilla + NeoForge as one version
+                if (loader == ModLoader.NEOFORGE || loader == ModLoader.FORGE) {
+                    // the installer needs the vanilla client, and the instance is vanilla + the loader as one version
                     clientClasspath.get();
-                    VersionInfo neoForge = NeoForgeInstaller.install(activity, minecraftVersionInfo, gameDir, null);
-                    instance.loaderVersion = NeoForgeMeta.getVersionFromId(neoForge.id);
+                    VersionInfo neoForge;
+                    if (loader == ModLoader.FORGE) {
+                        neoForge = ForgeInstaller.install(activity, minecraftVersionInfo, gameDir, null);
+                        instance.loaderVersion = ForgeMeta.getVersionFromId(neoForge.id);
+                    } else {
+                        neoForge = NeoForgeInstaller.install(activity, minecraftVersionInfo, gameDir, null);
+                        instance.loaderVersion = NeoForgeMeta.getVersionFromId(neoForge.id);
+                    }
                     String libraries = Installer.installLibraries(neoForge, gameDir).get();
 
                     instance.mainClass = neoForge.mainClass;
@@ -257,7 +272,7 @@ public class InstanceHandler {
                 Installer.moveLocalAssets(activity, instance);
             } catch (IOException | ExecutionException | InterruptedException e) {
                 e.printStackTrace();
-                if (loader == ModLoader.NEOFORGE) {
+                if (loader == ModLoader.NEOFORGE || loader == ModLoader.FORGE) {
                     // an instance without a classpath can not be launched, so do not keep it around
                     Logger.getInstance().appendToLog("Could not create the instance: " + e.getMessage());
                     lastCreateError = String.valueOf(e.getMessage());

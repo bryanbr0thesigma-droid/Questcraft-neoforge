@@ -121,6 +121,15 @@ public class MinecraftInstances {
             return loader() == ModLoader.NEOFORGE;
         }
 
+        public boolean isForge() {
+            return loader() == ModLoader.FORGE;
+        }
+
+        /** NeoForge and Forge are installed by their own installer and start through a module layer of their own. */
+        public boolean usesLoaderInstaller() {
+            return isNeoForge() || isForge();
+        }
+
         // The mod list this instance was last updated from, to find out what changed. Each loader has its own list.
         public String modsSnapshotPath() {
             return Constants.USER_HOME + "/" + loader().getModsSnapshotName();

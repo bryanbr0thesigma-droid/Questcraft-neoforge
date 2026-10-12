@@ -35,7 +35,9 @@ class BundledDownloadTest {
     @Test
     void everyBundledLinkOfTheModListsHasItsFile() throws Exception {
         for (String list : new String[]{"mods-neoforge.json", "devmods-neoforge.json",
-                "src/main/assets/loaders/mods-neoforge.json", "src/main/assets/loaders/devmods-neoforge.json"}) {
+                "src/main/assets/loaders/mods-neoforge.json", "src/main/assets/loaders/devmods-neoforge.json",
+                "mods-forge.json", "devmods-forge.json",
+                "src/main/assets/loaders/mods-forge.json", "src/main/assets/loaders/devmods-forge.json"}) {
             JsonObject root = JsonParser.parseString(new String(Files.readAllBytes(Paths.get(list)))).getAsJsonObject();
             int bundled = 0;
             for (JsonElement version : root.getAsJsonArray("versions")) {
@@ -50,7 +52,9 @@ class BundledDownloadTest {
                     }
                 }
             }
-            assertTrue(bundled >= 9, list + " should have the 7 Vivecraft jars and the 2 patched ModernFix jars");
+            // NeoForge: the 7 Vivecraft jars and the 2 patched ModernFix jars, Forge: the 7 Vivecraft jars
+            assertTrue(bundled >= (list.contains("forge.json") && !list.contains("neoforge") ? 7 : 9),
+                    list + " is missing bundled jars");
         }
     }
 }

@@ -72,11 +72,11 @@ public class JNIStorage : MonoBehaviour
         }
     }
 
-    // Fabric and NeoForge, as Pojlib names them. The launcher passes these names back when it creates an instance.
+    // Fabric, NeoForge, Quilt and Forge, as Pojlib names them. The launcher passes these names back when it creates an instance.
     public static string[] GetModLoaders()
     {
         if (Application.platform != RuntimePlatform.Android)
-            return new[] { "Fabric", "NeoForge" };
+            return new[] { "Fabric", "NeoForge", "Quilt", "Forge" };
         AndroidJavaClass api = apiClass ?? new AndroidJavaClass("pojlib.API");
         return api.CallStatic<string[]>("getModLoaders");
     }
