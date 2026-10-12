@@ -51,15 +51,21 @@ public class DownloadUtils {
         downloadFile(url, out, -1);
     }
 
-    // The NeoForge builds of Vivecraft are bundled in the app (assets/vivecraft-jars/neoforge/), so they do not depend on
-    // the repository being readable. Their download links point at the same files in the repository. They are stored as
-    // .jar.bin: the build tools would otherwise open the jars inside the AAR and trip over their Java 21 classes.
-    private static final String BUNDLED_MARKER = "/pojlib/src/main/assets/vivecraft-jars/";
+    // Some files are bundled in the app (the NeoForge builds of Vivecraft, the patched ModernFix): their download links
+    // point at the same files in the repository, which only works once it is public, and the app has them anyway.
+    // They are stored as .jar.bin: the build tools would otherwise open the jars inside the AAR and trip over their
+    // Java 21 classes.
+    private static final String BUNDLED_MARKER = "/pojlib/src/main/assets/";
+
+    /** The asset a download link stands for, or null if the link is of anything else. */
+    public static String bundledAssetPath(String url) {
+        int at = url.indexOf(BUNDLED_MARKER);
+        return at < 0 ? null : url.substring(at + BUNDLED_MARKER.length());
+    }
 
     private static boolean copyBundled(String url, File out) {
-        int at = url.indexOf(BUNDLED_MARKER);
-        if (at < 0 || Constants.APP_CONTEXT == null) return false;
-        String path = "vivecraft-jars/" + url.substring(at + BUNDLED_MARKER.length());
+        String path = bundledAssetPath(url);
+        if (path == null || Constants.APP_CONTEXT == null) return false;
         try (InputStream is = Constants.APP_CONTEXT.getAssets().open(path);
              OutputStream os = new BufferedOutputStream(Files.newOutputStream(out.toPath()))) {
             IOUtils.copy(is, os);

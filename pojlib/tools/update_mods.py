@@ -75,6 +75,17 @@ VIVECRAFT_URL = ("https://raw.githubusercontent.com/bryanbr0thesigma-droid/Quest
                  "claude/fervent-mayer-8idkzr/pojlib/src/main/assets/vivecraft-jars/neoforge/vivecraft-neoforge-{mc}.jar.bin")
 
 
+# ModernFix for 1.21.4 and 1.21.11 is the published jar with one string changed, see patch_modernfix.py: since 1.21.2
+# EntityRenderDispatcher has two getRenderer methods and the published mixin names neither exactly, so the game does
+# not start. The patched jars are bundled in the app. (mc, slug) -> (the version to show, the file in bundled-mods)
+PATCHED = {
+    ("1.21.11", "Modernfix-mVUS"): ("5.21.0-qc1", "modernfix-neoforge-5.21.0-qc1.jar.bin"),
+    ("1.21.4", "ModernFix"): ("5.20.3+mc1.21.4-qc1", "modernfix-neoforge-5.20.3-mc1.21.4-qc1.jar.bin"),
+}
+PATCHED_URL = ("https://raw.githubusercontent.com/bryanbr0thesigma-droid/Questcraft-neoforge/"
+               "claude/fervent-mayer-8idkzr/pojlib/src/main/assets/bundled-mods/neoforge/{file}")
+
+
 def newest(slug, mc):
     query = urllib.parse.urlencode({"loaders": json.dumps(["neoforge"]), "game_versions": json.dumps([mc])})
     request = urllib.request.Request(f"https://api.modrinth.com/v2/project/{slug}/version?{query}", headers=UA)
@@ -104,6 +115,9 @@ def main():
             for candidate in MODRINTH[slug]:
                 build = newest(candidate, mc)
                 if build:
+                    if (mc, slug) in PATCHED:
+                        version, file = PATCHED[(mc, slug)]
+                        build = {**build, "version": version, "download_link": PATCHED_URL.format(file=file)}
                     entry["defaultMods"].append({"slug": slug, **build})
                     break
             else:
