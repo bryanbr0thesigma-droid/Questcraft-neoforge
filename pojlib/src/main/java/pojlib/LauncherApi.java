@@ -435,7 +435,8 @@ public final class LauncherApi {
             }
             File gameLog = new File(Constants.USER_HOME, "game_log.txt");
             if (gameLog.isFile()) {
-                out.append("--- game_log.txt (what the game process logged) ---\n").append(tailOf(gameLog, 30));
+                out.append("--- game_log.txt: Vivecraft, OpenXR and error lines ---\n").append(importantLines(gameLog, 30));
+                out.append("--- game_log.txt: the last lines ---\n").append(tailOf(gameLog, 12));
             }
             File vmCrash = new File(Constants.USER_HOME, "hs_err_game.log");
             if (vmCrash.isFile()) {
@@ -473,6 +474,29 @@ public final class LauncherApi {
             case 13: return "other";
             default: return "unknown";
         }
+    }
+
+    /** The lines of a log that tell why VR did or did not start (or what failed), the last {@code max} of them. */
+    static String importantLines(File file, int max) throws java.io.IOException {
+        try (RandomAccessFile f = new RandomAccessFile(file, "r")) {
+            int want = (int) Math.min(f.length(), 96 * 1024);
+            byte[] bytes = new byte[want];
+            f.seek(f.length() - want);
+            f.readFully(bytes);
+            return importantLines(new String(bytes, StandardCharsets.UTF_8).split("\\r?\\n"), max);
+        }
+    }
+
+    static String importantLines(String[] lines, int max) {
+        java.util.regex.Pattern pattern = java.util.regex.Pattern.compile(
+                "(?i)vivecraft|openxr|\\bxr\\b|stereo|ERROR|FATAL|Exception|Caused by|crash");
+        java.util.List<String> kept = new java.util.ArrayList<>();
+        for (String line : lines) {
+            if (pattern.matcher(line).find() && !line.trim().startsWith("at ")) {
+                kept.add(line.length() > 160 ? line.substring(0, 160) : line);
+            }
+        }
+        return String.join("\n", kept.subList(Math.max(0, kept.size() - max), kept.size())) + "\n";
     }
 
     private static String head(File file, int lines) throws java.io.IOException {

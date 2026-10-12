@@ -186,13 +186,21 @@ public class Installer {
         });
     }
 
+    /** ModernFix's settings, written at every launch too: an instance made earlier has an older file. */
+    public static void writeModernFixConfig(android.content.Context context, MinecraftInstances.Instance instance) throws IOException {
+        byte[] bundled = FileUtil.loadFromAssetToByte(context, "modernfix-mixins.properties");
+        if (bundled != null) {
+            FileUtils.writeByteArrayToFile(new File(instance.gameDir + "/config/modernfix-mixins.properties"), bundled);
+        }
+    }
+
     public static void moveLocalAssets(Activity activity, MinecraftInstances.Instance instance) throws IOException {
         try {
             FileUtils.writeByteArrayToFile(new File(instance.gameDir + "/config/sodium-options.json"), FileUtil.loadFromAssetToByte(activity, "sodium-options.json"));
             FileUtils.writeByteArrayToFile(new File(instance.gameDir + "/config/smoothboot.json"), FileUtil.loadFromAssetToByte(activity, "smoothboot.json"));
             FileUtils.writeByteArrayToFile(new File(instance.gameDir + "/config/immediatelyfast.json"), FileUtil.loadFromAssetToByte(activity, "immediatelyfast.json"));
             FileUtils.writeByteArrayToFile(new File(instance.gameDir + "/config/moreculling.toml"), FileUtil.loadFromAssetToByte(activity,"moreculling.toml"));
-            FileUtils.writeByteArrayToFile(new File(instance.gameDir + "/config/modernfix-mixins.properties"), FileUtil.loadFromAssetToByte(activity,"modernfix-mixins.properties"));
+            writeModernFixConfig(activity, instance);
             if (instance.isNeoForge()) {
                 FileUtils.writeByteArrayToFile(new File(instance.gameDir + "/config/fml.toml"), FileUtil.loadFromAssetToByte(activity, "fml.toml"));
             }

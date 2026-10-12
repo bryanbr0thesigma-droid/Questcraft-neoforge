@@ -3,6 +3,8 @@ package pojlib.util.json;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 
+import org.apache.commons.io.FileUtils;
+
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -16,6 +18,7 @@ import pojlib.install.ModLoader;
 import pojlib.API;
 import pojlib.InstanceHandler;
 import pojlib.util.Constants;
+import pojlib.util.FileUtil;
 import pojlib.util.download.DownloadManager;
 import pojlib.util.download.DownloadUtils;
 import pojlib.util.GsonUtils;
@@ -41,25 +44,37 @@ public class MinecraftInstances {
         return instances;
     }
 
+    /** The settings QuestCraft needs in Vivecraft's config: OpenXR, VR on, no desktop-only extras. */
+    public static void applyQuestSettings(JsonObject obj) {
+        obj.addProperty("stereoProviderPluginID", "OPENXR");
+        obj.addProperty("alwaysShowUpdates", "false");
+        obj.addProperty("vrEnabled", "true");
+        obj.addProperty("vrToggleButtonEnabled", "false");
+        obj.addProperty("disableGarbageCollectorMessage", "true");
+        obj.addProperty("vrHotswitchingEnabled", "false");
+        obj.addProperty("seated", "false");
+    }
+
     public static void CheckVivecraftConfig(MinecraftInstances.Instance instance) {
         File config = new File(instance.gameDir + "/config/vivecraft-client-config.json");
         if (!config.exists()) {
-            Logger.getInstance().appendToLog("Vivecraft config not found, skipping modification");
-            return;
+            // Without the file Vivecraft starts with its desktop defaults (not OpenXR) and the game is not in VR, so
+            // start from the app's copy instead of skipping this
+            Logger.getInstance().appendToLog("Vivecraft config not found, creating it");
+            try {
+                byte[] bundled = FileUtil.loadFromAssetToByte(Constants.APP_CONTEXT, "vivecraft-client-config.json");
+                if (bundled == null) throw new IOException("the app has no copy of it");
+                FileUtils.writeByteArrayToFile(config, bundled);
+            } catch (Exception e) {
+                Logger.getInstance().appendToLog("Could not create the Vivecraft config: " + e);
+                return;
+            }
         }
 
         try {
             Logger.getInstance().appendToLog("Modifying Vivecraft config for QuestCraft");
             JsonObject obj = GsonUtils.jsonFileToObject(config.getAbsolutePath(), JsonObject.class);
-
-            obj.addProperty("stereoProviderPluginID", "OPENXR");
-            obj.addProperty("alwaysShowUpdates", "false");
-            obj.addProperty("vrEnabled", "true");
-            obj.addProperty("vrToggleButtonEnabled", "false");
-            obj.addProperty("disableGarbageCollectorMessage", "true");
-            obj.addProperty("vrHotswitchingEnabled", "false");
-            obj.addProperty("seated", "false");
-
+            applyQuestSettings(obj);
             GsonUtils.objectToJsonFile(config.getAbsolutePath(), obj);
         } catch (Exception e) {
             Logger.getInstance().appendToLog("Failed to modify Vivecraft config");

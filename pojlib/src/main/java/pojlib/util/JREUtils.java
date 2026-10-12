@@ -209,6 +209,7 @@ public class JREUtils {
         Installer.installLibraries(MinecraftMeta.getVersionInfo(instance.versionName), Constants.USER_HOME).get();
         Installer.installAssets(MinecraftMeta.getVersionInfo(instance.versionName), Constants.USER_HOME).get();
 
+        Installer.writeModernFixConfig(activity, instance);
         if (instance.isNeoForge()) {
             // brings back what was deleted or never finished, nothing happens if it is all there
             NeoForgeInstaller.install(activity, MinecraftMeta.getVersionInfo(instance.versionName), Constants.USER_HOME, instance.loaderVersion);
@@ -232,6 +233,7 @@ public class JREUtils {
         JREUtils.relocateLibPath(activity, instance);
         setJavaEnvironment(activity, instance);
         LwjglInstaller.installLWJGL(activity);
+        Installer.writeModernFixConfig(activity, instance);
         return initJavaRuntime();
     }
 
