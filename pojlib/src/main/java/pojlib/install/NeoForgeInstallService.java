@@ -37,12 +37,24 @@ public class NeoForgeInstallService extends Service {
     }
 
     private void run(String installer, String gameDir) {
+        // The statics of the main process (Pojlib's home directory, which the logger writes into) do not exist in this
+        // process. Give it a directory of its own so the logger works and does not touch the log of the main process.
+        java.io.File logDir = new java.io.File(gameDir, "installers");
+        logDir.mkdirs();
+        pojlib.util.Constants.USER_HOME = logDir.getAbsolutePath();
         try {
             int exitCode = JREUtils.launchInstallerVM(this,
                     Arrays.asList("-jar", installer, "--install-client", gameDir), gameDir);
             Log.i(TAG, "Installer returned with exit code " + exitCode);
         } catch (Throwable t) {
             Log.e(TAG, "Installer failed to run", t);
+            // the installer writes the log the launcher shows; when it never got to run, say why there
+            try {
+                java.io.File log = new java.io.File(installer + ".log");
+                java.nio.file.Files.write(log.toPath(), ("The installer could not be started:\n" + Log.getStackTraceString(t))
+                        .getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            } catch (java.io.IOException ignored) {
+            }
         }
         // the installer only returns if it did not exit by itself, the JVM is of no use to anyone anymore
         android.os.Process.killProcess(android.os.Process.myPid());
