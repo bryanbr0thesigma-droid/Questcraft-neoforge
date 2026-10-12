@@ -144,12 +144,25 @@ public class APIHandler {
         SupportedVersions versions = versionsJson.exists()
                 ? GsonUtils.jsonFileToObject(versionsJson.getAbsolutePath(), SupportedVersions.class) : null;
         if(versions == null || versions.supportedVersions == null) {
+            // the list could not be downloaded (and never was): the copy built into the app
+            versions = bundledSupportedVersions(loader);
+        }
+        if(versions == null || versions.supportedVersions == null) {
             return new String[] {
                     "1.21.4"
             };
         }
 
         return MinecraftVersions.union(versions.supportedVersions);
+    }
+
+    private static SupportedVersions bundledSupportedVersions(ModLoader loader) {
+        try {
+            byte[] bytes = pojlib.util.FileUtil.loadFromAssetToByte(Constants.APP_CONTEXT, "loaders/" + loader.getSupportedVersionsCacheName());
+            return new Gson().fromJson(new String(bytes, java.nio.charset.StandardCharsets.UTF_8), SupportedVersions.class);
+        } catch (Throwable t) {
+            return null;
+        }
     }
 
     public static class SupportedVersions {

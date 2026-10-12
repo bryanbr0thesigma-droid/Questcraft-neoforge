@@ -8,7 +8,7 @@ var init_error := ""
 
 # mock state
 var _mock_instances := [
-	{"name": "1.21.1", "version": "1.21.1", "loader": "NeoForge", "image": "", "mods": 6},
+	{"name": "1.21.1", "version": "1.21.1", "loader": "Fabric", "image": "", "mods": 6},
 	{"name": "Fabric 1.20.4", "version": "1.20.4", "loader": "Fabric", "image": "", "mods": 9},
 ]
 var _mock_login_polls := 0

@@ -1,0 +1,408 @@
+{
+	"versions": [
+		{
+			"name": "1.21.11",
+			"coreMods": [
+				{
+					"slug": "Vivecraft",
+					"version": "1.0",
+					"download_link": "https://raw.githubusercontent.com/bryanbr0thesigma-droid/Questcraft-neoforge/claude/fervent-mayer-8idkzr/vivecraft-jars/neoforge/vivecraft-neoforge-1.21.11.jar"
+				}
+			],
+			"defaultMods": [
+				{
+					"slug": "Sodium",
+					"version": "mc1.21.11-0.8.14-neoforge",
+					"download_link": "https://cdn.modrinth.com/data/AANobbMI/versions/sC6wj32u/sodium-neoforge-0.8.14%2Bmc1.21.11.jar"
+				},
+				{
+					"slug": "Lithium",
+					"version": "mc1.21.11-0.21.4-neoforge",
+					"download_link": "https://cdn.modrinth.com/data/gvQqBUqZ/versions/M93zf1Gr/lithium-neoforge-0.21.4%2Bmc1.21.11.jar"
+				},
+				{
+					"slug": "BadOptimizations",
+					"version": "2.4.1",
+					"download_link": "https://cdn.modrinth.com/data/g96Z4WVZ/versions/Q3Dusz2j/BadOptimizations-2.4.1-1.21.11.jar"
+				},
+				{
+					"slug": "Modernfix-mVUS",
+					"version": "5.21.0",
+					"download_link": "https://cdn.modrinth.com/data/TjSm1wrD/versions/BEBb0SF0/modernfix-neoforge-5.21.0.jar"
+				},
+				{
+					"slug": "Better-Biome-Blend",
+					"version": "1.21.11-1.4.0-neoforge",
+					"download_link": "https://cdn.modrinth.com/data/Rs6c7WyL/versions/UxHBetQY/betterbiomeblend-neoforge-1.21.11-1.4.0.jar"
+				},
+				{
+					"slug": "EntityCulling",
+					"version": "1.11.3",
+					"download_link": "https://cdn.modrinth.com/data/NNAgCjsB/versions/w1sp8Uel/entityculling-neoforge-1.11.3-mc1.21.11.jar"
+				},
+				{
+					"slug": "Simple-Voice-Chat",
+					"version": "neoforge-1.21.11-2.6.22",
+					"download_link": "https://cdn.modrinth.com/data/9eGKb6K1/versions/k7nBzwiA/voicechat-neoforge-1.21.11-2.6.22.jar"
+				}
+			]
+		},
+		{
+			"name": "1.21.8",
+			"coreMods": [
+				{
+					"slug": "Vivecraft",
+					"version": "1.0",
+					"download_link": "https://raw.githubusercontent.com/bryanbr0thesigma-droid/Questcraft-neoforge/claude/fervent-mayer-8idkzr/vivecraft-jars/neoforge/vivecraft-neoforge-1.21.8.jar"
+				}
+			],
+			"defaultMods": [
+				{
+					"slug": "Sodium",
+					"version": "mc1.21.8-0.7.3-neoforge",
+					"download_link": "https://cdn.modrinth.com/data/AANobbMI/versions/q6wdZywr/sodium-neoforge-0.7.3%2Bmc1.21.8.jar"
+				},
+				{
+					"slug": "Cloth-Config",
+					"version": "19.0.147+neoforge",
+					"download_link": "https://cdn.modrinth.com/data/9s6osm5g/versions/BYkKAJ0C/cloth-config-19.0.147-neoforge.jar"
+				},
+				{
+					"slug": "Ferrite-Core",
+					"version": "8.0.4-neoforge",
+					"download_link": "https://cdn.modrinth.com/data/uXXizFIs/versions/vqv9Um4Q/ferritecore-8.0.4-neoforge.jar"
+				},
+				{
+					"slug": "MoreCulling",
+					"version": "1.4.0-beta.2",
+					"download_link": "https://cdn.modrinth.com/data/51shyZVL/versions/pxrTGOud/moreculling-neoforge-1.21.8-1.4.0-beta.2.jar"
+				},
+				{
+					"slug": "Lithium",
+					"version": "mc1.21.8-0.18.1-neoforge",
+					"download_link": "https://cdn.modrinth.com/data/gvQqBUqZ/versions/TSzQRFtn/lithium-neoforge-0.18.1%2Bmc1.21.8.jar"
+				},
+				{
+					"slug": "ImmediatelyFast",
+					"version": "1.12.6+1.21.8-neoforge",
+					"download_link": "https://cdn.modrinth.com/data/5ZwdcRci/versions/kefcE2Oq/ImmediatelyFast-NeoForge-1.12.6%2B1.21.8.jar"
+				},
+				{
+					"slug": "Simple-Voice-Chat",
+					"version": "neoforge-1.21.8-2.6.22",
+					"download_link": "https://cdn.modrinth.com/data/9eGKb6K1/versions/mADzRVrP/voicechat-neoforge-1.21.8-2.6.22.jar"
+				},
+				{
+					"slug": "BadOptimizations",
+					"version": "2.4.1",
+					"download_link": "https://cdn.modrinth.com/data/g96Z4WVZ/versions/9s4ZpGFq/BadOptimizations-2.4.1-1.21.6-21.8.jar"
+				},
+				{
+					"slug": "bbrb",
+					"version": "1.5.2",
+					"download_link": "https://cdn.modrinth.com/data/Xh8hkQmD/versions/HZlLCOct/betterbiomeblend-1.5.2.jar"
+				},
+				{
+					"slug": "EntityCulling",
+					"version": "1.11.3",
+					"download_link": "https://cdn.modrinth.com/data/NNAgCjsB/versions/28jQKfEJ/entityculling-neoforge-1.11.3-mc1.21.8.jar"
+				}
+			]
+		},
+		{
+			"name": "1.21.5",
+			"coreMods": [
+				{
+					"slug": "Vivecraft",
+					"version": "1.0",
+					"download_link": "https://raw.githubusercontent.com/bryanbr0thesigma-droid/Questcraft-neoforge/claude/fervent-mayer-8idkzr/vivecraft-jars/neoforge/vivecraft-neoforge-1.21.5.jar"
+				}
+			],
+			"defaultMods": [
+				{
+					"slug": "Sodium",
+					"version": "mc1.21.5-0.6.13-neoforge",
+					"download_link": "https://cdn.modrinth.com/data/AANobbMI/versions/dfyNHRhw/sodium-neoforge-0.6.13%2Bmc1.21.5.jar"
+				},
+				{
+					"slug": "Cloth-Config",
+					"version": "18.0.145+neoforge",
+					"download_link": "https://cdn.modrinth.com/data/9s6osm5g/versions/jjrPm6iW/cloth-config-18.0.145-neoforge.jar"
+				},
+				{
+					"slug": "Ferrite-Core",
+					"version": "8.0.4-neoforge",
+					"download_link": "https://cdn.modrinth.com/data/uXXizFIs/versions/vqv9Um4Q/ferritecore-8.0.4-neoforge.jar"
+				},
+				{
+					"slug": "MoreCulling",
+					"version": "1.3.1",
+					"download_link": "https://cdn.modrinth.com/data/51shyZVL/versions/QMKasnpc/moreculling-neoforge-1.21.5-1.3.1.jar"
+				},
+				{
+					"slug": "Lithium",
+					"version": "mc1.21.5-0.16.3-neoforge",
+					"download_link": "https://cdn.modrinth.com/data/gvQqBUqZ/versions/WlbbqV1o/lithium-neoforge-0.16.3%2Bmc1.21.5.jar"
+				},
+				{
+					"slug": "ImmediatelyFast",
+					"version": "1.9.7+1.21.5-neoforge",
+					"download_link": "https://cdn.modrinth.com/data/5ZwdcRci/versions/95M404oY/ImmediatelyFast-NeoForge-1.9.7%2B1.21.5.jar"
+				},
+				{
+					"slug": "Simple-Voice-Chat",
+					"version": "neoforge-1.21.5-2.6.22",
+					"download_link": "https://cdn.modrinth.com/data/9eGKb6K1/versions/XZ06VfS0/voicechat-neoforge-1.21.5-2.6.22.jar"
+				},
+				{
+					"slug": "BadOptimizations",
+					"version": "2.4.1",
+					"download_link": "https://cdn.modrinth.com/data/g96Z4WVZ/versions/KsC2V6FQ/BadOptimizations-2.4.1-1.21.2-21.5.jar"
+				},
+				{
+					"slug": "bbrb",
+					"version": "1.5.2",
+					"download_link": "https://cdn.modrinth.com/data/Xh8hkQmD/versions/W5KITjTe/betterbiomereblend-1.5.2.jar"
+				},
+				{
+					"slug": "EntityCulling",
+					"version": "1.11.3",
+					"download_link": "https://cdn.modrinth.com/data/NNAgCjsB/versions/vlKhyziC/entityculling-neoforge-1.11.3-mc1.21.5.jar"
+				}
+			]
+		},
+		{
+			"name": "1.21.4",
+			"coreMods": [
+				{
+					"slug": "Vivecraft",
+					"version": "1.0",
+					"download_link": "https://raw.githubusercontent.com/bryanbr0thesigma-droid/Questcraft-neoforge/claude/fervent-mayer-8idkzr/vivecraft-jars/neoforge/vivecraft-neoforge-1.21.4.jar"
+				}
+			],
+			"defaultMods": [
+				{
+					"slug": "Sodium",
+					"version": "mc1.21.4-0.6.13-neoforge",
+					"download_link": "https://cdn.modrinth.com/data/AANobbMI/versions/XgEfENfn/sodium-neoforge-0.6.13%2Bmc1.21.4.jar"
+				},
+				{
+					"slug": "Cloth-Config",
+					"version": "17.0.144+neoforge",
+					"download_link": "https://cdn.modrinth.com/data/9s6osm5g/versions/dWfheG9X/cloth-config-17.0.144-neoforge.jar"
+				},
+				{
+					"slug": "Ferrite-Core",
+					"version": "7.1.3-neoforge",
+					"download_link": "https://cdn.modrinth.com/data/uXXizFIs/versions/joOID027/ferritecore-7.1.3-neoforge.jar"
+				},
+				{
+					"slug": "ModernFix",
+					"version": "5.20.3+mc1.21.4",
+					"download_link": "https://cdn.modrinth.com/data/nmDcB62a/versions/xbg7UvQT/modernfix-neoforge-5.20.3%2Bmc1.21.4.jar"
+				},
+				{
+					"slug": "MoreCulling",
+					"version": "1.2.10",
+					"download_link": "https://cdn.modrinth.com/data/51shyZVL/versions/ST43Fz5s/moreculling-neoforge-1.21.4-1.2.10.jar"
+				},
+				{
+					"slug": "Lithium",
+					"version": "mc1.21.4-0.15.3-neoforge",
+					"download_link": "https://cdn.modrinth.com/data/gvQqBUqZ/versions/lP2Expzz/lithium-neoforge-0.15.3%2Bmc1.21.4.jar"
+				},
+				{
+					"slug": "ImmediatelyFast",
+					"version": "1.8.7+1.21.4-neoforge",
+					"download_link": "https://cdn.modrinth.com/data/5ZwdcRci/versions/akEJ6o1m/ImmediatelyFast-NeoForge-1.8.7%2B1.21.4.jar"
+				},
+				{
+					"slug": "Simple-Voice-Chat",
+					"version": "neoforge-1.21.4-2.6.22",
+					"download_link": "https://cdn.modrinth.com/data/9eGKb6K1/versions/7QFY0pjz/voicechat-neoforge-1.21.4-2.6.22.jar"
+				},
+				{
+					"slug": "BadOptimizations",
+					"version": "2.4.1",
+					"download_link": "https://cdn.modrinth.com/data/g96Z4WVZ/versions/KsC2V6FQ/BadOptimizations-2.4.1-1.21.2-21.5.jar"
+				},
+				{
+					"slug": "bbrb",
+					"version": "1.5.2",
+					"download_link": "https://cdn.modrinth.com/data/Xh8hkQmD/versions/W5KITjTe/betterbiomereblend-1.5.2.jar"
+				},
+				{
+					"slug": "EntityCulling",
+					"version": "1.11.3",
+					"download_link": "https://cdn.modrinth.com/data/NNAgCjsB/versions/8KQX8WRg/entityculling-neoforge-1.11.3-mc1.21.4.jar"
+				}
+			]
+		},
+		{
+			"name": "1.21.1",
+			"coreMods": [
+				{
+					"slug": "Vivecraft",
+					"version": "1.0",
+					"download_link": "https://raw.githubusercontent.com/bryanbr0thesigma-droid/Questcraft-neoforge/claude/fervent-mayer-8idkzr/vivecraft-jars/neoforge/vivecraft-neoforge-1.21.1.jar"
+				}
+			],
+			"defaultMods": [
+				{
+					"slug": "Sodium",
+					"version": "mc1.21.1-0.8.13-neoforge",
+					"download_link": "https://cdn.modrinth.com/data/AANobbMI/versions/uMOpc5uV/sodium-neoforge-0.8.13%2Bmc1.21.1.jar"
+				},
+				{
+					"slug": "ModernFix",
+					"version": "5.27.26+mc1.21.1",
+					"download_link": "https://cdn.modrinth.com/data/nmDcB62a/versions/7Jy58lnT/modernfix-neoforge-5.27.26%2Bmc1.21.1.jar"
+				},
+				{
+					"slug": "Noisium",
+					"version": "2.3.0+mc1.21-1.21.1",
+					"download_link": "https://cdn.modrinth.com/data/KuNKN7d2/versions/nJBE6tif/noisium-neoforge-2.3.0%2Bmc1.21-1.21.1.jar"
+				},
+				{
+					"slug": "Lithium",
+					"version": "mc1.21.1-0.15.4-neoforge",
+					"download_link": "https://cdn.modrinth.com/data/gvQqBUqZ/versions/DDUrRVCA/lithium-neoforge-0.15.4%2Bmc1.21.1.jar"
+				},
+				{
+					"slug": "MoreCulling",
+					"version": "1.0.10",
+					"download_link": "https://cdn.modrinth.com/data/51shyZVL/versions/5M4T2FfG/moreculling-neoforge-1.21.1-1.0.10.jar"
+				},
+				{
+					"slug": "Simple-Voice-Chat",
+					"version": "neoforge-1.21.1-2.6.22",
+					"download_link": "https://cdn.modrinth.com/data/9eGKb6K1/versions/2s7zUspF/voicechat-neoforge-1.21.1-2.6.22.jar"
+				},
+				{
+					"slug": "Cloth-Config",
+					"version": "15.0.140+neoforge",
+					"download_link": "https://cdn.modrinth.com/data/9s6osm5g/versions/izKINKFg/cloth-config-15.0.140-neoforge.jar"
+				},
+				{
+					"slug": "BadOptimizations",
+					"version": "2.4.1",
+					"download_link": "https://cdn.modrinth.com/data/g96Z4WVZ/versions/S2qthD5S/BadOptimizations-2.4.1-1.21.1.jar"
+				},
+				{
+					"slug": "Ferrite-Core",
+					"version": "7.0.3-neoforge",
+					"download_link": "https://cdn.modrinth.com/data/uXXizFIs/versions/x7kQWVju/ferritecore-7.0.3-neoforge.jar"
+				},
+				{
+					"slug": "ImmediatelyFast",
+					"version": "1.6.14+1.21.1-neoforge",
+					"download_link": "https://cdn.modrinth.com/data/5ZwdcRci/versions/OUpXxw4n/ImmediatelyFast-NeoForge-1.6.14%2B1.21.1.jar"
+				},
+				{
+					"slug": "bbrb",
+					"version": "1.5.2",
+					"download_link": "https://cdn.modrinth.com/data/Xh8hkQmD/versions/W5KITjTe/betterbiomereblend-1.5.2.jar"
+				},
+				{
+					"slug": "EntityCulling",
+					"version": "1.11.3",
+					"download_link": "https://cdn.modrinth.com/data/NNAgCjsB/versions/eieYbWYb/entityculling-neoforge-1.11.3-mc1.21.1.jar"
+				}
+			]
+		},
+		{
+			"name": "1.20.6",
+			"coreMods": [
+				{
+					"slug": "Vivecraft",
+					"version": "1.0",
+					"download_link": "https://raw.githubusercontent.com/bryanbr0thesigma-droid/Questcraft-neoforge/claude/fervent-mayer-8idkzr/vivecraft-jars/neoforge/vivecraft-neoforge-1.20.6.jar"
+				}
+			],
+			"defaultMods": [
+				{
+					"slug": "Sodium",
+					"version": "0.3.20+mc1.20.6",
+					"download_link": "https://cdn.modrinth.com/data/sk9rgfiA/versions/ktzp4Wfg/embeddium-0.3.20%2Bmc1.20.6.jar"
+				},
+				{
+					"slug": "ModernFix",
+					"version": "5.18.0+mc1.20.6",
+					"download_link": "https://cdn.modrinth.com/data/nmDcB62a/versions/g8YTb1tk/modernfix-neoforge-5.18.0%2Bmc1.20.6.jar"
+				},
+				{
+					"slug": "Noisium",
+					"version": "2.3.0+mc1.20.5-1.20.6",
+					"download_link": "https://cdn.modrinth.com/data/KuNKN7d2/versions/Oclohbu0/noisium-neoforge-2.3.0%2Bmc1.20.5-1.20.6.jar"
+				},
+				{
+					"slug": "Cloth-Config",
+					"version": "14.0.139+neoforge",
+					"download_link": "https://cdn.modrinth.com/data/9s6osm5g/versions/hradv69C/cloth-config-14.0.139-neoforge.jar"
+				},
+				{
+					"slug": "Simple-Voice-Chat",
+					"version": "neoforge-1.20.6-2.5.22",
+					"download_link": "https://cdn.modrinth.com/data/9eGKb6K1/versions/EWx0dQjf/voicechat-neoforge-1.20.6-2.5.22.jar"
+				},
+				{
+					"slug": "EntityCulling",
+					"version": "1.11.3",
+					"download_link": "https://cdn.modrinth.com/data/NNAgCjsB/versions/fSSFHCFd/entityculling-neoforge-1.11.3-mc1.20.6.jar"
+				}
+			]
+		},
+		{
+			"name": "1.20.4",
+			"coreMods": [
+				{
+					"slug": "Vivecraft",
+					"version": "1.0",
+					"download_link": "https://raw.githubusercontent.com/bryanbr0thesigma-droid/Questcraft-neoforge/claude/fervent-mayer-8idkzr/vivecraft-jars/neoforge/vivecraft-neoforge-1.20.4.jar"
+				}
+			],
+			"defaultMods": [
+				{
+					"slug": "Sodium",
+					"version": "0.3.25+mc1.20.4",
+					"download_link": "https://cdn.modrinth.com/data/sk9rgfiA/versions/YcDuSsmz/embeddium-0.3.25%2Bmc1.20.4.jar"
+				},
+				{
+					"slug": "Cloth-Config",
+					"version": "13.0.138+neoforge",
+					"download_link": "https://cdn.modrinth.com/data/9s6osm5g/versions/gUuDD6aJ/cloth-config-13.0.138-neoforge.jar"
+				},
+				{
+					"slug": "ImmediatelyFast",
+					"version": "1.5.5+1.20.4-neoforge",
+					"download_link": "https://cdn.modrinth.com/data/5ZwdcRci/versions/hGriwiGl/ImmediatelyFast-NeoForge-1.5.5%2B1.20.4.jar"
+				},
+				{
+					"slug": "Simple-Voice-Chat",
+					"version": "neoforge-1.20.4-2.5.22",
+					"download_link": "https://cdn.modrinth.com/data/9eGKb6K1/versions/jeXYEbLA/voicechat-neoforge-1.20.4-2.5.22.jar"
+				},
+				{
+					"slug": "ModernFix",
+					"version": "5.17.0+mc1.20.4",
+					"download_link": "https://cdn.modrinth.com/data/nmDcB62a/versions/Kf6nINYI/modernfix-neoforge-5.17.0%2Bmc1.20.4.jar"
+				},
+				{
+					"slug": "Noisium",
+					"version": "2.3.0+mc1.20.2-1.20.4",
+					"download_link": "https://cdn.modrinth.com/data/KuNKN7d2/versions/rjcZ5G3m/noisium-neoforge-2.3.0%2Bmc1.20.2-1.20.4.jar"
+				},
+				{
+					"slug": "EntityCulling",
+					"version": "1.11.3",
+					"download_link": "https://cdn.modrinth.com/data/NNAgCjsB/versions/junVY7oU/entityculling-neoforge-1.11.3-mc1.20.4.jar"
+				},
+				{
+					"slug": "Ferrite-Core",
+					"version": "6.0.3-forge",
+					"download_link": "https://cdn.modrinth.com/data/uXXizFIs/versions/85kC2OMr/ferritecore-6.0.3-forge.jar"
+				}
+			]
+		}
+	]
+}

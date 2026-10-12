@@ -160,7 +160,21 @@ public class MinecraftInstances {
 
         private ModsJson downloadCurrentModsJson(String userHome) throws Exception {
             File mods = new File(userHome + "/new_mods.json");
-            DownloadUtils.downloadFile(loader().getModsUrl(API.developerMods), mods);
+            String url = loader().getModsUrl(API.developerMods);
+            try {
+                DownloadUtils.downloadFile(url, mods);
+            } catch (java.io.IOException e) {
+                // the list cannot be read (the repository it lives in is private, or there is no connection): use the
+                // copy built into the app, if there is one
+                String name = url.substring(url.lastIndexOf('/') + 1);
+                try {
+                    byte[] bundled = pojlib.util.FileUtil.loadFromAssetToByte(Constants.APP_CONTEXT, "loaders/" + name);
+                    pojlib.util.FileUtil.write(mods.getAbsolutePath(), bundled);
+                    pojlib.util.Logger.getInstance().appendToLog("Using the mod list built into the app: " + name);
+                } catch (Throwable t) {
+                    throw e;
+                }
+            }
 
             return parseModsJson(mods.getAbsolutePath());
         }

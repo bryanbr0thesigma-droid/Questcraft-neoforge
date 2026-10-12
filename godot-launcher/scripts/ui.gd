@@ -375,8 +375,7 @@ func show_home() -> void:
 	page.add_child(bar)
 
 	var instances: Array = Bridge.api("listInstances") as Array
-	var selected := _selected_name(instances)
-	var version_button := _button(selected, Callable(), Vector2(330, 70), "up")
+	var version_button := _button(_selection_label(instances), Callable(), Vector2(330, 70), "up")
 	version_button.icon_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	version_button.position = Vector2(26, H - 100)
 	version_button.size = Vector2(330, 70)
@@ -422,17 +421,26 @@ func _cycle_loader() -> void:
 	set_status("New versions will be made with " + Config.last_loader)
 
 
-## The instance (or Minecraft version) the main screen will start.
-func _selected_name(instances: Array) -> String:
-	for inst in instances:
-		if str(inst.get("name", "")) == Config.last_instance:
-			return Config.last_instance
-	if Config.last_instance != "" and _supported_versions(Config.last_loader).has(Config.last_instance):
-		return Config.last_instance
-	if instances.size() > 0:
-		return str(instances[0].get("name", ""))
+## What the main screen starts: an instance picked by name, or a Minecraft version made with the loader chosen on the
+## main screen. Returns {"instance": <dictionary>} or {"version": <string>} ("" when the loader has no versions).
+func _selection(instances: Array) -> Dictionary:
+	if not Config.last_is_version:
+		for inst in instances:
+			if str(inst.get("name", "")) == Config.last_instance:
+				return {"instance": inst}
 	var versions := _supported_versions(Config.last_loader)
-	return str(versions[0]) if versions.size() > 0 else "No versions"
+	var v := Config.last_version
+	if not versions.has(v):
+		v = str(versions[0]) if versions.size() > 0 else ""
+	return {"version": v}
+
+
+func _selection_label(instances: Array) -> String:
+	var sel := _selection(instances)
+	if sel.has("instance"):
+		return str(sel["instance"].get("name", ""))
+	var v: String = sel["version"]
+	return "No versions" if v == "" else "%s (%s)" % [v, Config.last_loader]
 
 
 func _supported_versions(loader: String) -> Array:
@@ -440,15 +448,15 @@ func _supported_versions(loader: String) -> Array:
 	return v if typeof(v) == TYPE_ARRAY else []
 
 
-## The loader to make a quick-play instance of a version with: the one picked in the settings, or the first other one
-## that has that version.
-func _loader_for(version: String) -> String:
-	if _supported_versions(Config.last_loader).has(version):
-		return Config.last_loader
-	for loader in _loaders:
-		if _supported_versions(str(loader)).has(version):
-			return str(loader)
-	return Config.last_loader
+## The name of the instance quick play makes of a version with a loader: the plain version for Fabric (what the Unity
+## launcher does), the version and the loader for the others, so each loader has its own instance of a version.
+## An instance of that name that was made with another loader is not reused.
+func _quick_name(version: String, loader: String, instances: Array) -> String:
+	var plain := version if loader == "Fabric" else "%s %s" % [version, loader]
+	for inst in instances:
+		if str(inst.get("name", "")) == plain and str(inst.get("loader", "")) != loader:
+			return "%s %s" % [version, loader]
+	return plain
 
 
 func _open_version_menu(anchor: Button) -> void:
@@ -466,45 +474,58 @@ func _open_version_menu(anchor: Button) -> void:
 	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.add_child(list)
 	var instances: Array = Bridge.api("listInstances") as Array
-	var names := {}
+	for v in _supported_versions(Config.last_loader):
+		list.add_child(_button("%s  (%s)" % [v, Config.last_loader], _choose.bind(str(v), true), Vector2(0, 50)))
 	for inst in instances:
 		var iname := str(inst.get("name", ""))
-		names[iname] = true
-		list.add_child(_button("%s  (%s)" % [iname, inst.get("loader", "")], _choose.bind(iname), Vector2(0, 50)))
-	for v in _supported_versions(Config.last_loader):
-		if not names.has(str(v)):
-			list.add_child(_button(str(v), _choose.bind(str(v)), Vector2(0, 50)))
+		list.add_child(_button("Instance: %s  (%s)" % [iname, inst.get("loader", "")], _choose.bind(iname, false), Vector2(0, 50)))
 	menu.position = Vector2(anchor.position.x, anchor.position.y - 330)
 	page.add_child(menu)
 
 
-func _choose(name_or_version: String) -> void:
-	Config.last_instance = name_or_version
+func _choose(name_or_version: String, is_version: bool) -> void:
+	if is_version:
+		Config.last_version = name_or_version
+	else:
+		Config.last_instance = name_or_version
+	Config.last_is_version = is_version
 	Config.save_config()
 	show_home()
 
 
 func _play_selected() -> void:
 	var instances: Array = Bridge.api("listInstances") as Array
-	var selected := _selected_name(instances)
+	var sel := _selection(instances)
+	if sel.has("instance"):
+		start_play(str(sel["instance"].get("name", "")))
+		return
+	var version: String = sel["version"]
+	if version == "":
+		set_status("%s has no Minecraft versions listed. Check the connection, or pick another loader." % Config.last_loader, true)
+		return
+	var iname := _quick_name(version, Config.last_loader, instances)
 	for inst in instances:
-		if str(inst.get("name", "")) == selected:
-			start_play(selected)
+		if str(inst.get("name", "")) == iname:
+			start_play(iname)
 			return
-	# not an instance yet: make the default one for this version (like the Unity launcher), then play it
-	var loader := _loader_for(selected)
-	Bridge.api("createInstance", [selected, selected, loader])
-	show_progress("Installing %s (%s %s)" % [selected, loader, selected], start_play.bind(selected))
+	# not made yet: make it with the loader that is picked, then play it
+	Bridge.api("createInstance", [iname, version, Config.last_loader])
+	show_progress("Installing %s (%s %s)" % [iname, Config.last_loader, version], start_play.bind(iname))
 
 
 func _open_mods_for_selected() -> void:
 	var instances: Array = Bridge.api("listInstances") as Array
-	var selected := _selected_name(instances)
+	var sel := _selection(instances)
+	var iname := ""
+	if sel.has("instance"):
+		iname = str(sel["instance"].get("name", ""))
+	elif sel["version"] != "":
+		iname = _quick_name(sel["version"], Config.last_loader, instances)
 	for inst in instances:
-		if str(inst.get("name", "")) == selected:
+		if str(inst.get("name", "")) == iname:
 			show_mods(inst)
 			return
-	set_status("Start %s once first, then you can add mods to it." % selected)
+	set_status("Start %s once first, then you can add mods to it." % (iname if iname != "" else "a version"))
 
 
 # ---------------------------------------------------------------- instances

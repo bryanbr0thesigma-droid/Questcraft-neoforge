@@ -9,6 +9,7 @@ Mods that have no NeoForge build for a version are left out and reported.
 """
 import json
 import os
+import shutil
 import sys
 import urllib.parse
 import urllib.request
@@ -68,8 +69,10 @@ IGNORED_REQUIREMENTS = {"P7dR8mSH"}
 
 # QuestCraft's Vivecraft fork (QuestCraftPlusPlus/VivecraftMod, OpenXR branches), its NeoForge module built by
 # .github/workflows/vivecraft.yml. Upstream only publishes the Fabric jar.
-VIVECRAFT_URL = ("https://github.com/bryanbr0thesigma-droid/Questcraft-neoforge/releases/download/"
-                 "vivecraft-{mc}/vivecraft-neoforge-{mc}.jar")
+# The jars are committed to vivecraft-jars/neoforge/ (copied from vivecraft-builder/dist/ after a build) and linked by
+# their raw URL, which works for anyone who can read the repository without signing in, that is, once it is public.
+VIVECRAFT_URL = ("https://raw.githubusercontent.com/bryanbr0thesigma-droid/Questcraft-neoforge/"
+                 "claude/fervent-mayer-8idkzr/vivecraft-jars/neoforge/vivecraft-neoforge-{mc}.jar")
 
 
 def newest(slug, mc):
@@ -123,9 +126,16 @@ def main():
     with open(os.path.join(OUT, "supportedVersions.json"), "w") as f:
         json.dump({"supportedVersions": VERSIONS}, f, indent=2)
         f.write("\n")
+    # the app carries copies of the lists, used when the repository cannot be read (see APIHandler, MinecraftInstances)
+    bundled = os.path.join(OUT, "src", "main", "assets", "loaders")
+    os.makedirs(bundled, exist_ok=True)
     with open(os.path.join(OUT, "supportedVersions-quilt.json"), "w") as f:
         json.dump({"supportedVersions": QUILT_VERSIONS}, f, indent=2)
         f.write("\n")
+    for src, dst in (("mods-neoforge.json", "mods-neoforge.json"), ("devmods-neoforge.json", "devmods-neoforge.json"),
+                     ("supportedVersions.json", "supportedVersions-neoforge.json"),
+                     ("supportedVersions-quilt.json", "supportedVersions-quilt.json")):
+        shutil.copy(os.path.join(OUT, src), os.path.join(bundled, dst))
 
 
 if __name__ == "__main__":

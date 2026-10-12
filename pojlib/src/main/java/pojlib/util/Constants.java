@@ -37,7 +37,11 @@ public class Constants {
     public static final String PORT_RAW_URL = "https://raw.githubusercontent.com/bryanbr0thesigma-droid/Questcraft-neoforge/claude/fervent-mayer-8idkzr";
     public static String USER_HOME;
 
+    /** The application context, for the lists that are built into the app. */
+    public static android.content.Context APP_CONTEXT;
+
     public static void initConstants(Activity activity) {
+        APP_CONTEXT = activity.getApplicationContext();
         USER_HOME = activity.getExternalFilesDir(null).getAbsolutePath();
     }
 }
