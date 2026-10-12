@@ -145,3 +145,15 @@ Everything below describes QuestCraft itself and still applies, except where it 
 | B | Jump |
 | Menu Button | Pause / Esc |
 | Meta Button | Meta Home |
+
+
+## Minecraft 26.x (not supported, and why)
+
+Minecraft 26.1 and newer (26.1, 26.2, 26.3 and the 26.4 snapshots) cannot run in QuestCraft as it is built, checked against the 26.3 game jar and version file:
+
+- **No GLFW.** The client has no reference to `org.lwjgl.glfw` at all and 147 to `org.lwjgl.sdl` (SDL3, `lwjgl-sdl` is in its library list). QuestCraft's window and input layer (`pojavexec`, the GLFW bridge in `lwjgl-glfw-classes.jar`, Vivecraft's hand-over of the EGL context to OpenXR) is a GLFW stand-in, a 26.x needs an SDL3 equivalent that does not exist yet.
+- **Java 25.** All 26.x versions need it (class files 69), the app's runtime is Java 22. Android builds of Java 25 exist (Zalith Launcher ships one), but the app would have to carry or download a second runtime.
+- **LWJGL 3.4.x** instead of 3.3.3, with Android natives for it (and for SDL3), and a Vulkan-capable client (620 Vulkan references, the OpenGL backend is still there).
+- **Vivecraft for 26.x** exists upstream, QuestCraft's OpenXR changes would have to be ported onto it again, and onto SDL.
+
+None of that can be tried without a headset, so it was left out instead of shipping something that cannot be checked.

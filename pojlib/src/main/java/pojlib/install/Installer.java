@@ -194,6 +194,43 @@ public class Installer {
         }
     }
 
+    /**
+     * The launcher used to ship options Minecraft 1.21.11 rejects (brightness -0.2, simulation distance 4) and the game
+     * answers by writing its own defaults back, a 50 % brightness that looks like a gray veil. This puts the values
+     * the launcher means into an options.txt that has them wrong. Done once per instance, after that it is the
+     * player's file.
+     */
+    public static String migrateOptions(String options) {
+        StringBuilder out = new StringBuilder();
+        for (String line : options.split("\\r?\\n", -1)) {
+            if (line.startsWith("gamma:")) {
+                line = "gamma:0.0";
+            } else if (line.startsWith("simulationDistance:")) {
+                try {
+                    if (Integer.parseInt(line.substring("simulationDistance:".length()).trim()) < 5) line = "simulationDistance:5";
+                } catch (NumberFormatException ignored) {
+                }
+            }
+            out.append(line).append('\n');
+        }
+        // split keeps a trailing empty element for a final newline, do not add a second one
+        return out.toString().replaceAll("\\n+$", "\n");
+    }
+
+    public static void migrateOptionsOnce(MinecraftInstances.Instance instance) {
+        File marker = new File(instance.gameDir + "/config/.questcraft-options-1");
+        File options = new File(instance.gameDir + "/options.txt");
+        if (marker.exists() || !options.isFile()) return;
+        try {
+            String text = FileUtils.readFileToString(options, java.nio.charset.StandardCharsets.UTF_8);
+            FileUtils.writeStringToFile(options, migrateOptions(text), java.nio.charset.StandardCharsets.UTF_8);
+            FileUtils.writeStringToFile(marker, "1", java.nio.charset.StandardCharsets.UTF_8);
+            Logger.getInstance().appendToLog("Fixed brightness and simulation distance in options.txt");
+        } catch (IOException e) {
+            Logger.getInstance().appendToLog("Could not update options.txt: " + e);
+        }
+    }
+
     public static void moveLocalAssets(Activity activity, MinecraftInstances.Instance instance) throws IOException {
         try {
             FileUtils.writeByteArrayToFile(new File(instance.gameDir + "/config/sodium-options.json"), FileUtil.loadFromAssetToByte(activity, "sodium-options.json"));
@@ -205,6 +242,7 @@ public class Installer {
                 FileUtils.writeByteArrayToFile(new File(instance.gameDir + "/config/fml.toml"), FileUtil.loadFromAssetToByte(activity, "fml.toml"));
             }
             FileUtils.writeByteArrayToFile(new File(instance.gameDir + "/options.txt"), FileUtil.loadFromAssetToByte(activity, "options.txt"));
+            FileUtils.writeStringToFile(new File(instance.gameDir + "/config/.questcraft-options-1"), "1", java.nio.charset.StandardCharsets.UTF_8);
             FileUtils.writeByteArrayToFile(new File(instance.gameDir + "/servers.dat"), FileUtil.loadFromAssetToByte(activity, "servers.dat"));
             FileUtils.writeByteArrayToFile(new File(instance.gameDir + "/config/vivecraft-client-config.json"), FileUtil.loadFromAssetToByte(activity, "vivecraft-client-config.json"));
             FileUtils.writeByteArrayToFile(new File(Constants.USER_HOME + "/hacks/ResConfHack.jar"), FileUtil.loadFromAssetToByte(activity, "hacks/ResConfHack.jar"));

@@ -205,6 +205,7 @@ public class JREUtils {
         setJavaEnvironment(activity, instance);
 
         LwjglInstaller.installLWJGL(activity);
+        Installer.migrateOptionsOnce(instance);
         Installer.installClient(MinecraftMeta.getVersionInfo(instance.versionName), Constants.USER_HOME).get();
         Installer.installLibraries(MinecraftMeta.getVersionInfo(instance.versionName), Constants.USER_HOME).get();
         Installer.installAssets(MinecraftMeta.getVersionInfo(instance.versionName), Constants.USER_HOME).get();
@@ -234,6 +235,7 @@ public class JREUtils {
         setJavaEnvironment(activity, instance);
         LwjglInstaller.installLWJGL(activity);
         Installer.writeModernFixConfig(activity, instance);
+        Installer.migrateOptionsOnce(instance);
         return initJavaRuntime();
     }
 
