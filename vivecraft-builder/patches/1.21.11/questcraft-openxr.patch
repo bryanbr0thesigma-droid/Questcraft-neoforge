@@ -718,7 +718,7 @@ new file mode 100644
 index 00000000..d5902ba9
 --- /dev/null
 +++ b/common/src/main/java/org/vivecraft/client_vr/provider/openxr/MCOpenXR.java
-@@ -0,0 +1,1349 @@
+@@ -0,0 +1,1356 @@
 +package org.vivecraft.client_vr.provider.openxr;
 +
 +import net.minecraft.client.KeyMapping;
@@ -953,9 +953,16 @@ index 00000000..d5902ba9
 +                this.hmdPose.m31(1.6F);
 +            }
 +
-+            // Eye positions
-+            OpenXRUtil.openXRPoseToMarix(this.viewBuffer.get(0).pose(), this.hmdPoseLeftEye);
-+            OpenXRUtil.openXRPoseToMarix(this.viewBuffer.get(1).pose(), this.hmdPoseRightEye);
++            // Eye positions. xrLocateViews gives each eye's pose in the app space, but MCVR wants it relative to the head
++            // (hmdPoseLeftEye is hmd -> eye, like OpenVR's eye-to-head transform) and puts the head pose on top. Using
++            // the absolute pose there applies the head pose twice: the view swims with every head movement and the eyes
++            // end up in the wrong places, which looks flat and makes people sick.
++            Matrix4f headInverse = new Matrix4f(this.hmdPose).invert();
++            Matrix4f eyePose = new Matrix4f();
++            OpenXRUtil.openXRPoseToMarix(this.viewBuffer.get(0).pose(), eyePose);
++            this.hmdPoseLeftEye.set(headInverse).mul(eyePose);
++            OpenXRUtil.openXRPoseToMarix(this.viewBuffer.get(1).pose(), eyePose);
++            this.hmdPoseRightEye.set(headInverse).mul(eyePose);
 +
 +            if (this.inputInitialized) {
 +                Profiler.get().push("updateActionState");

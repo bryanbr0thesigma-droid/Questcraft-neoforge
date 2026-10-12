@@ -86,6 +86,11 @@ PATCHED_URL = ("https://raw.githubusercontent.com/bryanbr0thesigma-droid/Questcr
                "claude/fervent-mayer-8idkzr/pojlib/src/main/assets/bundled-mods/neoforge/{file}")
 
 
+# Raise this when the bundled jar of a version changes: instances only fetch a mod again when its version differs.
+# 1.21.11 1.1: eye poses relative to the head (stereo view was wrong before)
+VIVECRAFT_VERSIONS = {"1.21.11": "1.1"}
+
+
 def newest(slug, mc):
     query = urllib.parse.urlencode({"loaders": json.dumps(["neoforge"]), "game_versions": json.dumps([mc])})
     request = urllib.request.Request(f"https://api.modrinth.com/v2/project/{slug}/version?{query}", headers=UA)
@@ -108,7 +113,7 @@ def main():
     result = {"versions": []}
     for mc in VERSIONS:
         entry = {"name": mc,
-                 "coreMods": [{"slug": "Vivecraft", "version": "1.0",
+                 "coreMods": [{"slug": "Vivecraft", "version": VIVECRAFT_VERSIONS.get(mc, "1.0"),
                                "download_link": VIVECRAFT_URL.format(mc=mc)}],
                  "defaultMods": []}
         for slug in FABRIC_SETS[mc]:
