@@ -10,6 +10,7 @@ const H := 600
 
 const Modrinth := preload("res://scripts/modrinth.gd")
 const VKeyboard := preload("res://scripts/vkeyboard.gd")
+const ModMenu := preload("res://scripts/mod_menu.gd")
 
 const ACCENT := Color("2fbf5f")
 const PANEL := Color(0.05, 0.06, 0.07, 0.86)
@@ -800,135 +801,8 @@ func show_log(only_problems := true) -> void:
 # ---------------------------------------------------------------- mods
 
 func show_mods(inst: Dictionary) -> void:
-	var iname: String = str(inst.get("name", ""))
-	var mc: String = str(inst.get("version", ""))
-	var categories: Array = Bridge.api("modrinthCategories", [iname]) as Array
-	var types := ["mod", "resourcepack", "shader", "datapack"]
-	var body := _screen("Mods: %s (%s)" % [iname, inst.get("loader", "")], show_instances)
-
-	var search_row := HBoxContainer.new()
-	search_row.add_theme_constant_override("separation", 10)
-	body.add_child(search_row)
-	var query := _line_edit("Search Modrinth")
-	query.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	search_row.add_child(query)
-	var type_sel := _selector(types, "mod")
-	search_row.add_child(type_sel)
-
-	var columns := HBoxContainer.new()
-	columns.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	columns.add_theme_constant_override("separation", 14)
-	body.add_child(columns)
-
-	var left := VBoxContainer.new()
-	left.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	left.size_flags_stretch_ratio = 0.8
-	columns.add_child(left)
-	left.add_child(_label("Installed", 24, ACCENT))
-	var installed_scroll := ScrollContainer.new()
-	installed_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	installed_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	left.add_child(installed_scroll)
-	var installed := VBoxContainer.new()
-	installed.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	installed_scroll.add_child(installed)
-
-	var right := VBoxContainer.new()
-	right.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	columns.add_child(right)
-	right.add_child(_label("Modrinth", 24, ACCENT))
-	var results_scroll := ScrollContainer.new()
-	results_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	results_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	right.add_child(results_scroll)
-	var results := VBoxContainer.new()
-	results.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	results_scroll.add_child(results)
-
-	var refresh_installed := func():
-		for c in installed.get_children():
-			c.queue_free()
-		var mods: Array = Bridge.api("listMods", [iname]) as Array
-		if mods.is_empty():
-			installed.add_child(_label("Nothing added yet.", 22, TEXT_DIM))
-		for m in mods:
-			var slug := str(m.get("slug", ""))
-			var r := HBoxContainer.new()
-			var l := _label(slug, 22)
-			l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-			r.add_child(l)
-			var do_remove := func():
-				Bridge.api("removeMod", [iname, slug])
-				set_status("Removed " + slug)
-				r.queue_free()
-			r.add_child(_button("Remove", do_remove, Vector2(120, 44)))
-			installed.add_child(r)
-	refresh_installed.call()
-
-	var add_project := func(hit: Dictionary):
-		var title := str(hit.get("title", hit.get("slug", "")))
-		var slug := str(hit.get("slug", ""))
-		var ptype := str(hit.get("project_type", "mod"))
-		set_status("Adding " + title + "...")
-		var f = await modrinth.latest_file(str(hit.get("project_id", "")), mc, ptype, categories)
-		if f == null:
-			set_status("No file of " + title + " fits " + mc + " " + str(inst.get("loader", "")), true)
-			return
-		for dep_id in f["dependencies"]:
-			var dep_slug: String = await modrinth.project_slug(dep_id)
-			if dep_slug == "" or Bridge.api_bool("hasMod", [iname, dep_slug]):
-				continue
-			var df = await modrinth.latest_file(dep_id, mc, "mod", categories)
-			if df != null:
-				Bridge.api("addMod", [iname, dep_slug, df["filename"], df["version"], df["url"], "mod"])
-		Bridge.api("addMod", [iname, slug, f["filename"], f["version"], f["url"], ptype])
-		set_status("Added " + title + ". It downloads the next time you press Play.")
-		refresh_installed.call()
-
-	var state := {"offset": 0}
-	var fns := {}   # lets the search function call itself for "More"
-	var run_search := func(reset: bool):
-		if reset:
-			state["offset"] = 0
-			for c in results.get_children():
-				c.queue_free()
-		set_status("Searching...")
-		var hits = await modrinth.search(query.text.strip_edges(), mc, str(type_sel.get_meta("value", "mod")), categories, state["offset"])
-		if hits == null:
-			set_status("Could not reach Modrinth. Is the headset online?", true)
-			return
-		set_status("")
-		if hits.is_empty() and reset:
-			results.add_child(_label("Nothing found.", 22, TEXT_DIM))
-		for hit in hits:
-			var row := PanelContainer.new()
-			var h := HBoxContainer.new()
-			row.add_child(h)
-			var col := VBoxContainer.new()
-			col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-			h.add_child(col)
-			col.add_child(_label(str(hit.get("title", "")), 24))
-			var desc := _label(str(hit.get("description", "")), 16, TEXT_DIM)
-			desc.max_lines_visible = 2
-			col.add_child(desc)
-			var slug := str(hit.get("slug", ""))
-			var add := _button("Add", Callable(), Vector2(100, 46))
-			add.disabled = Bridge.api_bool("hasMod", [iname, slug])
-			var do_add := func():
-				add.disabled = true
-				await add_project.call(hit)
-			add.pressed.connect(do_add)
-			h.add_child(add)
-			results.add_child(row)
-		state["offset"] += hits.size()
-		if hits.size() >= 12:
-			var more := _button("More", Callable(), Vector2(0, 46))
-			var do_more := func():
-				more.queue_free()
-				await fns["search"].call(false)
-			more.pressed.connect(do_more)
-			results.add_child(more)
-
-	fns["search"] = run_search
-	query.text_submitted.connect(func(_t): run_search.call(true))
-	search_row.add_child(_button("Search", func(): run_search.call(true), Vector2(150, 54)))
+	var body := _screen("Mod Management", show_instances)
+	body.add_theme_constant_override("separation", 6)
+	var menu := ModMenu.new()
+	body.add_child(menu)
+	menu.setup(self, inst)

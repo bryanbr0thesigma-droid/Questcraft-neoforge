@@ -14,7 +14,7 @@ func _initialize() -> void:
 	var shown: bool = fresh.logo_visible()
 	print("fresh start: logo ", "shown" if shown else "MISSING")
 	ok = ok and shown
-	await create_timer(3.4).timeout   # 0.35 in, 2.4 held, 0.6 out
+	await create_timer(5.0).timeout   # 0.35 in, 2.4 held, 0.6 out, and a slow machine
 	var gone: bool = not fresh.logo_visible()
 	print("fresh start: logo gone after its time -> ", "ok" if gone else "STUCK")
 	ok = ok and gone

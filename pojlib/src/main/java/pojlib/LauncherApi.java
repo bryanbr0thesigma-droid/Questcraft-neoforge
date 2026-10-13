@@ -19,6 +19,7 @@ import java.io.RandomAccessFile;
 import pojlib.account.MinecraftAccount;
 import pojlib.input.ClipboardHolder;
 import pojlib.util.Constants;
+import pojlib.util.download.DownloadUtils;
 import pojlib.util.Logger;
 import pojlib.util.json.MinecraftInstances;
 import pojlib.util.json.ProjectInfo;
@@ -149,12 +150,48 @@ public final class LauncherApi {
     }
 
     /**
+     * Makes an instance of a Modrinth modpack (a .mrpack file at {@code url}, e.g. from the Modrinth search) for one
+     * loader, in the background like {@link #createInstance}: poll {@link #progress()}. The pack has to be for that
+     * loader (a Fabric pack also runs on Quilt).
+     */
+    public static void installModpack(String name, String loader, String url, String imageUrl) {
+        if (!begin("Installing " + name)) return;
+        new Thread(() -> {
+            java.io.File pack = null;
+            try {
+                if (name == null || name.trim().isEmpty() || name.contains("/") || name.contains("!")) {
+                    throw new IOException("Instance names cannot be empty or contain / or !");
+                }
+                if (url == null || !url.startsWith("https://")) throw new IOException("The modpack has no download address");
+                if (find(name) != null) throw new IOException("There already is an instance called " + name);
+                pack = new java.io.File(Constants.USER_HOME + "/modpacks/" + System.currentTimeMillis() + ".mrpack");
+                pack.getParentFile().mkdirs();
+                task = "Downloading the modpack";
+                DownloadUtils.downloadFile(url, pack);
+                task = "Installing " + name;
+                MinecraftInstances.Instance created = API.createNewInstance(activity, instances, name,
+                        imageUrl == null || imageUrl.isEmpty() ? null : imageUrl, loader, pack.getAbsolutePath());
+                awaitCreation(created, InstanceHandler.creation, () -> find(name) != null, () -> InstanceHandler.lastCreateError);
+                finish("");
+            } catch (Throwable t) {
+                Logger.getInstance().appendToLog("Modpack install failed | " + t);
+                finish(String.valueOf(t.getMessage() != null ? t.getMessage() : t));
+            } finally {
+                if (pack != null) pack.delete();
+            }
+        }, "qc-modpack").start();
+    }
+
+    /**
      * An instance is made in the background, it is done when that is. Fails if it was not made (the creation returned
      * nothing, or the instance is not there at the end, with the reason the creation gave if it gave one).
      */
     static void awaitCreation(MinecraftInstances.Instance created, java.util.concurrent.CompletableFuture<?> creation,
                               java.util.function.BooleanSupplier exists, java.util.function.Supplier<String> failure) throws Exception {
-        if (created == null) throw new IOException("The instance could not be created (see the log)");
+        if (created == null) {
+            String why = failure.get();
+            throw new IOException(why == null || why.isEmpty() ? "The instance could not be created (see the log)" : why);
+        }
         if (creation != null) creation.get();
         if (!exists.getAsBoolean()) {
             String why = failure.get();

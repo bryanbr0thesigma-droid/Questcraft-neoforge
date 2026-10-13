@@ -18,6 +18,7 @@ var _mock_phase := "idle"
 # how many progress polls creating an instance takes in the mock, then it is "idle" again (0: done before the first poll)
 var mock_create_polls := 3
 var _mock_creating := false
+var _mock_mods := {}   # instance name -> [{"slug", "version", "type", "file"}] added by the mock's addMod
 var mock_returned_from_game := false   # the app was started again by the game that just ended (no logo screen then)
 var _mock_prepared := ""   # the instance the last "prepare" was for
 
@@ -74,9 +75,33 @@ func _mock(method: String, args: Array) -> Variant:
 				"message": "To sign in, use a web browser to open the page https://www.microsoft.com/link and enter the code AB12CD34 to authenticate.",
 			}
 		"modrinthCategories": return ["neoforge"]
-		"listMods": return [{"slug": "sodium", "version": "0.6.0", "type": "mod", "file": "sodium.jar"}]
-		"hasMod": return "false"
-		"addMod", "removeMod", "deleteInstance": return "true"
+		"listMods":
+			return [{"slug": "sodium", "version": "0.6.0", "type": "mod", "file": "sodium.jar"}] + _mock_mods.get(str(args[0]), [])
+		"hasMod":
+			for m in _mock_mods.get(str(args[0]), []):
+				if m["slug"] == str(args[1]):
+					return "true"
+			return "false"
+		"addMod":
+			if not _mock_mods.has(str(args[0])):
+				_mock_mods[str(args[0])] = []
+			_mock_mods[str(args[0])].append({"slug": str(args[1]), "version": str(args[3]), "type": str(args[5]), "file": str(args[2])})
+			return "true"
+		"removeMod":
+			var kept: Array = []
+			for m in _mock_mods.get(str(args[0]), []):
+				if m["slug"] != str(args[1]):
+					kept.append(m)
+			_mock_mods[str(args[0])] = kept
+			return "true"
+		"deleteInstance": return "true"
+		"installModpack":
+			print("MOCK installModpack ", args)
+			_mock_instances.append({"name": args[0], "version": "1.21.1", "loader": args[1], "image": args[3], "mods": 0})
+			_mock_phase = "working"
+			_mock_creating = true
+			_mock_task_polls = 0
+			return ""
 		"createInstance":
 			_mock_instances.append({"name": args[0], "version": args[1], "loader": args[2], "image": "", "mods": 0})
 			_mock_phase = "working"

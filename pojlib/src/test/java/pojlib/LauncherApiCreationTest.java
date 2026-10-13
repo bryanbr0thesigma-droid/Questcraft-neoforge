@@ -48,6 +48,16 @@ class LauncherApiCreationTest {
     }
 
     @Test
+    void sayWhyAModpackWasNotMade() throws Exception {
+        try {
+            LauncherApi.awaitCreation(null, null, () -> false, () -> "This modpack is not for Forge, its mods would not load");
+            fail("should have failed");
+        } catch (IOException e) {
+            assertEquals("This modpack is not for Forge, its mods would not load", e.getMessage());
+        }
+    }
+
+    @Test
     void failsWithoutAnInstance() throws Exception {
         try {
             LauncherApi.awaitCreation(null, null, () -> true, () -> "");

@@ -57,6 +57,7 @@ public class InstanceHandler {
     public static volatile String lastCreateError = "";
 
     public static MinecraftInstances.Instance create(Activity activity, MinecraftInstances instances, String instanceName, String userHome, String modLoader, String mrpackFilePath, String imageURL) {
+        lastCreateError = "";
         File mrpackJson = new File(Constants.USER_HOME + "/instances/" + instanceName.toLowerCase(Locale.ROOT).replaceAll(" ", "_") + "/setup/modrinth.index.json");
 
         mrpackJson.getParentFile().mkdirs();
@@ -66,12 +67,14 @@ public class InstanceHandler {
         ModrinthIndexJson index = GsonUtils.jsonFileToObject(mrpackJson.getAbsolutePath(), ModrinthIndexJson.class);
         if(index == null) {
             Logger.getInstance().appendToLog("Couldn't install the modpack with path " + mrpackJson.getAbsolutePath());
+            lastCreateError = "This file is not a Modrinth modpack (no modrinth.index.json in it)";
             return null;
         }
 
         ModLoader loader = ModLoader.fromName(modLoader);
         if (loader == null) {
             Logger.getInstance().appendToLog("Unknown mod loader: " + modLoader);
+            lastCreateError = "Unknown mod loader: " + modLoader;
             return null;
         }
         // a modpack is for one loader, its mods would not load in an instance of another
@@ -85,6 +88,7 @@ public class InstanceHandler {
         }
         if (!packMatches) {
             Logger.getInstance().appendToLog("This modpack is not for " + loader.displayName + ", its mods would not load. Pick a " + loader.displayName + " modpack.");
+            lastCreateError = "This modpack is not for " + loader.displayName + ", its mods would not load";
             return null;
         }
 
