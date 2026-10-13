@@ -81,4 +81,18 @@ class ForgeVersionInfoTest {
         assertEquals("net/minecraftforge/forge/1.21.11-61.2.3/forge-1.21.11-61.2.3-client.jar", client.downloads.artifact.path);
         assertTrue(client.downloads.artifact.url == null || client.downloads.artifact.url.isEmpty());
     }
+
+    @Test
+    void onlyThePatchedClientIsMadeByTheInstaller() {
+        List<String> made = new java.util.ArrayList<>();
+        for (VersionInfo info : new VersionInfo[]{vanilla, forge}) {
+            for (VersionInfo.Library library : info.libraries) {
+                if (library.downloads != null && library.downloads.artifact != null
+                        && Installer.madeByInstaller(library.downloads.artifact)) {
+                    made.add(library.name);
+                }
+            }
+        }
+        assertEquals(List.of("net.minecraftforge:forge:1.21.11-61.2.3:client"), made);
+    }
 }

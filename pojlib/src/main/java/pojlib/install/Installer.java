@@ -122,6 +122,14 @@ public class Installer {
                             VersionInfo.Library.Artifact artifact = library.downloads.artifact;
                             libraryFile = new File(gameDir + "/libraries/", artifact.path);
                             sha1 = artifact.sha1;
+                            if (madeByInstaller(artifact)) {
+                                // Forge's patched client: no address, the loader's installer wrote it. Its checksum is of the
+                                // bytes the installer's maker got, and the headset's zlib compresses to other ones, so it
+                                // is the file as it is or nothing
+                                if (!libraryFile.exists()) throw new IOException("Not made by the loader's installer: " + libraryFile);
+                                classpath.add(libraryFile.getAbsolutePath());
+                                break;
+                            }
                             if (!libraryFile.exists()) {
                                 Logger.getInstance().appendToLog("Downloading: " + library.name);
                                 DownloadUtils.downloadFile(artifact.url, libraryFile, artifact.size);
@@ -145,6 +153,11 @@ public class Installer {
             Logger.getInstance().appendToLog("Libraries installed");
             return classpath.toString();
         });
+    }
+
+    /** A library without a download address is one the loader's installer makes (Forge's patched client). */
+    static boolean madeByInstaller(VersionInfo.Library.Artifact artifact) {
+        return artifact.url == null || artifact.url.isEmpty();
     }
 
     //Only works on minecraft, not fabric, neoforge, etc...
