@@ -173,7 +173,7 @@ Forge is a fourth loader next to Fabric, NeoForge and Quilt, for the same seven 
 
 Visor, like Vivecraft, is made for desktop OpenGL and does not run on the headset as published. [`visor-builder/`](visor-builder) builds QuestCraft's version: AtumVR gets an OpenGL ES graphics API with the Android loader setup (`AndroidSupport`: `xrInitializeLoaderKHR`, `XR_KHR_android_create_instance`, `XrGraphicsBindingOpenGLESAndroidKHR` with the game's EGL context, OpenGL ES swapchain images), and Visor ships QuestCraft's LWJGL OpenXR instead of the desktop natives. The jars are in [`pojlib/visor-jars/`](pojlib/visor-jars), listed in [`pojlib/visor-mods.json`](pojlib/visor-mods.json) (the app carries a copy); an instance that uses Visor gets that jar in place of Vivecraft among its core mods (`ModsJson.Version.coreModsFor`, `VisorMods`), and none of Vivecraft's config.
 
-**In progress:** the jars are still being built; until `pojlib/visor-mods.json` lists them the launcher offers only Vivecraft.
+The jars (7 versions, 1.20.4 to 1.21.11, for Fabric, Forge and NeoForge; Quilt uses the Fabric ones) are in the repository and listed in `visor-mods.json`; the launcher downloads the one an instance needs. Visor has no build here for 1.21.10 and the 1.19 / 1.20.1 versions that Fabric and Quilt offer, so those instances run Vivecraft.
 
 **Not tried on a headset.** The jars build and the launcher side is tested (instance choice, mod lists), but nothing here ran Visor on a Quest: whether its renderer works through the headset's OpenGL layer, and whether the controllers map well, are unknown. Visor itself is an early-stage mod. If the game starts and VR does not, the log screen shows the Visor/OpenXR lines (crash info) to send.
 
