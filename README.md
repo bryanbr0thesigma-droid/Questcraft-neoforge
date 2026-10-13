@@ -175,6 +175,19 @@ Visor, like Vivecraft, is made for desktop OpenGL and does not run on the headse
 
 The jars (7 versions, 1.20.4 to 1.21.11, for Fabric, Forge and NeoForge; Quilt uses the Fabric ones) are in the repository and listed in `visor-mods.json`; the launcher downloads the one an instance needs. Visor has no build here for 1.21.10 and the 1.19 / 1.20.1 versions that Fabric and Quilt offer, so those instances run Vivecraft.
 
+**Controls are Vivecraft's.** Visor's own Quest defaults are replaced (`QuestCraftBindings` in the Visor patch) by QuestCraft's Vivecraft layout:
+
+| | Left controller | Right controller |
+|---|---|---|
+| Trigger | use / place | attack / break |
+| Grip | previous hotbar slot | next hotbar slot |
+| Stick | move | turn (stick click: sneak) |
+| A / X | X: nothing in Visor (Vivecraft: teleport) | A: jump |
+| B / Y | Y: inventory | B: nothing in Visor (Vivecraft: radial menu) |
+| Menu | game menu | |
+
+In menus: right trigger clicks, A right-clicks, right grip middle-clicks, left grip is shift, right stick scrolls. Visor has no teleport or radial menu in its core (teleport is one of its movement modes), so X and B do nothing there. The layout is marked in Visor's bindings file, so bindings saved with Visor's old defaults are replaced once; bindings changed after that are kept.
+
 **Checked on a desktop JVM** (no headset, so Visor's OpenXR start fails there, as it must): NeoForge 1.21.1 and 1.21.11 load Visor with no mixin or module errors, and Forge 1.21.11 reaches the main menu with Visor's own "VR" button on it. The jars are built against QuestCraft's LWJGL 3.3.3, the version the headset runs, so a call that does not exist there fails the build.
 
 **Not tried on a headset.** The jars build and the launcher side is tested (instance choice, mod lists), but nothing here ran Visor on a Quest: whether its renderer works through the headset's OpenGL layer, and whether the controllers map well, are unknown. Visor itself is an early-stage mod. If the game starts and VR does not, the log screen shows the Visor/OpenXR lines (crash info) to send.

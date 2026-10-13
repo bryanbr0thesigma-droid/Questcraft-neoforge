@@ -54,6 +54,265 @@ index c5ac120..ff4da36 100644
  mixin_extras_version  = "0.4.1"
  # Forge 50 and NeoForge 20.6 ship Mixin 0.8.5, which knows no level above JAVA_18
  mixin_compat_level    = 17
+diff --git a/visor-api/src/main/java/org/vmstudio/visor/api/client/input/action/QuestCraftBindings.java b/visor-api/src/main/java/org/vmstudio/visor/api/client/input/action/QuestCraftBindings.java
+new file mode 100644
+index 0000000..4769730
+--- /dev/null
++++ b/visor-api/src/main/java/org/vmstudio/visor/api/client/input/action/QuestCraftBindings.java
+@@ -0,0 +1,120 @@
++package org.vmstudio.visor.api.client.input.action;
++
++import me.phoenixra.atumvr.api.input.action.VRActionIdentifier;
++import me.phoenixra.atumvr.api.input.profile.VRInteractionProfileType;
++import me.phoenixra.atumvr.api.input.profile.types.OculusTouchProfile;
++import org.jetbrains.annotations.NotNull;
++
++import java.util.EnumMap;
++import java.util.HashMap;
++import java.util.Map;
++
++/**
++ * QuestCraft: on the Meta Quest controllers (Oculus Touch) Visor's default buttons are Vivecraft's
++ * (QuestCraft's Vivecraft, XRBindings.quest2Bindings), so both VR mods play the same:
++ * <pre>
++ * in game                                 in menus
++ *   right trigger   attack                  right trigger      click
++ *   left trigger    use                     A                  right click
++ *   A               jump                    left grip          shift
++ *   Y               inventory               right grip         middle click
++ *   left menu       pause menu              right thumbstick   scroll
++ *   grips           hotbar                  left menu          back
++ *   left stick      move                    both triggers      on-screen keyboard
++ *   right stick     turn
++ *   right stick in  sneak
++ * </pre>
++ * Left-handed mode mirrors it (A and X, B and Y, the triggers, grips and sticks swap sides), like Vivecraft does.
++ * Other controllers keep Visor's own defaults.
++ */
++public final class QuestCraftBindings {
++    /** Written next to the bindings once they follow this layout, so the old Visor defaults a player has saved are replaced once. */
++    public static final String LAYOUT = "vivecraft-1";
++    public static final String LAYOUT_PATH = "questcraft_layout";
++
++    private static final VRActionIdentifier NONE = ActionBinding.ID_EMPTY;
++
++    /** action set id -> action id -> right-handed button */
++    private static final Map<String, Map<String, VRActionIdentifier>> TABLE = new HashMap<>();
++
++    static {
++        Map<String, VRActionIdentifier> game = new HashMap<>();
++        game.put("mouse_left_main", OculusTouchProfile.BUTTON_TRIGGER_RIGHT);   // attack
++        game.put("mouse_left_offhand", NONE);
++        game.put("mouse_right_main", OculusTouchProfile.BUTTON_TRIGGER_LEFT);   // use
++        game.put("mouse_right_offhand", NONE);
++        game.put("mouse_middle_main", NONE);
++        game.put("mouse_middle_offhand", NONE);
++        game.put("mouse_scroll_main", NONE);                                    // the hotbar is on the grips
++        game.put("mouse_scroll_offhand", NONE);
++        game.put("shift", OculusTouchProfile.BUTTON_THUMBSTICK_RIGHT);          // sneak
++        game.put("menu", OculusTouchProfile.BUTTON_MENU);
++        game.put("screenshot", NONE);
++        game.put("movement", OculusTouchProfile.VEC2_THUMBSTICK_LEFT);
++        game.put("rotate", OculusTouchProfile.VEC2_THUMBSTICK_RIGHT);
++        game.put("jump", OculusTouchProfile.BUTTON_A);
++        game.put("inventory", OculusTouchProfile.BUTTON_Y);
++        game.put("hotbar_main", OculusTouchProfile.BUTTON_GRIP_RIGHT);
++        game.put("hotbar_offhand", OculusTouchProfile.BUTTON_GRIP_LEFT);
++        TABLE.put("game", game);
++
++        Map<String, VRActionIdentifier> menu = new HashMap<>();
++        menu.put("mouse_left_main", OculusTouchProfile.BUTTON_TRIGGER_RIGHT);   // click
++        menu.put("mouse_left_offhand", OculusTouchProfile.BUTTON_TRIGGER_LEFT); // Vivecraft's keyboard takes both triggers
++        menu.put("mouse_right_main", OculusTouchProfile.BUTTON_A);
++        menu.put("mouse_right_offhand", NONE);
++        menu.put("mouse_middle_main", OculusTouchProfile.BUTTON_GRIP_RIGHT);
++        menu.put("mouse_middle_offhand", NONE);
++        menu.put("mouse_scroll_main", OculusTouchProfile.VEC2_THUMBSTICK_RIGHT);
++        menu.put("mouse_scroll_offhand", NONE);
++        menu.put("shift", OculusTouchProfile.BUTTON_GRIP_LEFT);
++        menu.put("menu", OculusTouchProfile.BUTTON_MENU);
++        menu.put("screenshot", NONE);
++        TABLE.put("menu", menu);
++    }
++
++    private static final Map<VRActionIdentifier, VRActionIdentifier> MIRROR = new HashMap<>();
++
++    static {
++        pair(OculusTouchProfile.BUTTON_A, OculusTouchProfile.BUTTON_X);
++        pair(OculusTouchProfile.BUTTON_B, OculusTouchProfile.BUTTON_Y);
++        pair(OculusTouchProfile.BUTTON_TRIGGER_RIGHT, OculusTouchProfile.BUTTON_TRIGGER_LEFT);
++        pair(OculusTouchProfile.BUTTON_GRIP_RIGHT, OculusTouchProfile.BUTTON_GRIP_LEFT);
++        pair(OculusTouchProfile.BUTTON_THUMBSTICK_RIGHT, OculusTouchProfile.BUTTON_THUMBSTICK_LEFT);
++        pair(OculusTouchProfile.VEC2_THUMBSTICK_RIGHT, OculusTouchProfile.VEC2_THUMBSTICK_LEFT);
++        // the menu button only exists on the left controller, it stays there
++    }
++
++    private QuestCraftBindings() {
++    }
++
++    private static void pair(VRActionIdentifier a, VRActionIdentifier b) {
++        MIRROR.put(a, b);
++        MIRROR.put(b, a);
++    }
++
++    /** The button on the other controller (left-handed mode). */
++    public static @NotNull VRActionIdentifier mirror(@NotNull VRActionIdentifier id) {
++        return MIRROR.getOrDefault(id, id);
++    }
++
++    /** The QuestCraft binding of an action on the Quest controllers, or null if the table has none for it. */
++    public static ActionBinding binding(@NotNull String actionSetId, @NotNull String actionId) {
++        Map<String, VRActionIdentifier> set = TABLE.get(actionSetId);
++        if (set == null || !set.containsKey(actionId)) return null;
++        VRActionIdentifier right = set.get(actionId);
++        return new ActionBinding(right, mirror(right));
++    }
++
++    /** {@code defaults} with the Quest controller entry replaced by QuestCraft's, where the table has one. */
++    public static @NotNull Map<VRInteractionProfileType, ActionBinding> apply(@NotNull String actionSetId,
++                                                                              @NotNull String actionId,
++                                                                              @NotNull Map<VRInteractionProfileType, ActionBinding> defaults) {
++        ActionBinding quest = binding(actionSetId, actionId);
++        if (quest == null) return defaults;
++        Map<VRInteractionProfileType, ActionBinding> out = new EnumMap<>(VRInteractionProfileType.class);
++        out.putAll(defaults);
++        out.put(VRInteractionProfileType.OCULUS_TOUCH, quest);
++        return out;
++    }
++}
+diff --git a/visor-api/src/main/java/org/vmstudio/visor/api/client/input/action/VRActionSet.java b/visor-api/src/main/java/org/vmstudio/visor/api/client/input/action/VRActionSet.java
+index 62be094..52ba4b7 100644
+--- a/visor-api/src/main/java/org/vmstudio/visor/api/client/input/action/VRActionSet.java
++++ b/visor-api/src/main/java/org/vmstudio/visor/api/client/input/action/VRActionSet.java
+@@ -217,7 +217,9 @@ public abstract class VRActionSet implements VisorComponent, PrioritySupporter {
+     public boolean loadBinding(@NotNull Config config,
+                                @NotNull VRAction action){
+         var subsection = config.getSubsection("bindings");
+-        var defaults = action.getDefaultBindings();
++        var defaults = QuestCraftBindings.apply(getId(), action.getId(), action.getDefaultBindings());
++        // QuestCraft: bindings saved before the Quest controllers had Vivecraft's layout are Visor's old defaults, replace them once
++        boolean oldQuestLayout = !QuestCraftBindings.LAYOUT.equals(subsection.getStringOrNull(QuestCraftBindings.LAYOUT_PATH));
+         boolean requireSave = false;
+         for(var profileType : VRInteractionProfileType.valuesController()){
+             boolean keyModifiersActive = isKeyModifiersActive(profileType);
+@@ -227,6 +229,11 @@ public abstract class VRActionSet implements VisorComponent, PrioritySupporter {
+ 
+             String leftHandedPath = subsection.getStringOrNull("left_handed."+idPath);
+             String rightHandedPath = subsection.getStringOrNull("right_handed."+idPath);
++            if (oldQuestLayout && profileType == VRInteractionProfileType.OCULUS_TOUCH
++                    && QuestCraftBindings.binding(getId(), action.getId()) != null) {
++                leftHandedPath = null;
++                rightHandedPath = null;
++            }
+ 
+             VRActionIdentifier leftHandedId;
+             ActionKeyModifierType leftHandedKeyModifier = ActionKeyModifierType.OFF;
+@@ -346,6 +353,7 @@ public abstract class VRActionSet implements VisorComponent, PrioritySupporter {
+         saveKeyActions();
+ 
+         var subsectionPath = "bindings.";
++        config.set(subsectionPath + QuestCraftBindings.LAYOUT_PATH, QuestCraftBindings.LAYOUT);
+ 
+         for(var entry : keyModifiersActiveMap.entrySet()){
+             config.set(
+diff --git a/visor-api/src/main/java/org/vmstudio/visor/api/client/input/action/framework/VRActionButton.java b/visor-api/src/main/java/org/vmstudio/visor/api/client/input/action/framework/VRActionButton.java
+index 73c9557..6d374f4 100644
+--- a/visor-api/src/main/java/org/vmstudio/visor/api/client/input/action/framework/VRActionButton.java
++++ b/visor-api/src/main/java/org/vmstudio/visor/api/client/input/action/framework/VRActionButton.java
+@@ -56,7 +56,7 @@ public abstract class VRActionButton implements VRAction {
+         this.actionSet = actionSet;
+         this.id = id.toLowerCase();
+         this.defaultBindings = new EnumMap<>(VRInteractionProfileType.class);
+-        this.defaultBindings.putAll(getDefaultBindings());
++        this.defaultBindings.putAll(org.vmstudio.visor.api.client.input.action.QuestCraftBindings.apply(actionSet.getId(), this.id, getDefaultBindings()));
+         this.bindings = new EnumMap<>(defaultBindings);
+     }
+ 
+diff --git a/visor-api/src/main/java/org/vmstudio/visor/api/client/input/action/framework/VRActionVec2.java b/visor-api/src/main/java/org/vmstudio/visor/api/client/input/action/framework/VRActionVec2.java
+index 3ab5e51..8031ca9 100644
+--- a/visor-api/src/main/java/org/vmstudio/visor/api/client/input/action/framework/VRActionVec2.java
++++ b/visor-api/src/main/java/org/vmstudio/visor/api/client/input/action/framework/VRActionVec2.java
+@@ -50,7 +50,7 @@ public abstract class VRActionVec2 implements VRAction {
+         this.id = id.toLowerCase();
+ 
+         this.defaultBindings = new EnumMap<>(VRInteractionProfileType.class);
+-        this.defaultBindings.putAll(getDefaultBindings());
++        this.defaultBindings.putAll(org.vmstudio.visor.api.client.input.action.QuestCraftBindings.apply(actionSet.getId(), this.id, getDefaultBindings()));
+         this.bindings = new EnumMap<>(defaultBindings);
+ 
+     }
+diff --git a/visor-core/src/main/java/org/vmstudio/visor/core/client/input/actions/game/GameActionInventory.java b/visor-core/src/main/java/org/vmstudio/visor/core/client/input/actions/game/GameActionInventory.java
+new file mode 100644
+index 0000000..98295ff
+--- /dev/null
++++ b/visor-core/src/main/java/org/vmstudio/visor/core/client/input/actions/game/GameActionInventory.java
+@@ -0,0 +1,42 @@
++package org.vmstudio.visor.core.client.input.actions.game;
++
++import com.mojang.blaze3d.platform.InputConstants;
++import me.phoenixra.atumvr.api.input.profile.VRInteractionProfileType;
++import me.phoenixra.atumvr.api.input.profile.types.*;
++import org.vmstudio.visor.api.client.input.InputHelper;
++import org.vmstudio.visor.api.client.input.action.ActionBinding;
++import org.vmstudio.visor.api.client.input.action.VRActionSet;
++import org.vmstudio.visor.api.client.input.action.framework.VRActionButton;
++import org.jetbrains.annotations.NotNull;
++
++import java.util.Map;
++
++public class GameActionInventory extends VRActionButton {
++    /** QuestCraft: Vivecraft opens the inventory with Y, Visor has no action for it of its own. */
++    public static final String ID = "inventory";
++
++
++
++    public GameActionInventory(VRActionSet actionSet) {
++        super(actionSet, ID);
++    }
++
++
++    @Override
++    protected void onPress() {
++        InputHelper.pressKey(InputConstants.KEY_E);
++    }
++
++    @Override
++    protected void onRelease() {
++        InputHelper.releaseKey(InputConstants.KEY_E);
++    }
++
++
++
++    @Override
++    public @NotNull Map<VRInteractionProfileType, ActionBinding> getDefaultBindings() {
++        return Map.of();   // the Quest controllers get Y from QuestCraftBindings
++    }
++
++}
+diff --git a/visor-core/src/main/java/org/vmstudio/visor/core/client/input/actionset/GameActionSet.java b/visor-core/src/main/java/org/vmstudio/visor/core/client/input/actionset/GameActionSet.java
+index 3fc008f..73e9dfa 100644
+--- a/visor-core/src/main/java/org/vmstudio/visor/core/client/input/actionset/GameActionSet.java
++++ b/visor-core/src/main/java/org/vmstudio/visor/core/client/input/actionset/GameActionSet.java
+@@ -46,6 +46,7 @@ public class GameActionSet extends VRActionSet {
+                 new GameActionMovement(this),
+                 new GameActionRotate(this),
+                 new GameActionJump(this),
++                new GameActionInventory(this),
+ 
+                 new GameActionHotBar(this, HandType.MAIN),
+                 new GameActionHotBar(this, HandType.OFFHAND)
+diff --git a/visor-core/src/main/resources/assets/visor/lang/en_us.json b/visor-core/src/main/resources/assets/visor/lang/en_us.json
+index 9bd69e1..f668a7c 100644
+--- a/visor-core/src/main/resources/assets/visor/lang/en_us.json
++++ b/visor-core/src/main/resources/assets/visor/lang/en_us.json
+@@ -281,6 +281,7 @@
+   "visor.action.hotbar": "Open HotBar",
+   "visor.action.movement": "Movement",
+   "visor.action.jump": "Jump",
++  "visor.action.inventory": "Inventory",
+   "visor.action.rotate": "Rotate",
+   "visor.action.shift": "Shift",
+   "visor.action.hotbar_main": "Hotbar (Main)",
 diff --git a/visor-fabric/build.gradle b/visor-fabric/build.gradle
 index fe31daf..aa78844 100644
 --- a/visor-fabric/build.gradle

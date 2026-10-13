@@ -5,7 +5,7 @@ import json, os, re, sys, shutil
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 RAW = 'https://raw.githubusercontent.com/bryanbr0thesigma-droid/Questcraft-neoforge/claude/fervent-mayer-8idkzr'
-VERSION = '0.6.0-beta'
+VERSION = '0.6.0-beta-qc2'   # qc2: Vivecraft's Quest controller layout
 LOADERS = ('fabric', 'forge', 'neoforge')
 
 versions = {}
