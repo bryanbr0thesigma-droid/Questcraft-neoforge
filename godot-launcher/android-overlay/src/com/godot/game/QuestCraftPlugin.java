@@ -73,6 +73,8 @@ public class QuestCraftPlugin extends GodotPlugin {
                 case "removeAccount": return String.valueOf(LauncherApi.removeAccount(a.optString(0)));
                 case "prepare": LauncherApi.prepare(a.optString(0)); return "";
                 case "startGame": LauncherApi.startGame(); return "";
+                case "returnedFromGame":
+                    return String.valueOf(getActivity().getIntent().getBooleanExtra(GameActivity.FROM_GAME, false));
                 case "startGameProcess": return startGameProcess(a.optString(0), a.optString(1));
                 case "restart": LauncherApi.restart(); return "";
                 case "progress": return LauncherApi.progress();

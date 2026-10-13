@@ -27,6 +27,9 @@ var page: Control
 var toast: Label
 var keyboard: PanelContainer
 var poll_timer: Timer
+var _logo_screen: ColorRect   # the QuestCraft logo over everything: at the start, and while Minecraft boots
+var _logo_text: Label
+var _logo_tween: Tween
 
 var account_name := ""
 var _poll := Callable()
@@ -41,7 +44,7 @@ func _ready() -> void:
 	custom_minimum_size = Vector2(W, H)
 	_font = load("res://assets/fonts/Sunflower-Bold.ttf")
 	_button_texture = load("res://assets/ui/button.png")
-	for n in ["logo", "background", "gear", "notebook", "exit", "folder", "search", "up", "back", "trash", "reload"]:
+	for n in ["logo", "qc_logo", "background", "gear", "notebook", "exit", "folder", "search", "up", "back", "trash", "reload"]:
 		_tex[n] = load("res://assets/ui/%s.png" % n)
 	theme = _make_theme()
 	modrinth = Modrinth.new()
@@ -52,6 +55,10 @@ func _ready() -> void:
 	add_child(poll_timer)
 	poll_timer.start()
 	_build_frame()
+	_build_logo_screen()
+	# every fresh start of the app opens with the logo, but not the restart after a game (straight back to the menu)
+	if not Bridge.api_bool("returnedFromGame"):
+		show_logo("", 2.4)
 	_loaders = Bridge.api("modLoaders") as Array
 	Bridge.api("refreshVersions")
 	if Config.memory_mb != "":
@@ -59,6 +66,56 @@ func _ready() -> void:
 	if Bridge.init_error != "":
 		set_status("Pojlib failed to start: " + Bridge.init_error, true)
 	_startup_login()
+
+
+# ---------------------------------------------------------------- logo screen
+
+func _build_logo_screen() -> void:
+	_logo_screen = ColorRect.new()
+	_logo_screen.color = Color.BLACK
+	_logo_screen.size = Vector2(W, H)
+	_logo_screen.visible = false
+	add_child(_logo_screen)   # the last child: above every screen and the keyboard
+	var logo := TextureRect.new()
+	logo.texture = _tex["qc_logo"]
+	logo.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	logo.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	logo.size = Vector2(800, 206)   # the picture is 510x131
+	logo.position = Vector2((W - 800) / 2.0, 150)
+	logo.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_logo_screen.add_child(logo)
+	_logo_text = _label("", 30, TEXT_DIM)
+	_logo_text.size = Vector2(W, 44)
+	_logo_text.position = Vector2(0, 400)
+	_logo_text.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_logo_screen.add_child(_logo_text)
+
+
+## Shows the logo over the whole menu. With seconds > 0 it fades out again by itself, with 0 it stays (and takes the
+## clicks) until hide_logo(): that is the screen Minecraft boots behind.
+func show_logo(text: String, seconds: float) -> void:
+	if _logo_tween:
+		_logo_tween.kill()
+	_logo_text.text = text
+	_logo_screen.mouse_filter = Control.MOUSE_FILTER_IGNORE if seconds > 0.0 else Control.MOUSE_FILTER_STOP
+	_logo_screen.modulate.a = 0.0
+	_logo_screen.visible = true
+	_logo_tween = create_tween()
+	_logo_tween.tween_property(_logo_screen, "modulate:a", 1.0, 0.35)
+	if seconds > 0.0:
+		_logo_tween.tween_interval(seconds)
+		_logo_tween.tween_property(_logo_screen, "modulate:a", 0.0, 0.6)
+		_logo_tween.tween_callback(func(): _logo_screen.visible = false)
+
+
+func hide_logo() -> void:
+	if _logo_tween:
+		_logo_tween.kill()
+	_logo_screen.visible = false
+
+
+func logo_visible() -> bool:
+	return _logo_screen.visible
 
 
 # ---------------------------------------------------------------- look
@@ -664,6 +721,7 @@ func show_progress(title: String, when_done: Callable) -> void:
 		elif phase == "ready":
 			_poll = Callable()
 			task.text = "Starting Minecraft..."
+			show_logo("Starting Minecraft...", 0.0)
 			request_start_game.emit()
 		elif phase == "idle" and (_saw_working or seen["idle_polls"] >= 3):
 			_poll = Callable()

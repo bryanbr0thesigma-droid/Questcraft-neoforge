@@ -266,4 +266,5 @@ func _notification(what: int) -> void:
 	if what == NOTIFICATION_APPLICATION_RESUMED and game_running:
 		game_running = false
 		if ui:
+			ui.hide_logo()
 			ui.show_home()

@@ -18,6 +18,7 @@ var _mock_phase := "idle"
 # how many progress polls creating an instance takes in the mock, then it is "idle" again (0: done before the first poll)
 var mock_create_polls := 3
 var _mock_creating := false
+var mock_returned_from_game := false   # the app was started again by the game that just ended (no logo screen then)
 var _mock_prepared := ""   # the instance the last "prepare" was for
 
 
@@ -108,6 +109,7 @@ func _mock(method: String, args: Array) -> Variant:
 		"startGameProcess":
 			print("MOCK startGameProcess ", args)
 			return ""
+		"returnedFromGame": return str(mock_returned_from_game)
 		"logTail": return "Mock log line 1\nMock log line 2"
 		"crashInfo": return ""
 		"hasConnection": return "true"

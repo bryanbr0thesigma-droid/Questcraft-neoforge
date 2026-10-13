@@ -10,7 +10,9 @@ config/name="QuestCraft"
 config/description="VR launcher for Minecraft: Java Edition (Fabric, NeoForge, Quilt) on Meta Quest"
 run/main_scene="res://scenes/main.tscn"
 config/features=PackedStringArray("4.4", "Mobile")
-config/icon="res://icon.svg"
+config/icon="res://assets/icon/main_192.png"
+boot_splash/bg_color=Color(0, 0, 0, 1)
+boot_splash/show_image=false
 
 [autoload]
 
