@@ -275,6 +275,30 @@ func _selector(options: Array, selected: String, changed := Callable()) -> HBoxC
 	return row
 
 
+## Every option as a button of its own, the chosen one greyed (so all of them are in view at once, unlike _selector,
+## which needs a click per step). Read the choice with .get_meta("value"); `changed` is called with each new choice.
+func _choice_grid(options: Array, selected: String, changed := Callable(), columns := 6, min_size := Vector2(150, 50)) -> GridContainer:
+	var grid := GridContainer.new()
+	grid.columns = columns
+	grid.add_theme_constant_override("h_separation", 8)
+	grid.add_theme_constant_override("v_separation", 8)
+	var buttons := {}
+	var choose := func(v: String):
+		grid.set_meta("value", v)
+		for key in buttons:
+			(buttons[key] as Button).disabled = key == v
+		if changed.is_valid():
+			changed.call(v)
+	for o in options:
+		var v := str(o)
+		var b := _button(v, func(): choose.call(v), min_size)
+		buttons[v] = b
+		grid.add_child(b)
+	if options.size() > 0:
+		choose.call(selected if buttons.has(selected) else str(options[0]))
+	return grid
+
+
 func _clear(dim_alpha := 0.78) -> void:
 	_poll = Callable()
 	keyboard.visible = false
@@ -633,11 +657,12 @@ func _instance_row(inst: Dictionary) -> Control:
 
 func show_create() -> void:
 	var body := _screen("New instance", show_instances)
+	body.add_theme_constant_override("separation", 6)
 	var loader_row := HBoxContainer.new()
 	loader_row.add_theme_constant_override("separation", 14)
 	body.add_child(loader_row)
 	loader_row.add_child(_label("Mod loader", 26))
-	var version_holder := HBoxContainer.new()
+	var version_holder := VBoxContainer.new()
 	var name_edit := _line_edit("Name")
 	var versions_info := _label("", 22, TEXT_DIM)
 	var state := {"version": ""}
@@ -655,19 +680,17 @@ func show_create() -> void:
 			if name_edit.text == "" or name_edit.text == state["version"]:
 				name_edit.text = v
 			state["version"] = v
-		version_holder.add_child(_selector(versions, str(versions[0]), on_version))
+		# all the versions at once, the newest first
+		version_holder.add_child(_choice_grid(versions, str(versions[0]), on_version, 6, Vector2(150, 48)))
 
 	var on_loader := func(l: String):
 		Config.last_loader = l
 		rebuild_versions.call(l)
-	var loader_sel := _selector(_loaders, Config.last_loader, on_loader)
+	var loader_sel := _choice_grid(_loaders, Config.last_loader, on_loader, maxi(_loaders.size(), 1), Vector2(170, 50))
 	loader_row.add_child(loader_sel)
 
-	var version_row := HBoxContainer.new()
-	version_row.add_theme_constant_override("separation", 14)
-	body.add_child(version_row)
-	version_row.add_child(_label("Minecraft version", 26))
-	version_row.add_child(version_holder)
+	body.add_child(_label("Minecraft version", 26))
+	body.add_child(version_holder)
 	body.add_child(versions_info)
 	body.add_child(_label("Name", 26))
 	body.add_child(name_edit)
@@ -683,7 +706,6 @@ func show_create() -> void:
 		Bridge.api("createInstance", [nm, version, loader])
 		show_progress("Installing " + nm + " (" + loader + " " + version + ")", show_instances)
 	body.add_child(_button("Create", do_create, Vector2(260, 58)))
-	rebuild_versions.call(str(loader_sel.get_meta("value", "")))
 
 
 # ---------------------------------------------------------------- progress / play

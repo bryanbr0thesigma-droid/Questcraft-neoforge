@@ -55,11 +55,10 @@ func _mock(method: String, args: Array) -> Variant:
 		"init": return ""
 		"modLoaders": return ["Fabric", "NeoForge", "Quilt", "Forge"]
 		"supportedVersions":
+			# the lists the app carries (pojlib/src/main/assets/loaders/supportedVersions-*.json)
 			match str(args[0]):
-				"NeoForge": return ["1.21.11", "1.21.8", "1.21.5", "1.21.4", "1.21.1", "1.20.6", "1.20.4"]
-				"Quilt": return ["1.21.11", "1.21.10", "1.21.8", "1.20.1", "1.19.4", "1.19.2"]
-				"Forge": return ["1.21.11", "1.21.8", "1.21.5", "1.21.4", "1.21.1", "1.20.6", "1.20.4"]
-				_: return ["1.21.11", "1.21.10", "1.21.8", "1.21.1", "1.20.4", "1.20.1"]
+				"NeoForge", "Forge": return ["1.21.11", "1.21.8", "1.21.5", "1.21.4", "1.21.1", "1.20.6", "1.20.4"]
+				_: return ["1.21.11", "1.21.10", "1.21.8", "1.21.5", "1.21.4", "1.21.1", "1.20.6", "1.20.4", "1.20.1", "1.19.4", "1.19.2"]
 		"listInstances": return _mock_instances
 		"listAccounts": return [{"name": "Steve", "uuid": "abc"}]
 		"login":
