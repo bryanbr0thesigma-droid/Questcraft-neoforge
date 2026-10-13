@@ -190,6 +190,22 @@ public class MinecraftInstances {
             return extProjects;
         }
 
+        /** The mods of {@code wanted} that {@code have} has no entry for (by slug). */
+        public static List<ProjectInfo> missingMods(ProjectInfo[] have, ProjectInfo[] wanted) {
+            List<ProjectInfo> missing = new ArrayList<>();
+            for (ProjectInfo w : wanted) {
+                boolean found = false;
+                for (ProjectInfo h : have) {
+                    if (h.slug != null && h.slug.equalsIgnoreCase(w.slug)) {
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found) missing.add(w);
+            }
+            return missing;
+        }
+
         public ModsJson parseModsJson(String jsonPath) {
             ModsJson mods = GsonUtils.jsonFileToObject(jsonPath, ModsJson.class);
             // the Visor builds of this loader, for an instance that runs Visor instead of Vivecraft
@@ -365,6 +381,16 @@ public class MinecraftInstances {
                         downloadAllMods(mergedNewMods);
                     else
                         updateModByType(mergedNewMods);
+                    // a core mod the instance has not got yet (the list gained one, or the instance was made without it)
+                    for (ProjectInfo missing : missingMods(extProjects, newVersion.coreModsFor(usesVisor()))) {
+                        boolean legacyMod = missing.fileName == null;
+                        File mod = new File(gameDir + (missing.type.equals("mod") ? "/mods" : "/resourcepacks"),
+                                (legacyMod ? missing.slug : missing.fileName) + (missing.type.equals("resourcepack") ? ".zip" : ".jar"));
+                        DownloadUtils.downloadFile(missing.download_link, mod, 0);
+                        ArrayList<ProjectInfo> withIt = new ArrayList<>(Arrays.asList(extProjects));
+                        withIt.add(missing);
+                        extProjects = withIt.toArray(new ProjectInfo[0]);
+                    }
                     break;
                 }
 

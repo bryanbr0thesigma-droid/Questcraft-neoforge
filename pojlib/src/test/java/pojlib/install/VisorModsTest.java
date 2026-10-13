@@ -69,6 +69,34 @@ class VisorModsTest {
     }
 
     @Test
+    void visorKeepsTheOtherCoreModsLikeFabricApi() {
+        // the Fabric lists have Vivecraft and Fabric API as core mods; Visor needs Fabric API as well
+        ModsJson.Version v = version("1.21.11", "Vivecraft");
+        ProjectInfo api = new ProjectInfo();
+        api.slug = "Fabric-API";
+        v.coreMods = new ProjectInfo[]{v.coreMods[0], api};
+        v.visorCoreMods = VisorMods.coreMods(REGISTRY, "fabric", "1.21.1");
+        ProjectInfo[] core = v.coreModsFor(true);
+        assertEquals(2, core.length);
+        assertEquals("Fabric-API", core[0].slug);
+        assertEquals("Visor", core[1].slug);
+    }
+
+    @Test
+    void anInstanceWithoutACoreModGetsIt() {
+        ProjectInfo visor = new ProjectInfo();
+        visor.slug = "Visor";
+        ProjectInfo api = new ProjectInfo();
+        api.slug = "Fabric-API";
+        ProjectInfo sodium = new ProjectInfo();
+        sodium.slug = "sodium";
+        java.util.List<ProjectInfo> missing = MinecraftInstances.Instance.missingMods(
+                new ProjectInfo[]{visor, sodium}, new ProjectInfo[]{api, visor});
+        assertEquals(1, missing.size());
+        assertEquals("Fabric-API", missing.get(0).slug);
+    }
+
+    @Test
     void anInstanceKnowsItsVrMod() {
         MinecraftInstances.Instance old = new MinecraftInstances.Instance();
         assertFalse(old.usesVisor());                        // made before there was a choice
