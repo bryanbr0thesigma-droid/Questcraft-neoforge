@@ -3,6 +3,8 @@ package pojlib.install;
 import android.app.Activity;
 
 import com.google.gson.Gson;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 
 import org.apache.commons.io.FileUtils;
 
@@ -11,6 +13,11 @@ import pojlib.util.Logger;
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.Enumeration;
+import java.util.Locale;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipFile;
+import java.util.zip.ZipOutputStream;
 
 /**
  * Installs Forge into a game directory by running Forge's installer headless ({@code --installClient}), like
@@ -47,6 +54,7 @@ public class ForgeInstaller {
             File installer = NeoForgeInstaller.downloadInstaller(
                     new File(gameDir + "/installers/forge-" + minecraftVersion + "-" + forgeVersion + "-installer.jar"),
                     ForgeMeta.getInstallerUrl(minecraftVersion, forgeVersion), "Forge");
+            relaxOutputChecks(installer);
             NeoForgeInstaller.runInstaller(activity, installer, gameDir, INSTALL_ARG);
 
             if (!isInstalled(gameDir, minecraftVersion, forgeVersion)) {
@@ -60,6 +68,58 @@ public class ForgeInstaller {
 
         VersionInfo forge = new Gson().fromJson(FileUtils.readFileToString(versionJson, StandardCharsets.UTF_8), VersionInfo.class);
         return VersionInfo.merge(minecraftVersionInfo, forge);
+    }
+
+    /**
+     * Forge's installer compares the SHA-1 of every jar its processors produce with the one it was built with. Those
+     * jars are deflated by the JVM that runs the installer, and the headset's JRE compresses with Android's zlib, so
+     * the same content comes out as other bytes: "Processor failed, invalid outputs ... Expected ... Actual ...".
+     * Rewrites the installer so that it does not check them (the content is the same, only the compression differs),
+     * which also takes off the signature that would no longer match the changed profile.
+     */
+    static void relaxOutputChecks(File installer) throws IOException {
+        File relaxed = new File(installer.getPath() + ".tmp");
+        try (ZipFile in = new ZipFile(installer);
+             ZipOutputStream out = new ZipOutputStream(new java.io.FileOutputStream(relaxed))) {
+            Enumeration<? extends ZipEntry> entries = in.entries();
+            while (entries.hasMoreElements()) {
+                ZipEntry entry = entries.nextElement();
+                if (isSignatureFile(entry.getName())) continue;
+
+                ZipEntry copy = new ZipEntry(entry.getName());
+                out.putNextEntry(copy);
+                if (!entry.isDirectory()) {
+                    try (java.io.InputStream data = in.getInputStream(entry)) {
+                        if (entry.getName().equals("install_profile.json")) {
+                            String profile = org.apache.commons.io.IOUtils.toString(data, StandardCharsets.UTF_8);
+                            out.write(stripProcessorOutputs(profile).getBytes(StandardCharsets.UTF_8));
+                        } else {
+                            org.apache.commons.io.IOUtils.copy(data, out);
+                        }
+                    }
+                }
+                out.closeEntry();
+            }
+        }
+        FileUtils.forceDelete(installer);
+        FileUtils.moveFile(relaxed, installer);
+    }
+
+    static boolean isSignatureFile(String name) {
+        String upper = name.toUpperCase(Locale.ROOT);
+        return upper.startsWith("META-INF/") && upper.indexOf('/', 9) < 0
+                && (upper.endsWith(".SF") || upper.endsWith(".RSA") || upper.endsWith(".DSA") || upper.endsWith(".EC"));
+    }
+
+    /** Takes the expected outputs (and so their checksums) off every processor of an install_profile.json. */
+    static String stripProcessorOutputs(String installProfile) {
+        JsonObject profile = new Gson().fromJson(installProfile, JsonObject.class);
+        if (profile.has("processors") && profile.get("processors").isJsonArray()) {
+            for (JsonElement processor : profile.getAsJsonArray("processors")) {
+                if (processor.isJsonObject()) processor.getAsJsonObject().remove("outputs");
+            }
+        }
+        return new Gson().toJson(profile);
     }
 
     /** The installer writes the version json first and the patched client last, so the client decides. */
