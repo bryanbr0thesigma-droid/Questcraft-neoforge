@@ -29,6 +29,7 @@ import java.util.function.Consumer;
 import pojlib.account.MinecraftAccount;
 import pojlib.install.FabricMeta;
 import pojlib.install.Installer;
+import pojlib.install.LegacyVivecraft;
 import pojlib.install.LaunchArguments;
 import pojlib.install.MinecraftMeta;
 import pojlib.install.ModLoader;
@@ -187,6 +188,12 @@ public class InstanceHandler {
             return null;
         }
 
+        if (loader == ModLoader.VANILLA && !LegacyVivecraft.isAvailable(minecraftVersion)) {
+            Logger.getInstance().appendToLog("There is no Vivecraft for Minecraft " + minecraftVersion + " without a mod loader");
+            lastCreateError = "There is no Vivecraft for Minecraft " + minecraftVersion + " without a mod loader";
+            return null;
+        }
+
         if (loader == ModLoader.NEOFORGE && !NeoForgeMeta.isSupported(minecraftVersion)) {
             Logger.getInstance().appendToLog("NeoForge does not exist for Minecraft " + minecraftVersion + " (it starts at 1.20.2)");
             return null;
@@ -268,6 +275,13 @@ public class InstanceHandler {
                     variables.put("launcher_version", "1");
                     instance.loaderJvmArgs = LaunchArguments.resolve(neoForge.arguments.jvm, variables).toArray(new String[0]);
                     instance.loaderGameArgs = LaunchArguments.resolve(neoForge.arguments.game, variables).toArray(new String[0]);
+                } else if (loader == ModLoader.VANILLA) {
+                    // the game with OptiFine and Vivecraft merged into its client, see LegacyVivecraft
+                    String libraries = Installer.installLibraries(minecraftVersionInfo, gameDir).get();
+                    String vivecraft = LegacyVivecraft.install(minecraftVersionInfo, gameDir, clientClasspath.get());
+                    instance.mainClass = minecraftVersionInfo.mainClass;
+                    instance.classpath = joinClasspath(vivecraft, libraries, lwjgl);
+                    instance.loaderJvmArgs = LegacyVivecraft.JVM_ARGS;
                 } else {
                     CompletableFuture<String> minecraftClasspath = Installer.installLibraries(minecraftVersionInfo, gameDir);
                     CompletableFuture<String> modLoaderClasspath = Installer.installLibraries(finalModLoaderVersionInfo, gameDir);
@@ -280,9 +294,9 @@ public class InstanceHandler {
 
                 instance.assetsDir = assetsFuture.get();
                 Installer.moveLocalAssets(activity, instance);
-            } catch (IOException | ExecutionException | InterruptedException e) {
+            } catch (Exception e) {
                 e.printStackTrace();
-                if (loader == ModLoader.NEOFORGE || loader == ModLoader.FORGE) {
+                if (loader == ModLoader.NEOFORGE || loader == ModLoader.FORGE || loader == ModLoader.VANILLA) {
                     // an instance without a classpath can not be launched, so do not keep it around
                     Logger.getInstance().appendToLog("Could not create the instance: " + e.getMessage());
                     lastCreateError = String.valueOf(e.getMessage());

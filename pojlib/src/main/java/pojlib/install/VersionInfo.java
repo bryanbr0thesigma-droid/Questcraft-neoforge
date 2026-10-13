@@ -125,6 +125,29 @@ public class VersionInfo {
         public String name;
         @SerializedName("url")
         public String url;
+        // old versions (1.12.2 and before) have libraries for one OS only (natives, macOS bridges)
+        @SerializedName("rules")
+        public Arguments.ArgValue.ArgRules[] rules;
+
+        /**
+         * Whether the library is for Linux, which the headset counts as: with rules, the last one that matches
+         * decides (Mojang's launcher does the same), without any it is for every OS.
+         */
+        public boolean appliesToLinux() {
+            if (rules == null || rules.length == 0) return true;
+            boolean allowed = false;
+            for (Arguments.ArgValue.ArgRules rule : rules) {
+                if (rule.os == null || "linux".equals(rule.os.name)) {
+                    allowed = "allow".equals(rule.action);
+                }
+            }
+            return allowed;
+        }
+
+        /** An entry of only natives (LWJGL 2's, jinput's in old versions): nothing for the class path. */
+        public boolean nativesOnly() {
+            return downloads != null && downloads.artifact == null;
+        }
 
         public static class Downloads {
             @SerializedName("artifact")

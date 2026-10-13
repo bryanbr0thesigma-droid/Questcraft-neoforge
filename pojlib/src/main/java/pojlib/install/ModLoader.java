@@ -38,7 +38,14 @@ public enum ModLoader {
             Constants.PORT_RAW_URL + "/pojlib/mods-forge.json",
             Constants.PORT_RAW_URL + "/pojlib/devmods-forge.json",
             Constants.PORT_RAW_URL + "/pojlib/supportedVersions-forge.json",
-            "forge");
+            "forge"),
+    // No mod loader: old versions whose VR is Vivecraft's changed game classes on top of OptiFine (1.12.2, see
+    // LegacyVivecraft). Mods do not load, resource packs do
+    VANILLA("vanilla", "Vanilla",
+            Constants.PORT_RAW_URL + "/pojlib/mods-vanilla.json",
+            Constants.PORT_RAW_URL + "/pojlib/devmods-vanilla.json",
+            Constants.PORT_RAW_URL + "/pojlib/supportedVersions-vanilla.json",
+            "minecraft");
 
     /** Stored in instances.json and the Modrinth category of the loader itself: lower case. */
     public final String id;

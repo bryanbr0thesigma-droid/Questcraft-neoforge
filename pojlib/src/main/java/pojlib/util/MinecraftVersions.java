@@ -40,6 +40,18 @@ public final class MinecraftVersions {
         return sorted.toArray(new String[0]);
     }
 
+    /**
+     * Whether the version draws with OpenGL's fixed-function calls ({@code glBegin}, {@code glMatrixMode}, display
+     * lists), which MobileGlues only stubs: releases before 1.13 and the alpha, beta and classic versions
+     * ({@code b1.7.3}, {@code a1.2.6}, {@code c0.30_01c}, {@code rd-132211}). Snapshots like {@code 24w14a} are modern.
+     */
+    public static boolean isLegacy(String version) {
+        if (version == null || version.isEmpty()) return false;
+        if (version.matches("(a|b|c|inf-|rd-).*")) return true;
+        int[] numbers = parse(version.replaceAll("[-_ ].*", ""));
+        return numbers != null && numbers.length >= 2 && numbers[0] == 1 && numbers[1] < 13;
+    }
+
     public static boolean contains(String[] versions, String version) {
         if (versions == null) return false;
         for (String v : versions) {

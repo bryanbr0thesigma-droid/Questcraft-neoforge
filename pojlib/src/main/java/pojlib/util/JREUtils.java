@@ -28,6 +28,9 @@ import java.util.Map;
 import pojlib.API;
 
 import pojlib.install.Installer;
+import pojlib.install.LegacyVivecraft;
+import pojlib.install.ModLoader;
+import pojlib.install.VersionInfo;
 import pojlib.install.MinecraftMeta;
 import pojlib.install.ForgeInstaller;
 import pojlib.install.NeoForgeInstaller;
@@ -155,10 +158,22 @@ public class JREUtils {
     }
 
     public static void setJavaEnvironment(Activity activity, MinecraftInstances.Instance instance) throws Throwable {
-        setJavaEnvironment(activity, instance.gameDir);
+        setJavaEnvironment(activity, instance.gameDir, usesGl4es(instance));
     }
 
     public static void setJavaEnvironment(Context activity, String home) throws Throwable {
+        setJavaEnvironment(activity, home, false);
+    }
+
+    /**
+     * gl4es for versions that draw with OpenGL's fixed-function calls (1.12.2 and older), which MobileGlues only
+     * stubs; MobileGlues for everything else.
+     */
+    public static boolean usesGl4es(MinecraftInstances.Instance instance) {
+        return instance != null && MinecraftVersions.isLegacy(instance.versionName);
+    }
+
+    private static void setJavaEnvironment(Context activity, String home, boolean gl4es) throws Throwable {
         Map<String, String> envMap = new ArrayMap<>();
         envMap.put("POJLIB_NATIVEDIR", activity.getApplicationInfo().nativeLibraryDir);
         envMap.put("JAVA_HOME", activity.getFilesDir() + "/runtimes/JRE");
@@ -166,7 +181,14 @@ public class JREUtils {
         //envMap.put("APP_HOME", Constants.USER_HOME);
         envMap.put("TMPDIR", activity.getCacheDir().getAbsolutePath());
         envMap.put("VR_MODEL", API.model);
-        envMap.put("POJLIB_RENDERER", "MobileGLUES");
+        // egl_bridge.c takes its EGL calls from the renderer's library, or from the system for gl4es
+        envMap.put("POJLIB_RENDERER", gl4es ? "gl4es" : "MobileGLUES");
+        if (gl4es) {
+            envMap.put("LIBGL_MIPMAP", "3");
+            envMap.put("LIBGL_NORMALIZE", "1");
+            envMap.put("LIBGL_NOINTOVLHACK", "1");
+            envMap.put("LIBGL_NOERROR", "1");
+        }
         envMap.put("MG_DIR_PATH", activity.getFilesDir() + "/mg");
 
         envMap.put("LD_LIBRARY_PATH", LD_LIBRARY_PATH);
@@ -217,6 +239,10 @@ public class JREUtils {
             NeoForgeInstaller.install(activity, MinecraftMeta.getVersionInfo(instance.versionName), Constants.USER_HOME, instance.loaderVersion);
         } else if (instance.isForge()) {
             ForgeInstaller.install(activity, MinecraftMeta.getVersionInfo(instance.versionName), Constants.USER_HOME, instance.loaderVersion);
+        } else if (instance.loader() == ModLoader.VANILLA) {
+            // the merged client, made again if it is gone or Vivecraft was updated
+            VersionInfo minecraft = MinecraftMeta.getVersionInfo(instance.versionName);
+            LegacyVivecraft.install(minecraft, Constants.USER_HOME, Installer.installClient(minecraft, Constants.USER_HOME).get());
         }
 
         Installer.installJVM(activity, false);
@@ -282,7 +308,7 @@ public class JREUtils {
     }
 
     public static int launchJavaVM(final Activity activity, final List<String> JVMArgs, MinecraftInstances.Instance instance) throws Throwable {
-        final String graphicsLib = loadGraphicsLibrary();
+        final String graphicsLib = loadGraphicsLibrary(instance);
         List<String> userArgs = getJavaArgs(activity, instance);
 
         //Add automatically generated args
@@ -408,8 +434,8 @@ public class JREUtils {
      * It will fallback if it fails to load the library.
      * @return The name of the loaded library
      */
-    public static String loadGraphicsLibrary(){
-        return "libmobileglues.so";
+    public static String loadGraphicsLibrary(MinecraftInstances.Instance instance){
+        return usesGl4es(instance) ? "libgl4es.so" : "libmobileglues.so";
     }
 
     public static native long getEGLContextPtr();

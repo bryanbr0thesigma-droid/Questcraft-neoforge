@@ -20,9 +20,11 @@ QuestCraft itself is not a mod. It is a launcher app (a Unity project that calls
 
 **Quilt: every version QuestCraft's Fabric list has** (1.19.2, 1.19.4, 1.20.1, 1.20.4, 1.20.6, 1.21.1, 1.21.4, 1.21.5, 1.21.8, 1.21.10, 1.21.11), see [Quilt](#quilt).
 
+**Vanilla: 1.12.2**, with OptiFine and Vivecraft 1.12.2 on OpenXR, see [Minecraft 1.12.2 in VR](#minecraft-1122-in-vr-vanilla).
+
 Left out of NeoForge: **1.21.10**. Upstream QuestCraft ships it, but the fork's `OpenXR-1.21.10` branch does not compile its shared module in this setup even when built exactly as shipped (Fabric only; the Minecraft classes never reach the compiler), so there is no working source to start from. (1.21.11 is newer and does not depend on it, see below.)
 
-## Loader toggle (Fabric / NeoForge / Quilt / Forge)
+## Loader toggle (Fabric / NeoForge / Quilt / Forge / Vanilla)
 
 The instance creator has a loader dropdown with **Fabric**, **NeoForge**, **Quilt** and **Forge**. It decides which Minecraft versions the creator offers (each loader has its own list), what the new instance is installed with, and which mod list its default mods come from. The choice is remembered (`lastSelectedLoader` in `launcher.conf`); a config from before the toggle counts as NeoForge.
 
@@ -192,13 +194,27 @@ In menus: right trigger clicks, A right-clicks, right grip middle-clicks, left g
 
 **Not tried on a headset.** The jars build and the launcher side is tested (instance choice, mod lists), but nothing here ran Visor on a Quest: whether its renderer works through the headset's OpenGL layer, and whether the controllers map well, are unknown. Visor itself is an early-stage mod. If the game starts and VR does not, the log screen shows the Visor/OpenXR lines (crash info) to send.
 
-### Forge 1.12.2 (not possible with what exists)
+## Minecraft 1.12.2 in VR ("Vanilla")
 
-Forge for 1.12.2 is a different generation, and none of what QuestCraft runs on exists for it:
+The New instance screen has a fifth loader, **Vanilla**, with **1.12.2**: Minecraft 1.12.2 with OptiFine and **Vivecraft 1.12.2**, the last Vivecraft before 1.13 (jrbudda's `jrbudda-11-r6`). Vivecraft for 1.12.2 was SteamVR only; here its VR provider is rewritten on **OpenXR**, after QuestCraft's own OpenXR Vivecraft (the 1.19 port: instance, session, spaces, actions, and the Quest controller bindings as they are there). Everything else is Vivecraft 1.12.2's own: its in-game menus (VR Settings, radial menu, keyboard), locomotion, climbing, the hotbar on the wrist. The source is in [`vivecraft112-builder/`](vivecraft112-builder).
 
-- **Java 8.** Forge 1.12.2 starts through LaunchWrapper, which needs the system class loader to be a `URLClassLoader` (gone in Java 9). The app ships Java 22.
-- **LWJGL 2.** 1.12.2 uses LWJGL 2 (`Display`, `Keyboard`, `Mouse`), the app ships LWJGL 3 and a GLFW stand-in.
-- **No OpenXR Vivecraft.** The Vivecraft for 1.12.2 is the original OpenVR-only one; QuestCraft's fork starts at 1.18, and Vivecraft's own `openxr-legacy` branch is 1.20.4. A VR 1.12.2 would be a new Vivecraft port (OpenXR on Android) written from the 1.12.2 sources.
+What it takes, and how it is done:
+
+- **Old OpenGL.** 1.12.2 draws with OpenGL's fixed-function calls (`glBegin`, `glMatrixMode`, display lists). The headset's OpenGL layer, MobileGlues, only stubs those (they return straight away), so versions before 1.13 run on **gl4es** (OpenGL 2.1 on OpenGL ES) instead, built from source by [`gl4es-builder/`](gl4es-builder) and picked per version (`JREUtils.usesGl4es`, `MinecraftVersions.isLegacy`); the EGL context then comes from the system rather than from MobileGlues (`egl_bridge.c`).
+- **Eye images.** gl4es has no array textures, so the game cannot draw straight into OpenXR's swapchain the way the newer Vivecraft does. It draws each eye into a texture of its own, as it did for SteamVR, and the provider copies both into the swapchain with OpenGL ES calls of its own (`XrBlit`).
+- **Java.** Vivecraft 1.12.2 normally starts through LaunchWrapper, which needs Java 8; the app has Java 22. It starts the game directly instead: Vivecraft's changed classes are merged into the game's client on the headset (below), so nothing has to swap classes while the game loads.
+- **LWJGL 2.** The app's LWJGL is LWJGL 3 with LWJGL 2's classes on top (`Display`, `Keyboard`, `Mouse`). The whole game, OptiFine and Vivecraft are compiled against exactly that jar, so a call the headset does not have would have failed the build; one OptiFine debug feature did and is turned off (`fixups.py`).
+- **Install.** Like Vivecraft's own installer, the repository holds only Vivecraft's classes (and the game classes it changes), no Minecraft or OptiFine. Making the instance downloads the game from Mojang and the OptiFine build Vivecraft 1.12.2 is made for (from vivecraft.org, the file Vivecraft's installer uses), then merges game, OptiFine and Vivecraft into one jar (`LegacyVivecraft`): Mojang's client is signed, so the changed classes cannot come from a jar of their own. The list of what goes in is [`pojlib/vivecraft-legacy.json`](pojlib/vivecraft-legacy.json).
+
+**Controls**: the same as QuestCraft's Vivecraft (right trigger attack, left trigger use, grips hotbar, left stick move, right stick turn and sneak on click, A jump, X teleport, B radial menu, Y inventory, left menu button for the game menu). Vivecraft's settings start as QuestCraft's: no desktop mirror (there is no window on the headset), no FSAA, the HUD on the wrist.
+
+**Checked here**: the full source (game, OptiFine, Vivecraft and the OpenXR provider) compiles against the headset's LWJGL and OpenXR; the merged game starts on a desktop (Java 21, Mesa), loads OptiFine and Vivecraft and runs its main loop, saying "This Vivecraft runs on QuestCraft only (OpenXR on the headset)", as it must without a headset; the merge, the list and the launcher screens have tests.
+
+**Not tried on a headset.** Nothing here has run 1.12.2 on a Quest: gl4es on the Quest's driver, the OpenXR session on gl4es's context, the copy into the swapchain and the controllers are all untested. If the game starts and VR does not, the log screen shows the OpenXR lines to send. Mods do not load in a Vanilla instance (there is no mod loader); resource packs do.
+
+### Forge 1.12.2 (still not possible)
+
+Forge 1.12.2 starts through LaunchWrapper, which needs the system class loader to be a `URLClassLoader` (gone in Java 9), and Forge changes the game's classes while it loads them, which the merged-jar way above cannot do. The app ships Java 22, so Forge 1.12.2 would need Java 8 on the headset or a Forge that runs on newer Java (Cleanroom); Vanilla 1.12.2 above is VR on 1.12.2 without it.
 
 ## Minecraft 26.x (not supported, and why)
 

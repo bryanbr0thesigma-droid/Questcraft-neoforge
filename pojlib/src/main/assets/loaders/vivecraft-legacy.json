@@ -1,0 +1,53 @@
+{
+  "versions": [
+    {
+      "name": "1.12.2",
+      "version": "1.12.2-jrbudda-11-r6-qc1",
+      "vivecraft": {
+        "url": "https://raw.githubusercontent.com/bryanbr0thesigma-droid/Questcraft-neoforge/claude/fervent-mayer-8idkzr/pojlib/src/main/assets/vivecraft-jars/legacy/vivecraft-1.12.2-questcraft.jar.bin",
+        "sha1": "c2533caf9e3a0a5c89db69de5f1be17e2054e719",
+        "size": 3850559
+      },
+      "optifine": {
+        "url": "https://vivecraft.org/jar/build/OptiFine-1.12.2_HD_U_F5.jar",
+        "sha1": "203c98209c151a09691f5513a38de0359be206dc",
+        "size": 2380076
+      },
+      "libraries": [
+        {
+          "name": "net.minecraft:launchwrapper:1.12",
+          "downloads": {
+            "artifact": {
+              "path": "net/minecraft/launchwrapper/1.12/launchwrapper-1.12.jar",
+              "url": "https://libraries.minecraft.net/net/minecraft/launchwrapper/1.12/launchwrapper-1.12.jar",
+              "sha1": "111e7bea9c968cdb3d06ef4632bf7ff0824d0f36",
+              "size": 32999
+            }
+          }
+        },
+        {
+          "name": "org.json:json:20140107",
+          "downloads": {
+            "artifact": {
+              "path": "org/json/json/20140107/json-20140107.jar",
+              "url": "https://repo1.maven.org/maven2/org/json/json/20140107/json-20140107.jar",
+              "sha1": "d1ffca6e2482b002702c6a576166fd685e3370e3",
+              "size": 64952
+            }
+          }
+        },
+        {
+          "name": "java3d:vecmath:1.3.1",
+          "downloads": {
+            "artifact": {
+              "path": "java3d/vecmath/1.3.1/vecmath-1.3.1.jar",
+              "url": "https://libraries.minecraft.net/java3d/vecmath/1.3.1/vecmath-1.3.1.jar",
+              "sha1": "a0ae4f51da409fa0c20fa0ca59e6bbc9413ae71d",
+              "size": 289881
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

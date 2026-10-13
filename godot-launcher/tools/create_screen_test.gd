@@ -95,6 +95,28 @@ func _initialize() -> void:
 		if b.text == "Visor":
 			no_visor = false
 	check(no_visor, "no Visor button where there is no Visor build (Forge 1.20.4)")
+	# Vanilla: the old versions with Vivecraft built into the game (1.12.2)
+	ui.show_create()
+	await process_frame
+	for b in ui.find_children("*", "Button", true, false):
+		if b.text == "Vanilla":
+			b.pressed.emit()
+	await process_frame
+	var vanilla_versions: Array = _version_buttons(ui).map(func(b): return (b as Button).text)
+	check(vanilla_versions == ["1.12.2"], "Vanilla offers 1.12.2: " + str(vanilla_versions))
+	var vanilla_visor := false
+	for b in ui.find_children("*", "Button", true, false):
+		if b.text == "Visor":
+			vanilla_visor = true
+	check(not vanilla_visor, "Vanilla 1.12.2 runs Vivecraft only")
+	for b in _version_buttons(ui):
+		b.pressed.emit()
+	await process_frame
+	for b in ui.find_children("*", "Button", true, false):
+		if b.text == "Create":
+			b.pressed.emit()
+	await process_frame
+	check(bridge._mock_instances.any(func(i): return i["version"] == "1.12.2" and i["loader"] == "Vanilla" and i["vr"] == "Vivecraft"), "Create makes a Vanilla 1.12.2 Vivecraft instance")
 	print("CREATE SCREEN OK" if ok else "CREATE SCREEN FAILED")
 	quit()
 

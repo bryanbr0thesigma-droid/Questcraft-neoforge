@@ -33,4 +33,18 @@ class MinecraftVersionsTest {
         assertFalse(MinecraftVersions.contains(versions, "1.20"));
         assertFalse(MinecraftVersions.contains(null, "1.20.4"));
     }
+
+    @Test
+    void oldVersionsAreLegacy() {
+        for (String v : new String[]{"1.12.2", "1.7.10", "1.8.9", "1.0", "b1.7.3", "a1.2.6", "c0.30_01c", "rd-132211", "inf-20100618"}) {
+            assertTrue(MinecraftVersions.isLegacy(v), v);
+        }
+    }
+
+    @Test
+    void modernVersionsAndSnapshotsAreNot() {
+        for (String v : new String[]{"1.13", "1.13.2", "1.21.11", "1.21.1", "24w14potato", "", null}) {
+            assertFalse(MinecraftVersions.isLegacy(v), String.valueOf(v));
+        }
+    }
 }

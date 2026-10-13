@@ -62,6 +62,24 @@ void pojavTerminate() {
 }
 
 void dlsym_egl() {
+    // gl4es (old versions, see JREUtils.usesGl4es) works on a plain context from the system's EGL,
+    // MobileGlues wants the context made through its own EGL functions
+    const char* renderer = getenv("POJLIB_RENDERER");
+    if (renderer != NULL && strcmp(renderer, "gl4es") == 0) {
+        void* handle = dlopen("libEGL.so", RTLD_NOW);
+        eglGetProcAddress_p = (eglGetProcAddress_t*) dlsym(handle, "eglGetProcAddress");
+        eglGetDisplay_p = (eglGetDisplay_t*) dlsym(handle, "eglGetDisplay");
+        eglInitialize_p = (eglInitialize_t*) dlsym(handle, "eglInitialize");
+        eglChooseConfig_p = (eglChooseConfig_t*) dlsym(handle, "eglChooseConfig");
+        eglGetConfigAttrib_p = (eglGetConfigAttrib_t*) dlsym(handle, "eglGetConfigAttrib");
+        eglBindAPI_p = (eglBindAPI_t*) dlsym(handle, "eglBindAPI");
+        eglCreateContext_p = (eglCreateContext_t*) dlsym(handle, "eglCreateContext");
+        eglMakeCurrent_p = (eglMakeCurrent_t*) dlsym(handle, "eglMakeCurrent");
+        eglGetError_p = (eglGetError_t*) dlsym(handle, "eglGetError");
+        eglSwapInterval_p = (eglSwapInterval_t*) dlsym(handle, "eglSwapInterval");
+        printf("XREGLBridge: EGL from the system for gl4es\n");
+        return;
+    }
     void* handle = dlopen("libmobileglues.so", RTLD_NOW);
     eglGetProcAddress_p = (eglGetProcAddress_t*) dlsym(handle, "eglGetProcAddress");
     eglGetDisplay_p = (eglGetDisplay_t*) eglGetProcAddress_p("eglGetDisplay");

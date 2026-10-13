@@ -53,15 +53,16 @@ func api_bool(method: String, args: Array = []) -> bool:
 func _mock(method: String, args: Array) -> Variant:
 	match method:
 		"init": return ""
-		"modLoaders": return ["Fabric", "NeoForge", "Quilt", "Forge"]
+		"modLoaders": return ["Fabric", "NeoForge", "Quilt", "Forge", "Vanilla"]
 		"supportedVersions":
 			# the lists the app carries (pojlib/src/main/assets/loaders/supportedVersions-*.json)
 			match str(args[0]):
 				"NeoForge", "Forge": return ["1.21.11", "1.21.8", "1.21.5", "1.21.4", "1.21.1", "1.20.6", "1.20.4"]
+				"Vanilla": return ["1.12.2"]
 				_: return ["1.21.11", "1.21.10", "1.21.8", "1.21.5", "1.21.4", "1.21.1", "1.20.6", "1.20.4", "1.20.1", "1.19.4", "1.19.2"]
 		"vrMods":
 			# Visor where the app has a build: not for Forge 1.20.4 here, so that the screen shows both cases
-			if str(args[0]) == "Forge" and str(args[1]) == "1.20.4":
+			if (str(args[0]) == "Forge" and str(args[1]) == "1.20.4") or str(args[0]) == "Vanilla":
 				return ["Vivecraft"]
 			return ["Vivecraft", "Visor"]
 		"listInstances": return _mock_instances
