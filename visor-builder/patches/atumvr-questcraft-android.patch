@@ -1,10 +1,13 @@
 diff --git a/atumvr-api/build.gradle b/atumvr-api/build.gradle
-index a7be06c..2b33892 100644
+index a7be06c..5076a9c 100644
 --- a/atumvr-api/build.gradle
 +++ b/atumvr-api/build.gradle
-@@ -12,27 +12,25 @@ dependencies {
+@@ -10,29 +10,27 @@ dependencies {
  
-     api platform("org.lwjgl:lwjgl-bom:3.3.6")
+     api("org.joml:joml:1.10.5")
+ 
+-    api platform("org.lwjgl:lwjgl-bom:3.3.6")
++    api platform("org.lwjgl:lwjgl-bom:3.3.3")
  
 +    // QuestCraft: its LWJGL OpenXR build has the Android parts the standard one lacks
 +    api(files(System.getenv("QC_OPENXR_JAR")))
@@ -32,19 +35,29 @@ index a7be06c..2b33892 100644
  
      api("org.lwjgl:lwjgl-stb::natives-linux")
      api("org.lwjgl:lwjgl-stb::natives-linux-arm64")
-diff --git a/atumvr-core/build.gradle b/atumvr-core/build.gradle
-index b316e71..7e043e3 100644
---- a/atumvr-core/build.gradle
-+++ b/atumvr-core/build.gradle
-@@ -9,6 +9,8 @@ dependencies {
-     //vendor treadmill providers; the app supplies JNA at runtime
-     //(minecraft already bundles it, standalone apps add their own)
-     compileOnly("net.java.dev.jna:jna:5.14.0")
-+    // only for the constants of newer extensions (inlined by javac), the 3.3.3 build has not got those classes
-+    compileOnly("org.lwjgl:lwjgl-openxr:3.3.6")
- }
- task javadocJar(type: Jar, dependsOn: javadoc) {
-     archiveClassifier.set('javadoc')
+diff --git a/atumvr-core/src/main/java/me/phoenixra/atumvr/core/enums/XREvent.java b/atumvr-core/src/main/java/me/phoenixra/atumvr/core/enums/XREvent.java
+index 1b0ef2d..c71eaf0 100644
+--- a/atumvr-core/src/main/java/me/phoenixra/atumvr/core/enums/XREvent.java
++++ b/atumvr-core/src/main/java/me/phoenixra/atumvr/core/enums/XREvent.java
+@@ -14,15 +14,15 @@ public enum XREvent {
+ 
+     EVENTS_LOST(XR10.XR_TYPE_EVENT_DATA_EVENTS_LOST),
+ 
+-    EYE_CALIBRATION_CHANGED_ML(MLUserCalibration.XR_TYPE_EVENT_DATA_EYE_CALIBRATION_CHANGED_ML),
++    EYE_CALIBRATION_CHANGED_ML(1000472001 /* XR_TYPE_EVENT_DATA_EYE_CALIBRATION_CHANGED_ML */),
+ 
+-    HEADSET_FIT_CHANGED_ML(MLUserCalibration.XR_TYPE_EVENT_DATA_HEADSET_FIT_CHANGED_ML),
++    HEADSET_FIT_CHANGED_ML(1000472000 /* XR_TYPE_EVENT_DATA_HEADSET_FIT_CHANGED_ML */),
+ 
+     INSTANCE_LOSS_PENDING(XR10.XR_TYPE_EVENT_DATA_INSTANCE_LOSS_PENDING),
+ 
+     INTERACTION_PROFILE_CHANGED(XR10.XR_TYPE_EVENT_DATA_INTERACTION_PROFILE_CHANGED),
+ 
+-    LOCALIZATION_CHANGED_ML(MLLocalizationMap.XR_TYPE_EVENT_DATA_LOCALIZATION_CHANGED_ML),
++    LOCALIZATION_CHANGED_ML(1000139001 /* XR_TYPE_EVENT_DATA_LOCALIZATION_CHANGED_ML */),
+ 
+     MAIN_SESSION_VISIBILITY_CHANGED_EXTX(EXTXOverlay.XR_TYPE_EVENT_DATA_MAIN_SESSION_VISIBILITY_CHANGED_EXTX),
+ 
 diff --git a/atumvr-core/src/main/java/me/phoenixra/atumvr/core/enums/XRGraphicsApi.java b/atumvr-core/src/main/java/me/phoenixra/atumvr/core/enums/XRGraphicsApi.java
 index 8fecaed..c8be68c 100644
 --- a/atumvr-core/src/main/java/me/phoenixra/atumvr/core/enums/XRGraphicsApi.java

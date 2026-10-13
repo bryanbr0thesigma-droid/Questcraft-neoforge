@@ -12,7 +12,7 @@ index f235947..c2ca9af 100644
      implementation "com.github.Phoenix-Ra:AtumConfiguration:${atumconfig_version}"
      apiBundle "com.github.Phoenix-Ra:AtumConfiguration:${atumconfig_version}"
 diff --git a/buildSrc/src/main/groovy/visor.minecraft.gradle b/buildSrc/src/main/groovy/visor.minecraft.gradle
-index 34fd965..b75a97a 100644
+index 34fd965..c13b65d 100644
 --- a/buildSrc/src/main/groovy/visor.minecraft.gradle
 +++ b/buildSrc/src/main/groovy/visor.minecraft.gradle
 @@ -14,7 +14,7 @@ project.ext.branch = project.parent.name - "visor-" // remove "visor-" prefix
@@ -32,14 +32,28 @@ index 34fd965..b75a97a 100644
          }
      }
  
-@@ -132,6 +131,7 @@ dependencies {
+@@ -132,7 +131,7 @@ dependencies {
      compileOnly "org.jetbrains:annotations:${jetbrains_annotations_version}"
  
      // Natives
+-    compileOnly "org.lwjgl:lwjgl-openxr:${lwjgl_version}"
 +    compileOnly files(System.getenv("QC_OPENXR_JAR"))
-     compileOnly "org.lwjgl:lwjgl-openxr:${lwjgl_version}"
      compileOnly "org.lwjgl:lwjgl-vulkan:${lwjgl_version}"
  }
+ 
+diff --git a/stonecutter.properties.toml b/stonecutter.properties.toml
+index c5ac120..ff4da36 100644
+--- a/stonecutter.properties.toml
++++ b/stonecutter.properties.toml
+@@ -13,7 +13,7 @@ fabric_loader_version_range = ">=0.14.14"
+ atumvr_source         = "local"   # "local" = <root>/libs, "maven" = external repository
+ atumvr_version        = "1.14.0beta-snapshot#26"
+ atumconfig_version    = "1.2.0pre3"
+-lwjgl_version         = "3.3.6"
++lwjgl_version         = "3.3.3"
+ mixin_extras_version  = "0.4.1"
+ # Forge 50 and NeoForge 20.6 ship Mixin 0.8.5, which knows no level above JAVA_18
+ mixin_compat_level    = 17
 diff --git a/visor-fabric/build.gradle b/visor-fabric/build.gradle
 index fe31daf..aa78844 100644
 --- a/visor-fabric/build.gradle

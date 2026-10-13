@@ -9,8 +9,8 @@ create their OpenXR session for a desktop OpenGL context. QuestCraft's build cha
   the game's EGL display, config and context (`XrGraphicsBindingOpenGLESAndroidKHR`), and the swapchain images are OpenGL ES ones.
   `org.vivecraft.util.VLoader` is the native side (`libvloader.so`, built into Pojlib); it has Vivecraft's name because the native
   functions are bound to it.
-- `patches/visor-questcraft-quest.patch` - Visor is built against QuestCraft's LWJGL OpenXR (`lib/`, it has the Android parts the
-  standard one lacks) and ships it inside the mod jar instead of the desktop natives; no Vulkan; no Parchment names.
+- `patches/visor-questcraft-quest.patch` - Visor is built against QuestCraft's LWJGL OpenXR **3.3.3** (`lib/`, it has the Android parts the
+  standard one lacks, and it is the version the headset runs, so a call that 3.3.3 does not have fails the build instead of the game) and ships it inside the mod jar instead of the desktop natives; no Vulkan; no Parchment names.
 
 `./build.sh <version> <loader>` makes the jars in `pojlib/visor-jars/`, listed in `pojlib/visor-mods.json`, which the launcher reads.
 An instance picks Vivecraft or Visor when it is created and never has both (they conflict).
