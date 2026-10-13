@@ -1,22 +1,21 @@
-// Maven Central is asked first for everything, and a rate limited Central answers 429 (an error, not "not here") for the
-// loaders' and Minecraft's artifacts, which it does not have anyway. Tell Gradle not to ask Central for those.
-def keepOffCentral = { repo ->
-    if (repo instanceof MavenArtifactRepository && repo.url.toString().matches('https://(repo\\.maven\\.apache\\.org|repo1\\.maven\\.org)/.*')) {
-        repo.content {
-            excludeGroupByRegex 'net\\.(neoforged|minecraftforge|fabricmc|minecraft)(\\..*)?'
-            excludeGroupByRegex 'org\\.(parchmentmc|quiltmc|spongepowered)(\\..*)?'
-            excludeGroupByRegex 'dev\\.architectury(\\..*)?'
-            excludeGroup 'com.mojang'
-        }
+// A rate limited Maven Central answers 429 (an error, where "not here" would be fine) to the many requests of a Minecraft
+// mod build. Google keeps a mirror of Central that does not: send every repository that points at Central there. The
+// mirror has what Central has; artifacts it lacks (the loaders' and Minecraft's) are a plain 404 and the next repository
+// is asked.
+def mirror = 'https://maven-central.storage-download.googleapis.com/maven2/'
+def toMirror = { repo ->
+    if (repo instanceof MavenArtifactRepository && repo.url.toString().matches('https://(repo\\.maven\\.apache\\.org|repo1\\.maven\\.org)/maven2/?')) {
+        repo.url = mirror
     }
 }
 allprojects {
-    buildscript.repositories.configureEach(keepOffCentral)
-    repositories.configureEach(keepOffCentral)
+    buildscript.repositories.configureEach(toMirror)
+    repositories.configureEach(toMirror)
 }
 beforeSettings { s ->
-    s.pluginManagement.repositories.configureEach(keepOffCentral)
+    s.pluginManagement.repositories.configureEach(toMirror)
+    s.buildscript.repositories.configureEach(toMirror)
 }
 settingsEvaluated { s ->
-    s.dependencyResolutionManagement.repositories.configureEach(keepOffCentral)
+    s.dependencyResolutionManagement.repositories.configureEach(toMirror)
 }
