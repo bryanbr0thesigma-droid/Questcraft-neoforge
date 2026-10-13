@@ -640,7 +640,8 @@ func _instance_row(inst: Dictionary) -> Control:
 	info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(info)
 	info.add_child(_label(iname, 28))
-	info.add_child(_label("%s  |  %s  |  %d mods" % [inst.get("version", "?"), inst.get("loader", "?"), int(inst.get("mods", 0))], 20, TEXT_DIM))
+	var vr := "  |  Visor" if str(inst.get("vr", "")) == "Visor" else ""
+	info.add_child(_label("%s  |  %s%s  |  %d mods" % [inst.get("version", "?"), inst.get("loader", "?"), vr, int(inst.get("mods", 0))], 20, TEXT_DIM))
 	row.add_child(_button("Play", start_play.bind(iname), Vector2(120, 54)))
 	row.add_child(_button("Mods", show_mods.bind(inst), Vector2(120, 54)))
 	var del := _button("Delete", Callable(), Vector2(130, 54))
@@ -663,23 +664,41 @@ func show_create() -> void:
 	body.add_child(loader_row)
 	loader_row.add_child(_label("Mod loader", 26))
 	var version_holder := VBoxContainer.new()
+	var vr_row := HBoxContainer.new()
+	vr_row.add_theme_constant_override("separation", 14)
 	var name_edit := _line_edit("Name")
 	var versions_info := _label("", 22, TEXT_DIM)
-	var state := {"version": ""}
+	var state := {"version": "", "loader": Config.last_loader, "vr": "Vivecraft"}
+
+	# the VR mod: Vivecraft, or Visor where QuestCraft has a build of it for this loader and version
+	var rebuild_vr := func():
+		for c in vr_row.get_children():
+			c.queue_free()
+		vr_row.add_child(_label("VR mod", 26))
+		var options = Bridge.api("vrMods", [state["loader"], state["version"]])
+		if typeof(options) != TYPE_ARRAY or options.size() < 2:
+			state["vr"] = "Vivecraft"
+			vr_row.add_child(_label("Vivecraft   (no Visor build for %s %s)" % [state["loader"], state["version"]], 22, TEXT_DIM))
+			return
+		var picked: String = state["vr"] if options.has(state["vr"]) else "Vivecraft"
+		vr_row.add_child(_choice_grid(options, picked, func(v: String): state["vr"] = v, options.size(), Vector2(170, 50)))
 
 	var rebuild_versions := func(loader: String):
 		for c in version_holder.get_children():
 			c.queue_free()
+		state["loader"] = loader
 		var versions: Array = _supported_versions(loader)
 		if versions.is_empty():
 			versions_info.text = "No version list for %s yet. Check the connection and come back." % loader
 			state["version"] = ""
+			rebuild_vr.call()
 			return
 		versions_info.text = ""
 		var on_version := func(v: String):
 			if name_edit.text == "" or name_edit.text == state["version"]:
 				name_edit.text = v
 			state["version"] = v
+			rebuild_vr.call()
 		# all the versions at once, the newest first
 		version_holder.add_child(_choice_grid(versions, str(versions[0]), on_version, 6, Vector2(150, 48)))
 
@@ -692,6 +711,7 @@ func show_create() -> void:
 	body.add_child(_label("Minecraft version", 26))
 	body.add_child(version_holder)
 	body.add_child(versions_info)
+	body.add_child(vr_row)
 	body.add_child(_label("Name", 26))
 	body.add_child(name_edit)
 
@@ -703,8 +723,9 @@ func show_create() -> void:
 			set_status("Pick a version and give the instance a name.", true)
 			return
 		Config.save_config()
-		Bridge.api("createInstance", [nm, version, loader])
-		show_progress("Installing " + nm + " (" + loader + " " + version + ")", show_instances)
+		Bridge.api("createInstance", [nm, version, loader, str(state["vr"])])
+		var what := loader + " " + version + (", Visor" if state["vr"] == "Visor" else "")
+		show_progress("Installing " + nm + " (" + what + ")", show_instances)
 	body.add_child(_button("Create", do_create, Vector2(260, 58)))
 
 

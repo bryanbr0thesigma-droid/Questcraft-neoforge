@@ -59,6 +59,11 @@ func _mock(method: String, args: Array) -> Variant:
 			match str(args[0]):
 				"NeoForge", "Forge": return ["1.21.11", "1.21.8", "1.21.5", "1.21.4", "1.21.1", "1.20.6", "1.20.4"]
 				_: return ["1.21.11", "1.21.10", "1.21.8", "1.21.5", "1.21.4", "1.21.1", "1.20.6", "1.20.4", "1.20.1", "1.19.4", "1.19.2"]
+		"vrMods":
+			# Visor where the app has a build: not for Forge 1.20.4 here, so that the screen shows both cases
+			if str(args[0]) == "Forge" and str(args[1]) == "1.20.4":
+				return ["Vivecraft"]
+			return ["Vivecraft", "Visor"]
 		"listInstances": return _mock_instances
 		"listAccounts": return [{"name": "Steve", "uuid": "abc"}]
 		"login":
@@ -102,7 +107,8 @@ func _mock(method: String, args: Array) -> Variant:
 			_mock_task_polls = 0
 			return ""
 		"createInstance":
-			_mock_instances.append({"name": args[0], "version": args[1], "loader": args[2], "image": "", "mods": 0})
+			_mock_instances.append({"name": args[0], "version": args[1], "loader": args[2], "image": "", "mods": 0,
+					"vr": str(args[3]) if args.size() > 3 else "Vivecraft"})
 			_mock_phase = "working"
 			_mock_creating = true
 			_mock_task_polls = 0

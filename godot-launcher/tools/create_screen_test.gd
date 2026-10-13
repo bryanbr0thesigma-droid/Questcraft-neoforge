@@ -56,6 +56,45 @@ func _initialize() -> void:
 			b.pressed.emit()
 	await process_frame
 	check(bridge._mock_instances.any(func(i): return i["version"] == "1.21.1" and i["loader"] == "Forge"), "Create makes a Forge 1.21.1 instance")
+	# the VR mod: Visor where there is a build of it
+	ui.show_create()
+	await process_frame
+	for b in ui.find_children("*", "Button", true, false):
+		if b.text == "Forge":
+			b.pressed.emit()
+	await process_frame
+	for b in _version_buttons(ui):
+		if b.text == "1.21.1":
+			b.pressed.emit()
+	await process_frame
+	var visor: Button = null
+	for b in ui.find_children("*", "Button", true, false):
+		if b.text == "Visor":
+			visor = b
+	check(visor != null, "Visor is offered for Forge 1.21.1")
+	visor.pressed.emit()
+	await process_frame
+	check(visor.disabled, "the chosen VR mod is greyed")
+	for b in ui.find_children("*", "Button", true, false):
+		if b.text == "Create":
+			b.pressed.emit()
+	await process_frame
+	check(bridge._mock_instances.any(func(i): return i["version"] == "1.21.1" and i["loader"] == "Forge" and i["vr"] == "Visor"), "Create hands the Visor choice on")
+	ui.show_create()
+	await process_frame
+	for b in ui.find_children("*", "Button", true, false):
+		if b.text == "Forge":
+			b.pressed.emit()
+	await process_frame
+	for b in _version_buttons(ui):
+		if b.text == "1.20.4":
+			b.pressed.emit()
+	await process_frame
+	var no_visor := true
+	for b in ui.find_children("*", "Button", true, false):
+		if b.text == "Visor":
+			no_visor = false
+	check(no_visor, "no Visor button where there is no Visor build (Forge 1.20.4)")
 	print("CREATE SCREEN OK" if ok else "CREATE SCREEN FAILED")
 	quit()
 

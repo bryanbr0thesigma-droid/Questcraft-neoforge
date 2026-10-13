@@ -18,6 +18,8 @@ import java.io.RandomAccessFile;
 
 import pojlib.account.MinecraftAccount;
 import pojlib.input.ClipboardHolder;
+import pojlib.install.ModLoader;
+import pojlib.install.VisorMods;
 import pojlib.util.Constants;
 import pojlib.util.download.DownloadUtils;
 import pojlib.util.Logger;
@@ -122,6 +124,7 @@ public final class LauncherApi {
                 o.addProperty("name", instance.instanceName);
                 o.addProperty("version", instance.versionName);
                 o.addProperty("loader", instance.loaderName());
+                o.addProperty("vr", instance.vrModName());
                 o.addProperty("image", instance.instanceImageURL);
                 o.addProperty("mods", instance.extProjects == null ? 0 : instance.extProjects.length);
                 array.add(o);
@@ -130,8 +133,21 @@ public final class LauncherApi {
         return array.toString();
     }
 
-    /** Creates an instance in the background. Poll {@link #progress()}; the error is in its "error" field. */
+    /** The VR mods an instance of this loader and Minecraft version can run: Vivecraft, and Visor where QuestCraft has a build of it. */
+    public static String vrMods(String loader, String minecraftVersion) {
+        JsonArray array = new JsonArray();
+        array.add("Vivecraft");
+        ModLoader ml = ModLoader.fromName(loader);
+        if (ml != null && VisorMods.isAvailable(VisorMods.registry(), ml.id, minecraftVersion)) array.add("Visor");
+        return array.toString();
+    }
+
     public static void createInstance(String name, String minecraftVersion, String loader) {
+        createInstance(name, minecraftVersion, loader, "Vivecraft");
+    }
+
+    /** Creates an instance in the background. Poll {@link #progress()}; the error is in its "error" field. */
+    public static void createInstance(String name, String minecraftVersion, String loader, String vrMod) {
         if (!begin("Installing " + name)) return;
         new Thread(() -> {
             try {
@@ -139,7 +155,10 @@ public final class LauncherApi {
                     throw new IOException("Instance names cannot be empty or contain / or !");
                 }
                 if (find(name) != null) throw new IOException("There already is an instance called " + name);
-                MinecraftInstances.Instance created = API.createNewInstance(activity, instances, name, true, minecraftVersion, loader, null);
+                if ("visor".equalsIgnoreCase(vrMod) && !vrMods(loader, minecraftVersion).contains("Visor")) {
+                    throw new IOException("There is no Visor for " + loader + " " + minecraftVersion);
+                }
+                MinecraftInstances.Instance created = API.createNewInstance(activity, instances, name, true, minecraftVersion, loader, null, vrMod);
                 awaitCreation(created, InstanceHandler.creation, () -> find(name) != null, () -> InstanceHandler.lastCreateError);
                 finish("");
             } catch (Throwable t) {

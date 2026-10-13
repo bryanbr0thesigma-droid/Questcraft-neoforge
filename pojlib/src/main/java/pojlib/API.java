@@ -209,7 +209,12 @@ public class API {
      * @throws                  IOException Throws if download of library or asset fails
      */
     public static MinecraftInstances.Instance createNewInstance(Activity activity, MinecraftInstances instances, String instanceName, boolean useDefaultMods, String minecraftVersion, String modLoader, String imageURL) throws IOException {
-        return InstanceHandler.create(activity, instances, instanceName, Constants.USER_HOME, useDefaultMods, minecraftVersion, modLoader, imageURL, null);
+        return createNewInstance(activity, instances, instanceName, useDefaultMods, minecraftVersion, modLoader, imageURL, null);
+    }
+
+    /** Like the one above, {@code vrMod} is "visor" for an instance that runs Visor (the other VR mod) instead of Vivecraft. */
+    public static MinecraftInstances.Instance createNewInstance(Activity activity, MinecraftInstances instances, String instanceName, boolean useDefaultMods, String minecraftVersion, String modLoader, String imageURL, String vrMod) throws IOException {
+        return InstanceHandler.create(activity, instances, instanceName, Constants.USER_HOME, useDefaultMods, minecraftVersion, modLoader, imageURL, vrMod, null);
     }
 
     /**
@@ -258,7 +263,7 @@ public class API {
         }
         DownloadManager.reset();
 
-        MinecraftInstances.CheckVivecraftConfig(instance);
+        if (!instance.usesVisor()) MinecraftInstances.CheckVivecraftConfig(instance);
         return true;
     }
 
@@ -275,7 +280,7 @@ public class API {
             return false;
         }
         DownloadManager.reset();
-        MinecraftInstances.CheckVivecraftConfig(instance);
+        if (!instance.usesVisor()) MinecraftInstances.CheckVivecraftConfig(instance);
         return true;
     }
 

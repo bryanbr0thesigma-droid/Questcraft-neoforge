@@ -1,0 +1,22 @@
+// Maven Central is asked first for everything, and a rate limited Central answers 429 (an error, not "not here") for the
+// loaders' and Minecraft's artifacts, which it does not have anyway. Tell Gradle not to ask Central for those.
+def keepOffCentral = { repo ->
+    if (repo instanceof MavenArtifactRepository && repo.url.toString().matches('https://(repo\\.maven\\.apache\\.org|repo1\\.maven\\.org)/.*')) {
+        repo.content {
+            excludeGroupByRegex 'net\\.(neoforged|minecraftforge|fabricmc|minecraft)(\\..*)?'
+            excludeGroupByRegex 'org\\.(parchmentmc|quiltmc|spongepowered)(\\..*)?'
+            excludeGroupByRegex 'dev\\.architectury(\\..*)?'
+            excludeGroup 'com.mojang'
+        }
+    }
+}
+allprojects {
+    buildscript.repositories.configureEach(keepOffCentral)
+    repositories.configureEach(keepOffCentral)
+}
+beforeSettings { s ->
+    s.pluginManagement.repositories.configureEach(keepOffCentral)
+}
+settingsEvaluated { s ->
+    s.dependencyResolutionManagement.repositories.configureEach(keepOffCentral)
+}

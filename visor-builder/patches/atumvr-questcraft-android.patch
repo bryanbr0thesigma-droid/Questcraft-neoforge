@@ -1,0 +1,278 @@
+diff --git a/atumvr-api/build.gradle b/atumvr-api/build.gradle
+index a7be06c..2b33892 100644
+--- a/atumvr-api/build.gradle
++++ b/atumvr-api/build.gradle
+@@ -12,27 +12,25 @@ dependencies {
+ 
+     api platform("org.lwjgl:lwjgl-bom:3.3.6")
+ 
++    // QuestCraft: its LWJGL OpenXR build has the Android parts the standard one lacks
++    api(files(System.getenv("QC_OPENXR_JAR")))
+     api("org.lwjgl:lwjgl")
+     api("org.lwjgl:lwjgl-opengl")
+     api("org.lwjgl:lwjgl-glfw")
+-    api("org.lwjgl:lwjgl-openxr")
+     api("org.lwjgl:lwjgl-vulkan")
+ 
+     api("org.lwjgl:lwjgl::natives-windows")
+     api("org.lwjgl:lwjgl-opengl::natives-windows")
+     api("org.lwjgl:lwjgl-glfw::natives-windows")
+-    api("org.lwjgl:lwjgl-openxr::natives-windows")
+ 
+     api("org.lwjgl:lwjgl::natives-linux")
+     api("org.lwjgl:lwjgl-opengl::natives-linux")
+     api("org.lwjgl:lwjgl-glfw::natives-linux")
+-    api("org.lwjgl:lwjgl-openxr::natives-linux")
+ 
+     //standalone Steam Frame and other aarch64 Linux devices
+     api("org.lwjgl:lwjgl::natives-linux-arm64")
+     api("org.lwjgl:lwjgl-opengl::natives-linux-arm64")
+     api("org.lwjgl:lwjgl-glfw::natives-linux-arm64")
+-    api("org.lwjgl:lwjgl-openxr::natives-linux-arm64")
+ 
+     api("org.lwjgl:lwjgl-stb::natives-linux")
+     api("org.lwjgl:lwjgl-stb::natives-linux-arm64")
+diff --git a/atumvr-core/build.gradle b/atumvr-core/build.gradle
+index b316e71..7e043e3 100644
+--- a/atumvr-core/build.gradle
++++ b/atumvr-core/build.gradle
+@@ -9,6 +9,8 @@ dependencies {
+     //vendor treadmill providers; the app supplies JNA at runtime
+     //(minecraft already bundles it, standalone apps add their own)
+     compileOnly("net.java.dev.jna:jna:5.14.0")
++    // only for the constants of newer extensions (inlined by javac), the 3.3.3 build has not got those classes
++    compileOnly("org.lwjgl:lwjgl-openxr:3.3.6")
+ }
+ task javadocJar(type: Jar, dependsOn: javadoc) {
+     archiveClassifier.set('javadoc')
+diff --git a/atumvr-core/src/main/java/me/phoenixra/atumvr/core/enums/XRGraphicsApi.java b/atumvr-core/src/main/java/me/phoenixra/atumvr/core/enums/XRGraphicsApi.java
+index 8fecaed..c8be68c 100644
+--- a/atumvr-core/src/main/java/me/phoenixra/atumvr/core/enums/XRGraphicsApi.java
++++ b/atumvr-core/src/main/java/me/phoenixra/atumvr/core/enums/XRGraphicsApi.java
+@@ -1,6 +1,7 @@
+ package me.phoenixra.atumvr.core.enums;
+ 
+ import lombok.Getter;
++import org.lwjgl.openxr.KHROpenGLESEnable;
+ import org.lwjgl.openxr.KHROpenGLEnable;
+ import org.lwjgl.openxr.KHRVulkanEnable2;
+ 
+@@ -15,7 +16,9 @@ import org.lwjgl.openxr.KHRVulkanEnable2;
+ @Getter
+ public enum XRGraphicsApi {
+     OPENGL(KHROpenGLEnable.XR_KHR_OPENGL_ENABLE_EXTENSION_NAME),
+-    VULKAN(KHRVulkanEnable2.XR_KHR_VULKAN_ENABLE2_EXTENSION_NAME);
++    VULKAN(KHRVulkanEnable2.XR_KHR_VULKAN_ENABLE2_EXTENSION_NAME),
++    /** OpenGL ES on Android (standalone headsets such as the Meta Quest, QuestCraft) */
++    OPENGL_ES(KHROpenGLESEnable.XR_KHR_OPENGL_ES_ENABLE_EXTENSION_NAME);
+ 
+     private final String extensionName;
+ 
+diff --git a/atumvr-core/src/main/java/me/phoenixra/atumvr/core/session/XRInstance.java b/atumvr-core/src/main/java/me/phoenixra/atumvr/core/session/XRInstance.java
+index bfe53f0..3ec4d6e 100644
+--- a/atumvr-core/src/main/java/me/phoenixra/atumvr/core/session/XRInstance.java
++++ b/atumvr-core/src/main/java/me/phoenixra/atumvr/core/session/XRInstance.java
+@@ -4,6 +4,7 @@ import lombok.Getter;
+ import me.phoenixra.atumvr.api.exceptions.AtumVRException;
+ import me.phoenixra.atumvr.core.XRProvider;
+ import me.phoenixra.atumvr.core.enums.XRGraphicsApi;
++import me.phoenixra.atumvr.core.session.android.AndroidSupport;
+ import org.jetbrains.annotations.NotNull;
+ import org.lwjgl.PointerBuffer;
+ import org.lwjgl.opengl.GL;
+@@ -60,6 +61,10 @@ public class XRInstance {
+     }
+ 
+     public void init() {
++        if (AndroidSupport.isAndroid()) {
++            // the loader has to know the JVM and the activity before it can do anything (standalone headsets)
++            AndroidSupport.initLoader();
++        }
+         try (MemoryStack stack = MemoryStack.stackPush()) {
+ 
+             var extensionsPointer = setupExtensions(
+@@ -77,7 +82,7 @@ public class XRInstance {
+             // 2) Create XrInstanceCreateInfo
+             var instInfo = XrInstanceCreateInfo.calloc(stack)
+                     .type(XR10.XR_TYPE_INSTANCE_CREATE_INFO)
+-                    .next(0)
++                    .next(AndroidSupport.isAndroid() ? AndroidSupport.instanceCreateInfo(stack) : 0)
+                     .applicationInfo(appInfo)
+                     .enabledExtensionNames(extensionsPointer)
+                     .enabledApiLayerNames(null);
+@@ -147,6 +152,7 @@ public class XRInstance {
+         // 2) Define desired extensions in priority order
+         List<String> desiredExtensions = new ArrayList<>(List.of(
+                 graphicsApi.getExtensionName(),
++                AndroidSupport.ANDROID_CREATE_INSTANCE_EXTENSION,
+ 
+                 EXTDebugUtils.XR_EXT_DEBUG_UTILS_EXTENSION_NAME,
+                 FBDisplayRefreshRate.XR_FB_DISPLAY_REFRESH_RATE_EXTENSION_NAME,
+@@ -182,6 +188,13 @@ public class XRInstance {
+ 
+ 
+     private XRGraphicsApi resolveGraphicsApi() {
++        if (AndroidSupport.isAndroid()) {
++            // Android only has OpenGL ES, whatever was asked for
++            if (!availableExtensions.contains(XRGraphicsApi.OPENGL_ES.getExtensionName())) {
++                throw new AtumVRException("The runtime does not support " + XRGraphicsApi.OPENGL_ES.getExtensionName());
++            }
++            return XRGraphicsApi.OPENGL_ES;
++        }
+         XRGraphicsApi forced = vrProvider.getGraphicsApiPreference();
+         if (forced != null) {
+             if (!availableExtensions.contains(forced.getExtensionName())) {
+diff --git a/atumvr-core/src/main/java/me/phoenixra/atumvr/core/session/XRSwapChain.java b/atumvr-core/src/main/java/me/phoenixra/atumvr/core/session/XRSwapChain.java
+index 1f40de6..2728f2d 100644
+--- a/atumvr-core/src/main/java/me/phoenixra/atumvr/core/session/XRSwapChain.java
++++ b/atumvr-core/src/main/java/me/phoenixra/atumvr/core/session/XRSwapChain.java
+@@ -183,8 +183,11 @@ public class XRSwapChain {
+ 
+     public XrSwapchainImageOpenGLKHR.Buffer createImageBuffers(int imageCount, MemoryStack stack) {
+         var swapchainImageBuffer = XrSwapchainImageOpenGLKHR.calloc(imageCount, stack);
++        boolean android = me.phoenixra.atumvr.core.session.android.AndroidSupport.isAndroid();
+         for (XrSwapchainImageOpenGLKHR image : swapchainImageBuffer) {
+-            image.type(KHROpenGLEnable.XR_TYPE_SWAPCHAIN_IMAGE_OPENGL_KHR);
++            // the OpenGL ES image has the same layout (type, next, image)
++            image.type(android ? KHROpenGLESEnable.XR_TYPE_SWAPCHAIN_IMAGE_OPENGL_ES_KHR
++                    : KHROpenGLEnable.XR_TYPE_SWAPCHAIN_IMAGE_OPENGL_KHR);
+         }
+ 
+         return swapchainImageBuffer;
+diff --git a/atumvr-core/src/main/java/me/phoenixra/atumvr/core/session/XRSystem.java b/atumvr-core/src/main/java/me/phoenixra/atumvr/core/session/XRSystem.java
+index 71d880b..5f2a816 100644
+--- a/atumvr-core/src/main/java/me/phoenixra/atumvr/core/session/XRSystem.java
++++ b/atumvr-core/src/main/java/me/phoenixra/atumvr/core/session/XRSystem.java
+@@ -103,6 +103,9 @@ public class XRSystem {
+                                             long systemID,
+                                             long windowHandle) {
+ 
++        if (me.phoenixra.atumvr.core.session.android.AndroidSupport.isAndroid()) {
++            return me.phoenixra.atumvr.core.session.android.AndroidSupport.graphicsBinding(stack, instance, systemID);
++        }
+         var graphicsRequirements = XrGraphicsRequirementsOpenGLKHR.calloc(stack)
+                 .type(KHROpenGLEnable.XR_TYPE_GRAPHICS_REQUIREMENTS_OPENGL_KHR);
+         KHROpenGLEnable.xrGetOpenGLGraphicsRequirementsKHR(
+diff --git a/atumvr-core/src/main/java/me/phoenixra/atumvr/core/session/android/AndroidSupport.java b/atumvr-core/src/main/java/me/phoenixra/atumvr/core/session/android/AndroidSupport.java
+new file mode 100644
+index 0000000..3dc3af6
+--- /dev/null
++++ b/atumvr-core/src/main/java/me/phoenixra/atumvr/core/session/android/AndroidSupport.java
+@@ -0,0 +1,87 @@
++package me.phoenixra.atumvr.core.session.android;
++
++import me.phoenixra.atumvr.api.exceptions.AtumVRException;
++import org.lwjgl.openxr.KHRAndroidCreateInstance;
++import org.lwjgl.openxr.KHRLoaderInit;
++import org.lwjgl.openxr.KHRLoaderInitAndroid;
++import org.lwjgl.openxr.KHROpenGLESEnable;
++import org.lwjgl.openxr.XrGraphicsBindingOpenGLESAndroidKHR;
++import org.lwjgl.openxr.XrGraphicsRequirementsOpenGLESKHR;
++import org.lwjgl.openxr.XrInstance;
++import org.lwjgl.openxr.XrInstanceCreateInfoAndroidKHR;
++import org.lwjgl.openxr.XrLoaderInitInfoAndroidKHR;
++import org.lwjgl.openxr.XrLoaderInitInfoBaseHeaderKHR;
++import org.lwjgl.system.MemoryStack;
++import org.lwjgl.system.Struct;
++import org.vivecraft.util.VLoader;
++
++import static org.lwjgl.system.MemoryUtil.NULL;
++
++/**
++ * What OpenXR needs on Android (standalone headsets): the loader gets the JVM and the activity, the instance is created
++ * with them, and the session binds the game's EGL context (OpenGL ES). Used by QuestCraft; on a desktop none of this runs.
++ */
++public final class AndroidSupport {
++    public static final String ANDROID_CREATE_INSTANCE_EXTENSION =
++            KHRAndroidCreateInstance.XR_KHR_ANDROID_CREATE_INSTANCE_EXTENSION_NAME;
++
++    private static final boolean ANDROID = detectAndroid();
++
++    private AndroidSupport() {
++    }
++
++    private static boolean detectAndroid() {
++        String version = System.getProperty("os.version");
++        return version != null && version.contains("Android");
++    }
++
++    public static boolean isAndroid() {
++        return ANDROID;
++    }
++
++    /** Before the first OpenXR call: hands the JVM and the activity to the loader. */
++    public static void initLoader() {
++        VLoader.setupAndroid();
++        try {
++            Thread.sleep(2500);   // the Android XR environment has to be up
++        } catch (InterruptedException ignored) {
++            Thread.currentThread().interrupt();
++        }
++        try (MemoryStack stack = MemoryStack.stackPush()) {
++            XrLoaderInitInfoAndroidKHR init = XrLoaderInitInfoAndroidKHR.calloc(stack).set(
++                    KHRLoaderInitAndroid.XR_TYPE_LOADER_INIT_INFO_ANDROID_KHR,
++                    NULL,
++                    VLoader.getDalvikVM(),
++                    VLoader.getDalvikActivity()
++            );
++            int result = KHRLoaderInit.xrInitializeLoaderKHR(XrLoaderInitInfoBaseHeaderKHR.create(init.address()));
++            if (result < 0) {
++                throw new AtumVRException("xrInitializeLoaderKHR failed: " + result);
++            }
++        }
++    }
++
++    /** The chain element of xrCreateInstance that carries the JVM and the activity. */
++    public static long instanceCreateInfo(MemoryStack stack) {
++        return XrInstanceCreateInfoAndroidKHR.calloc(stack).set(
++                KHRAndroidCreateInstance.XR_TYPE_INSTANCE_CREATE_INFO_ANDROID_KHR,
++                NULL,
++                VLoader.getDalvikVM(),
++                VLoader.getDalvikActivity()
++        ).address();
++    }
++
++    /** Checks what the runtime needs of OpenGL ES and binds the game's EGL display, config and context. */
++    public static Struct<?> graphicsBinding(MemoryStack stack, XrInstance instance, long systemId) {
++        XrGraphicsRequirementsOpenGLESKHR requirements = XrGraphicsRequirementsOpenGLESKHR.calloc(stack)
++                .type(KHROpenGLESEnable.XR_TYPE_GRAPHICS_REQUIREMENTS_OPENGL_ES_KHR);
++        KHROpenGLESEnable.xrGetOpenGLESGraphicsRequirementsKHR(instance, systemId, requirements);
++        return XrGraphicsBindingOpenGLESAndroidKHR.calloc(stack).set(
++                KHROpenGLESEnable.XR_TYPE_GRAPHICS_BINDING_OPENGL_ES_ANDROID_KHR,
++                NULL,
++                VLoader.getEGLDisplay(),
++                VLoader.getEGLConfig(),
++                VLoader.getEGLContext()
++        );
++    }
++}
+diff --git a/atumvr-core/src/main/java/org/vivecraft/util/VLoader.java b/atumvr-core/src/main/java/org/vivecraft/util/VLoader.java
+new file mode 100644
+index 0000000..f9c493b
+--- /dev/null
++++ b/atumvr-core/src/main/java/org/vivecraft/util/VLoader.java
+@@ -0,0 +1,24 @@
++package org.vivecraft.util;
++
++/**
++ * The native side of QuestCraft (libvloader.so, built into Pojlib): the JVM, the activity and the EGL objects of the
++ * game, which OpenXR on Android needs to create an instance and a session. The class has the name of the Vivecraft
++ * class because the native functions are bound to that name; Visor and Vivecraft are never loaded together.
++ */
++public class VLoader {
++    static {
++        System.loadLibrary("vloader");
++    }
++
++    public static native long getEGLContext();
++
++    public static native long getEGLConfig();
++
++    public static native long getEGLDisplay();
++
++    public static native long getDalvikVM();
++
++    public static native long getDalvikActivity();
++
++    public static native void setupAndroid();
++}

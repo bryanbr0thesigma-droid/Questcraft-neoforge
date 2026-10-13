@@ -1,0 +1,109 @@
+diff --git a/buildSrc/src/main/groovy/visor.loader.gradle b/buildSrc/src/main/groovy/visor.loader.gradle
+index f235947..c2ca9af 100644
+--- a/buildSrc/src/main/groovy/visor.loader.gradle
++++ b/buildSrc/src/main/groovy/visor.loader.gradle
+@@ -41,6 +41,8 @@ dependencies {
+     modImplementation atumvr("core")
+     apiBundle(atumvr("api")) { transitive = false }
+     apiBundle(atumvr("core")) { transitive = false }
++    // QuestCraft: its LWJGL OpenXR build (with the Android parts) goes into the mod jar
++    shadowBundle files(System.getenv("QC_OPENXR_JAR"))
+ 
+     implementation "com.github.Phoenix-Ra:AtumConfiguration:${atumconfig_version}"
+     apiBundle "com.github.Phoenix-Ra:AtumConfiguration:${atumconfig_version}"
+diff --git a/buildSrc/src/main/groovy/visor.minecraft.gradle b/buildSrc/src/main/groovy/visor.minecraft.gradle
+index 34fd965..b75a97a 100644
+--- a/buildSrc/src/main/groovy/visor.minecraft.gradle
++++ b/buildSrc/src/main/groovy/visor.minecraft.gradle
+@@ -14,7 +14,7 @@ project.ext.branch = project.parent.name - "visor-" // remove "visor-" prefix
+ // ---- Loom ---------------------------------------------------------------------------------
+ def unobfuscated = stonecutter.eval(minecraftVersion, ">=26.1")
+ project.ext.unobfuscated = unobfuscated
+-project.ext.bundlesVulkan = !stonecutter.eval(minecraftVersion, ">=26.2")
++project.ext.bundlesVulkan = false   // QuestCraft: OpenGL ES only, no Vulkan bridge
+ pluginManager.apply(unobfuscated ? "dev.architectury.loom-no-remap" : "dev.architectury.loom")
+ 
+ 
+@@ -123,7 +123,6 @@ dependencies {
+     if (!unobfuscated) {
+         mappings loom.layered() {
+             officialMojangMappings()
+-            parchment("org.parchmentmc.data:parchment-${minecraftVersion}:${parchment_version}@zip")
+         }
+     }
+ 
+@@ -132,6 +131,7 @@ dependencies {
+     compileOnly "org.jetbrains:annotations:${jetbrains_annotations_version}"
+ 
+     // Natives
++    compileOnly files(System.getenv("QC_OPENXR_JAR"))
+     compileOnly "org.lwjgl:lwjgl-openxr:${lwjgl_version}"
+     compileOnly "org.lwjgl:lwjgl-vulkan:${lwjgl_version}"
+ }
+diff --git a/visor-fabric/build.gradle b/visor-fabric/build.gradle
+index fe31daf..aa78844 100644
+--- a/visor-fabric/build.gradle
++++ b/visor-fabric/build.gradle
+@@ -10,10 +10,6 @@ dependencies {
+     modApi "net.fabricmc.fabric-api:fabric-api:${fabricApiVersion}"
+ 
+     // Natives
+-    include(implementation("org.lwjgl:lwjgl-openxr:${lwjgl_version}") { transitive = false })
+-    include(implementation("org.lwjgl:lwjgl-openxr:${lwjgl_version}:natives-linux") { transitive = false })
+-    include(implementation("org.lwjgl:lwjgl-openxr:${lwjgl_version}:natives-linux-arm64") { transitive = false })
+-    include(implementation("org.lwjgl:lwjgl-openxr:${lwjgl_version}:natives-windows") { transitive = false })
+     if (bundlesVulkan) {
+         include(implementation("org.lwjgl:lwjgl-vulkan:${lwjgl_version}") { transitive = false })
+     }
+diff --git a/visor-forge/build.gradle b/visor-forge/build.gradle
+index 4cf7068..f4370b7 100644
+--- a/visor-forge/build.gradle
++++ b/visor-forge/build.gradle
+@@ -29,10 +29,6 @@ configurations {
+     lwjglRaw { canBeConsumed = false; canBeResolved = true; transitive = false }
+ }
+ dependencies {
+-    lwjglRaw "org.lwjgl:lwjgl-openxr:${lwjgl_version}"
+-    lwjglRaw "org.lwjgl:lwjgl-openxr:${lwjgl_version}:natives-linux"
+-    lwjglRaw "org.lwjgl:lwjgl-openxr:${lwjgl_version}:natives-linux-arm64"
+-    lwjglRaw "org.lwjgl:lwjgl-openxr:${lwjgl_version}:natives-windows"
+     if (bundlesVulkan) {
+         lwjglRaw "org.lwjgl:lwjgl-vulkan:${lwjgl_version}"
+     }
+@@ -96,10 +92,6 @@ dependencies {
+     //Natives
+     forgeRuntimeLibrary files(devNativesJar)
+ 
+-    shadowBundle("org.lwjgl:lwjgl-openxr:${lwjgl_version}") { transitive = false }
+-    shadowBundle("org.lwjgl:lwjgl-openxr:${lwjgl_version}:natives-linux") { transitive = false }
+-    shadowBundle("org.lwjgl:lwjgl-openxr:${lwjgl_version}:natives-linux-arm64") { transitive = false }
+-    shadowBundle("org.lwjgl:lwjgl-openxr:${lwjgl_version}:natives-windows") { transitive = false }
+     if (bundlesVulkan) {
+         shadowBundle("org.lwjgl:lwjgl-vulkan:${lwjgl_version}") { transitive = false }
+     }
+diff --git a/visor-neoforge/build.gradle b/visor-neoforge/build.gradle
+index b58de9d..508991a 100644
+--- a/visor-neoforge/build.gradle
++++ b/visor-neoforge/build.gradle
+@@ -29,10 +29,6 @@ configurations {
+     lwjglRaw { canBeConsumed = false; canBeResolved = true; transitive = false }
+ }
+ dependencies {
+-    lwjglRaw "org.lwjgl:lwjgl-openxr:${lwjgl_version}"
+-    lwjglRaw "org.lwjgl:lwjgl-openxr:${lwjgl_version}:natives-linux"
+-    lwjglRaw "org.lwjgl:lwjgl-openxr:${lwjgl_version}:natives-linux-arm64"
+-    lwjglRaw "org.lwjgl:lwjgl-openxr:${lwjgl_version}:natives-windows"
+     if (bundlesVulkan) {
+         lwjglRaw "org.lwjgl:lwjgl-vulkan:${lwjgl_version}"
+     }
+@@ -89,10 +85,6 @@ dependencies {
+     //Natives
+     forgeRuntimeLibrary files(devNativesJar)
+ 
+-    shadowBundle("org.lwjgl:lwjgl-openxr:${lwjgl_version}") { transitive = false }
+-    shadowBundle("org.lwjgl:lwjgl-openxr:${lwjgl_version}:natives-linux") { transitive = false }
+-    shadowBundle("org.lwjgl:lwjgl-openxr:${lwjgl_version}:natives-linux-arm64") { transitive = false }
+-    shadowBundle("org.lwjgl:lwjgl-openxr:${lwjgl_version}:natives-windows") { transitive = false }
+     if (bundlesVulkan) {
+         shadowBundle("org.lwjgl:lwjgl-vulkan:${lwjgl_version}") { transitive = false }
+     }

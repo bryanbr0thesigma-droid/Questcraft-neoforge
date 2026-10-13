@@ -59,7 +59,8 @@ public class QuestCraftPlugin extends GodotPlugin {
                 case "refreshVersions": LauncherApi.refreshVersions(); return "";
                 case "modrinthCategories": return LauncherApi.modrinthCategories(a.optString(0));
                 case "listInstances": return LauncherApi.listInstances();
-                case "createInstance": LauncherApi.createInstance(a.optString(0), a.optString(1), a.optString(2)); return "";
+                case "createInstance": LauncherApi.createInstance(a.optString(0), a.optString(1), a.optString(2), a.optString(3, "Vivecraft")); return "";
+                case "vrMods": return LauncherApi.vrMods(a.optString(0), a.optString(1));
                 case "installModpack": LauncherApi.installModpack(a.optString(0), a.optString(1), a.optString(2), a.optString(3)); return "";
                 case "deleteInstance": return String.valueOf(LauncherApi.deleteInstance(a.optString(0)));
                 case "listMods": return LauncherApi.listMods(a.optString(0));

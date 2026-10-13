@@ -151,6 +151,11 @@ public class InstanceHandler {
 
     //creates a new instance of a minecraft version, install game + mod loader, stores non login related launch info to json
     public static MinecraftInstances.Instance create(Activity activity, MinecraftInstances instances, String instanceName, String gameDir, boolean useDefaultMods, String minecraftVersion, String modLoader, String imageURL, Consumer<MinecraftInstances.Instance> postInstall) {
+        return create(activity, instances, instanceName, gameDir, useDefaultMods, minecraftVersion, modLoader, imageURL, null, postInstall);
+    }
+
+    /** @param vrMod "visor" for an instance that runs Visor instead of Vivecraft, anything else (or null) is Vivecraft */
+    public static MinecraftInstances.Instance create(Activity activity, MinecraftInstances instances, String instanceName, String gameDir, boolean useDefaultMods, String minecraftVersion, String modLoader, String imageURL, String vrMod, Consumer<MinecraftInstances.Instance> postInstall) {
         File instancesFile = new File(gameDir + "/instances.json");
         if (instancesFile.exists()) {
             for (MinecraftInstances.Instance instance : instances.instances) {
@@ -169,6 +174,7 @@ public class InstanceHandler {
         instance.versionName = minecraftVersion;
         instance.gameDir = Constants.USER_HOME + "/instances/" + instanceName.toLowerCase(Locale.ROOT).replaceAll(" ", "_");
         instance.defaultMods = useDefaultMods;
+        instance.vrMod = "visor".equalsIgnoreCase(vrMod) ? "visor" : "vivecraft";
         ModLoader loader = ModLoader.fromName(modLoader);
         if (loader == null) {
             Logger.getInstance().appendToLog("Unknown mod loader: " + modLoader);
@@ -366,7 +372,7 @@ public class InstanceHandler {
             Optional<ModsJson.Version> ver = Arrays.stream(oldMods.versions).filter((v) -> v.name.equals(instance.versionName)).findFirst();
             if(ver.isPresent()) {
                 ModsJson.Version version = ver.get();
-                Optional<ProjectInfo> info = Arrays.stream(version.coreMods).filter((mod) -> mod.slug.equals(oldInfo.slug)).findFirst();
+                Optional<ProjectInfo> info = Arrays.stream(version.coreModsFor(instance.usesVisor())).filter((mod) -> mod.slug.equals(oldInfo.slug)).findFirst();
                 return info.isPresent();
             }
         }

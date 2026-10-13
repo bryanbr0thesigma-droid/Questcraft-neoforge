@@ -117,6 +117,18 @@ public class MinecraftInstances {
             return loader().getModrinthCategories();
         }
 
+        /** "vivecraft" (the default, also for instances from before there was a choice) or "visor". */
+        public String vrMod;
+
+        public boolean usesVisor() {
+            return "visor".equals(vrMod);
+        }
+
+        /** Shown in the launcher next to the loader. */
+        public String vrModName() {
+            return usesVisor() ? "Visor" : "Vivecraft";
+        }
+
         public boolean isNeoForge() {
             return loader() == ModLoader.NEOFORGE;
         }
@@ -179,7 +191,10 @@ public class MinecraftInstances {
         }
 
         public ModsJson parseModsJson(String jsonPath) {
-            return GsonUtils.jsonFileToObject(jsonPath, ModsJson.class);
+            ModsJson mods = GsonUtils.jsonFileToObject(jsonPath, ModsJson.class);
+            // the Visor builds of this loader, for an instance that runs Visor instead of Vivecraft
+            if (mods != null && usesVisor()) pojlib.install.VisorMods.attach(mods, loader());
+            return mods;
         }
 
         private ModsJson downloadCurrentModsJson(String userHome) throws Exception {
@@ -258,17 +273,17 @@ public class MinecraftInstances {
                     }
 
                     ArrayList<ProjectInfo> mergedOldMods = new ArrayList<>();
-                    mergedOldMods.addAll(Arrays.asList(oldVersion.coreMods));
+                    mergedOldMods.addAll(Arrays.asList(oldVersion.coreModsFor(usesVisor())));
                     mergedOldMods.addAll(Arrays.asList(oldVersion.defaultMods));
 
                     ArrayList<ProjectInfo> mergedNewMods = new ArrayList<>();
-                    mergedNewMods.addAll(Arrays.asList(newVersion.coreMods));
+                    mergedNewMods.addAll(Arrays.asList(newVersion.coreModsFor(usesVisor())));
                     mergedNewMods.addAll(Arrays.asList(newVersion.defaultMods));
 
                     if(defaultMods) {
                         removeModByType(mergedOldMods, mergedNewMods);
                     } else {
-                        removeModByType(Arrays.asList(oldVersion.coreMods), Arrays.asList(newVersion.coreMods));
+                        removeModByType(Arrays.asList(oldVersion.coreModsFor(usesVisor())), Arrays.asList(newVersion.coreModsFor(usesVisor())));
                     }
                     break;
                 }
@@ -342,7 +357,7 @@ public class MinecraftInstances {
                         continue;
                     }
 
-                    ArrayList<ProjectInfo> mergedNewMods = new ArrayList<>(Arrays.asList(newVersion.coreMods));
+                    ArrayList<ProjectInfo> mergedNewMods = new ArrayList<>(Arrays.asList(newVersion.coreModsFor(usesVisor())));
                     if(defaultMods)
                         mergedNewMods.addAll(Arrays.asList(newVersion.defaultMods));
 
