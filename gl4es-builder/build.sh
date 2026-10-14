@@ -9,7 +9,11 @@ mkdir -p work
 if [ ! -d work/gl4es ]; then
     git clone -q https://github.com/ptitSeb/gl4es.git work/gl4es
 fi
-git -C work/gl4es checkout -q "$COMMIT"
+git -C work/gl4es checkout -q -f "$COMMIT"
+# QuestCraft's change: gl4es' start-up hardware test makes its own EGL context current and then terminates the
+# display; LWJGL loads gl4es right after the game's context was made current on that display, which killed it.
+# The test now gives the program's context back and leaves the display alone (keep-context.patch).
+git -C work/gl4es apply "$PWD/keep-context.patch"
 
 # gl4es' Android.mk makes a static library, Pojlib loads a shared one (LWJGL's org.lwjgl.opengl.libname)
 mkdir -p work/jni
