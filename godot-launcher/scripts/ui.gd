@@ -711,7 +711,7 @@ func show_create() -> void:
 				name_edit.text = v
 			state["version"] = v
 			rebuild_vr.call()
-		# ModLoader goes back to alpha: its versions by era (release, beta, alpha), the others all at once. Newest first
+		# Risugami (ModLoader) goes back to alpha: its versions by era (release, beta, alpha), the others all at once. Newest first
 		var eras: Array = []
 		for v in versions:
 			if not eras.has(_era(str(v))):

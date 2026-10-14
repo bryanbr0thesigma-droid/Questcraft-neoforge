@@ -1,6 +1,6 @@
 # QuestCraft for NeoForge
 
-A port of [QuestCraft](https://github.com/QuestCraftPlusPlus/QuestCraft) (Minecraft: Java Edition in VR on Meta Quest and other standalone headsets) from the **Fabric** mod loader to **NeoForge**. The launcher has a **loader toggle** between **Fabric**, **NeoForge**, **Quilt**, **Forge**, **Vanilla** (1.12.2 in VR) and **ModLoader** (alpha to 1.6.2), and NeoForge is the default.
+A port of [QuestCraft](https://github.com/QuestCraftPlusPlus/QuestCraft) (Minecraft: Java Edition in VR on Meta Quest and other standalone headsets) from the **Fabric** mod loader to **NeoForge**. The launcher has a **loader toggle** between **Fabric**, **NeoForge**, **Quilt**, **Forge**, **Vanilla** (1.12.2 in VR) and **Risugami** (Risugami's ModLoader, alpha to 1.6.2), and NeoForge is the default.
 
 ![QC](/QCSimple3.jpg)
 
@@ -22,11 +22,11 @@ QuestCraft itself is not a mod. It is a launcher app (a Unity project that calls
 
 **Vanilla: 1.12.2**, with OptiFine and Vivecraft 1.12.2 on OpenXR, see [Minecraft 1.12.2 in VR](#minecraft-1122-in-vr-vanilla).
 
-**ModLoader: 39 versions from alpha 1.1.2_01 to 1.6.2**, on a screen in VR, see [Risugami's ModLoader](#risugamis-modloader-alpha-beta-10-to-162).
+**Risugami (ModLoader): 39 versions from alpha 1.1.2_01 to 1.6.2**, on a screen in VR, see [Risugami's ModLoader](#risugamis-modloader-alpha-beta-10-to-162).
 
 Left out of NeoForge: **1.21.10**. Upstream QuestCraft ships it, but the fork's `OpenXR-1.21.10` branch does not compile its shared module in this setup even when built exactly as shipped (Fabric only; the Minecraft classes never reach the compiler), so there is no working source to start from. (1.21.11 is newer and does not depend on it, see below.)
 
-## Loader toggle (Fabric / NeoForge / Quilt / Forge / Vanilla / ModLoader)
+## Loader toggle (Fabric / NeoForge / Quilt / Forge / Vanilla / Risugami)
 
 The instance creator has a loader dropdown with **Fabric**, **NeoForge**, **Quilt** and **Forge**. It decides which Minecraft versions the creator offers (each loader has its own list), what the new instance is installed with, and which mod list its default mods come from. The choice is remembered (`lastSelectedLoader` in `launcher.conf`); a config from before the toggle counts as NeoForge.
 
@@ -220,11 +220,11 @@ Forge 1.12.2 starts through LaunchWrapper, which needs the system class loader t
 
 ## Risugami's ModLoader (alpha, beta, 1.0 to 1.6.2)
 
-The New instance screen has a sixth loader, **ModLoader**: Risugami's ModLoader on **39 Minecraft versions**, from alpha 1.1.2_01 through every beta with a ModLoader build up to 1.6.2, under **Release / Beta / Alpha** tabs. ModLoader is not a mod but classes put into the game's client, which is how its readme says to install it, and it then loads mods from the instance's `mods/` folder itself. Mods come from Modrinth's *ModLoader* category, as the Mod Manager searches the instance's loader.
+The New instance screen has a sixth loader, **Risugami**: Risugami's ModLoader on **39 Minecraft versions**, from alpha 1.1.2_01 through every beta with a ModLoader build up to 1.6.2, under **Release / Beta / Alpha** tabs. ModLoader is not a mod but classes put into the game's client, which is how its readme says to install it, and it then loads mods from the instance's `mods/` folder itself. Mods come from Modrinth's *ModLoader* category, as the Mod Manager searches the instance's loader.
 
 How it is done:
 
-- **The ModLoader builds** are the newest one per version that MCArchive (mcarchive.net) lists: its own copy when it has one, otherwise Risugami's Mediafire page, where the app reads the file's address the way a browser would. Either way the file must match MCArchive's SHA-256. Alpha and early beta builds are RAR archives, which the app reads with junrar. The list is [`pojlib/modloader-builds.json`](pojlib/modloader-builds.json), made by [`modloader-builder/make_registry.py`](modloader-builder/make_registry.py). Making the instance merges the build into the game's client (`RisugamiModLoader`).
+- **The ModLoader builds** are the newest one per version that MCArchive (mcarchive.net) lists: its own copy when it has one, otherwise Risugami's Mediafire page, where the app reads the file's address the way a desktop browser would (Mediafire gives Android browsers a page without it). Either way the file must match MCArchive's SHA-256. Alpha and early beta builds are RAR archives, which the app reads with junrar. The list is [`pojlib/modloader-builds.json`](pojlib/modloader-builds.json), made by [`modloader-builder/make_registry.py`](modloader-builder/make_registry.py). Making the instance merges the build into the game's client (`RisugamiModLoader`).
 - **Java 22.** These versions were made for Java 8 (alpha and beta for Java 5/6), and the app has Java 22, so they start through the **legacy launcher** ([`legacy-launcher/`](legacy-launcher)). It runs the game's own `main()` in a class loader that rewrites, as classes load, what newer Java or a windowless headset does not allow:
   - AWT windows and applets become stand-ins, LWJGL's `AWTGLCanvas` included (1.2.3 and 1.2.4 use it).
   - ModLoader's `Field.modifiers` trick and final-field writes are handled, as is its lookup of the game through `Thread.target` (moved in Java 19).

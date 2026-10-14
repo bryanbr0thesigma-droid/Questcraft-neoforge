@@ -99,6 +99,8 @@ class RisugamiModLoaderTest {
         String page = "<a class=\"input popsok\"\n aria-label=\"Download file\"\n href=\"http://download2388.mediafire.com/0ywto/vb5bq3aoitdkgx8/ModLoader+B1.7.3.zip\"\n id=\"downloadButton\">";
         assertEquals("https://download2388.mediafire.com/0ywto/vb5bq3aoitdkgx8/ModLoader+B1.7.3.zip", RisugamiModLoader.mediafireLink(page));
         assertNull(RisugamiModLoader.mediafireLink("<html>no file here</html>"));
+        // Mediafire leaves the address off the page it gives Android browsers, which is what the headset would be
+        assertFalse(RisugamiModLoader.PAGE_USER_AGENT.contains("Android"));
         assertNull(RisugamiModLoader.mediafireLink(null));
     }
 

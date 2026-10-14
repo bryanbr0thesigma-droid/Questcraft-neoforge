@@ -117,11 +117,11 @@ func _initialize() -> void:
 			b.pressed.emit()
 	await process_frame
 	check(bridge._mock_instances.any(func(i): return i["version"] == "1.12.2" and i["loader"] == "Vanilla" and i["vr"] == "Vivecraft"), "Create makes a Vanilla 1.12.2 Vivecraft instance")
-	# ModLoader: alpha to 1.6, its many versions under Release / Beta / Alpha tabs, on a screen in VR
+	# Risugami (ModLoader): alpha to 1.6, its many versions under Release / Beta / Alpha tabs, on a screen in VR
 	ui.show_create()
 	await process_frame
 	for b in ui.find_children("*", "Button", true, false):
-		if b.text == "ModLoader":
+		if b.text == "Risugami":
 			b.pressed.emit()
 	await process_frame
 	var tabs: Array = []
@@ -147,7 +147,7 @@ func _initialize() -> void:
 		if b.text == "Create":
 			b.pressed.emit()
 	await process_frame
-	check(bridge._mock_instances.any(func(i): return i["version"] == "b1.7.3" and i["loader"] == "ModLoader" and i["vr"] == "Screen"), "Create makes a ModLoader b1.7.3 instance on a screen")
+	check(bridge._mock_instances.any(func(i): return i["version"] == "b1.7.3" and i["loader"] == "Risugami" and i["vr"] == "Screen"), "Create makes a Risugami b1.7.3 instance on a screen")
 	print("CREATE SCREEN OK" if ok else "CREATE SCREEN FAILED")
 	quit()
 

@@ -63,6 +63,8 @@ public final class RisugamiModLoader {
             "java.base/java.nio", "java.base/java.util"};
 
     private static final HostedList LIST = new HostedList(FILE, "modloader_builds.json");
+    /** A desktop browser's: Mediafire gives Android browsers a mobile page without the file's address on it */
+    static final String PAGE_USER_AGENT = "Mozilla/5.0 (X11; Linux x86_64)";
     private static final Pattern MEDIAFIRE_FILE = Pattern.compile("href=\"(https?://download\\d+\\.mediafire\\.com/[^\"]+)\"");
 
     private RisugamiModLoader() {
@@ -183,7 +185,7 @@ public final class RisugamiModLoader {
 
     private static String readPage(String address) throws IOException {
         HttpURLConnection connection = (HttpURLConnection) new URL(address).openConnection();
-        connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android) QuestCraft");
+        connection.setRequestProperty("User-Agent", PAGE_USER_AGENT);
         connection.setConnectTimeout(15000);
         connection.setReadTimeout(30000);
         try (Reader in = new InputStreamReader(connection.getInputStream(), StandardCharsets.UTF_8)) {
