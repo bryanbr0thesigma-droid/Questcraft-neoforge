@@ -229,7 +229,7 @@ How it is done:
   - AWT windows and applets become stand-ins, LWJGL's `AWTGLCanvas` included (1.2.3 and 1.2.4 use it).
   - ModLoader's `Field.modifiers` trick and final-field writes are handled, as is its lookup of the game through `Thread.target` (moved in Java 19).
   - `Class.getPackage` for classes in no package, and `Thread.stop`.
-- **Old OpenGL**: gl4es, as for 1.12.2.
+- **Old OpenGL**: gl4es, as for 1.12.2. The launcher's framebuffers use whichever functions gl4es has (OpenGL 3.0's, ARB's or EXT's): the headset's LWJGL calls a missing one without checking, and the game died silently right after its display was made.
 - **Sounds**: copied from Mojang's asset objects to where these versions look: `resources/` for alpha to 1.5, `assets/virtual/legacy` for 1.6.
 
 **Beta 1.7.3: in VR.** No VR mod exists for these versions, so QuestCraft has its own for b1.7.3, in the legacy launcher (`legacy-launcher/src/questcraft/legacy/vr/`, and the version's part in [`legacy-launcher/glue/b1.7.3/`](legacy-launcher/glue/b1.7.3)). The New instance screen shows it as the VR mod "VR".

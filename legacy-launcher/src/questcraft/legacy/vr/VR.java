@@ -4,9 +4,9 @@ import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 
 import org.lwjgl.BufferUtils;
-import org.lwjgl.opengl.EXTFramebufferObject;
 import org.lwjgl.opengl.GL11;
 
+import questcraft.legacy.xr.Framebuffers;
 import questcraft.legacy.xr.GameFramebuffer;
 
 /**
@@ -146,7 +146,7 @@ public final class VR {
     public static boolean beginEye(int eye) {
         if (!enabled() || !ensureStarted()) return false;
         currentEye = eye;
-        EXTFramebufferObject.glBindFramebufferEXT(EXTFramebufferObject.GL_FRAMEBUFFER_EXT, eyes[eye].framebuffer);
+        Framebuffers.bind(Framebuffers.FRAMEBUFFER, eyes[eye].framebuffer);
         GL11.glViewport(0, 0, eyes[eye].width, eyes[eye].height);
         return true;
     }
@@ -172,14 +172,14 @@ public final class VR {
     }
 
     private static void bindGame() {
-        EXTFramebufferObject.glBindFramebufferEXT(EXTFramebufferObject.GL_FRAMEBUFFER_EXT, game != null ? game.framebuffer : 0);
+        Framebuffers.bind(Framebuffers.FRAMEBUFFER, game != null ? game.framebuffer : 0);
         GL11.glViewport(0, 0, windowWidth, windowHeight);
     }
 
     /** The game's menus or HUD are drawn from now on: into the panel's framebuffer, cleared once a frame. */
     public static void beginGui() {
         if (!enabled() || !ensureStarted()) return;
-        EXTFramebufferObject.glBindFramebufferEXT(EXTFramebufferObject.GL_FRAMEBUFFER_EXT, gui.framebuffer);
+        Framebuffers.bind(Framebuffers.FRAMEBUFFER, gui.framebuffer);
         GL11.glViewport(0, 0, windowWidth, windowHeight);
         if (!guiCleared) {
             guiCleared = true;
@@ -327,7 +327,7 @@ public final class VR {
     /** Without a world (the title screen and its menus): each eye is a dark room with the menu panel in it. */
     private static void menuEyes() {
         for (int eye = 0; eye < 2; eye++) {
-            EXTFramebufferObject.glBindFramebufferEXT(EXTFramebufferObject.GL_FRAMEBUFFER_EXT, eyes[eye].framebuffer);
+            Framebuffers.bind(Framebuffers.FRAMEBUFFER, eyes[eye].framebuffer);
             GL11.glViewport(0, 0, eyes[eye].width, eyes[eye].height);
             GL11.glClearColor(0.06f, 0.06f, 0.09f, 1);
             GL11.glClear(GL11.GL_COLOR_BUFFER_BIT | GL11.GL_DEPTH_BUFFER_BIT);

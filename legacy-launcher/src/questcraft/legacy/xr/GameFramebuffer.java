@@ -2,7 +2,6 @@ package questcraft.legacy.xr;
 
 import java.nio.ByteBuffer;
 
-import org.lwjgl.opengl.EXTFramebufferObject;
 import org.lwjgl.opengl.GL11;
 
 /**
@@ -26,6 +25,7 @@ public final class GameFramebuffer {
 
     /** Makes it and binds it. */
     public static GameFramebuffer create(int width, int height) {
+        System.out.println("QuestCraft screen: making a framebuffer of " + width + " x " + height);
         int texture = GL11.glGenTextures();
         GL11.glBindTexture(GL11.GL_TEXTURE_2D, texture);
         GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_LINEAR);
@@ -33,19 +33,12 @@ public final class GameFramebuffer {
         GL11.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA8, width, height, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, (ByteBuffer) null);
         GL11.glBindTexture(GL11.GL_TEXTURE_2D, 0);
 
-        int depth = EXTFramebufferObject.glGenRenderbuffersEXT();
-        EXTFramebufferObject.glBindRenderbufferEXT(EXTFramebufferObject.GL_RENDERBUFFER_EXT, depth);
-        EXTFramebufferObject.glRenderbufferStorageEXT(EXTFramebufferObject.GL_RENDERBUFFER_EXT, 0x81A6 /* GL_DEPTH_COMPONENT24 */, width, height);
-        EXTFramebufferObject.glBindRenderbufferEXT(EXTFramebufferObject.GL_RENDERBUFFER_EXT, 0);
-
-        int framebuffer = EXTFramebufferObject.glGenFramebuffersEXT();
-        EXTFramebufferObject.glBindFramebufferEXT(EXTFramebufferObject.GL_FRAMEBUFFER_EXT, framebuffer);
-        EXTFramebufferObject.glFramebufferTexture2DEXT(EXTFramebufferObject.GL_FRAMEBUFFER_EXT,
-                EXTFramebufferObject.GL_COLOR_ATTACHMENT0_EXT, GL11.GL_TEXTURE_2D, texture, 0);
-        EXTFramebufferObject.glFramebufferRenderbufferEXT(EXTFramebufferObject.GL_FRAMEBUFFER_EXT,
-                EXTFramebufferObject.GL_DEPTH_ATTACHMENT_EXT, EXTFramebufferObject.GL_RENDERBUFFER_EXT, depth);
-        int status = EXTFramebufferObject.glCheckFramebufferStatusEXT(EXTFramebufferObject.GL_FRAMEBUFFER_EXT);
-        if (status != EXTFramebufferObject.GL_FRAMEBUFFER_COMPLETE_EXT) {
+        int framebuffer = Framebuffers.gen();
+        Framebuffers.bind(Framebuffers.FRAMEBUFFER, framebuffer);
+        Framebuffers.texture(Framebuffers.FRAMEBUFFER, Framebuffers.COLOR_ATTACHMENT0, texture);
+        Framebuffers.depth(width, height);
+        int status = Framebuffers.status();
+        if (status != Framebuffers.FRAMEBUFFER_COMPLETE) {
             System.out.println("QuestCraft screen: the game's framebuffer is not complete: 0x" + Integer.toHexString(status));
         }
         GL11.glViewport(0, 0, width, height);

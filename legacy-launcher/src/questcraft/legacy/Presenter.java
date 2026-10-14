@@ -5,11 +5,11 @@ import java.awt.Dimension;
 import org.lwjgl.LWJGLException;
 import org.lwjgl.opengl.Display;
 import org.lwjgl.opengl.EXTFramebufferBlit;
-import org.lwjgl.opengl.EXTFramebufferObject;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.PixelFormat;
 
 import questcraft.legacy.vr.VR;
+import questcraft.legacy.xr.Framebuffers;
 import questcraft.legacy.xr.GameFramebuffer;
 import questcraft.legacy.xr.ScreenXR;
 
@@ -42,11 +42,13 @@ public final class Presenter {
     }
 
     public static void create() throws LWJGLException {
+        System.out.println("QuestCraft legacy launcher: making the display");
         Display.create();
         created();
     }
 
     public static void create(PixelFormat format) throws LWJGLException {
+        System.out.println("QuestCraft legacy launcher: making the display");
         Display.create(format);
         created();
     }
@@ -59,7 +61,7 @@ public final class Presenter {
 
     /** Framebuffer 0 is the window, which is ours on the headset. */
     public static void glBindFramebuffer(int target, int id) {
-        EXTFramebufferObject.glBindFramebufferEXT(target, id == 0 && framebuffer != null ? framebuffer.framebuffer : id);
+        Framebuffers.bind(target, id == 0 && framebuffer != null ? framebuffer.framebuffer : id);
     }
 
     public static void glBindFramebufferEXT(int target, int id) {
@@ -92,11 +94,11 @@ public final class Presenter {
         }
         if (!HEADSET) {
             // the desktop check: the picture into the window, then the game draws into ours again
-            EXTFramebufferObject.glBindFramebufferEXT(EXTFramebufferBlit.GL_READ_FRAMEBUFFER_EXT, framebuffer.framebuffer);
-            EXTFramebufferObject.glBindFramebufferEXT(EXTFramebufferBlit.GL_DRAW_FRAMEBUFFER_EXT, 0);
+            Framebuffers.bind(Framebuffers.READ_FRAMEBUFFER, framebuffer.framebuffer);
+            Framebuffers.bind(Framebuffers.DRAW_FRAMEBUFFER, 0);
             EXTFramebufferBlit.glBlitFramebufferEXT(0, 0, framebuffer.width, framebuffer.height, 0, 0, framebuffer.width, framebuffer.height,
                     GL11.GL_COLOR_BUFFER_BIT, GL11.GL_NEAREST);
-            EXTFramebufferObject.glBindFramebufferEXT(EXTFramebufferObject.GL_FRAMEBUFFER_EXT, framebuffer.framebuffer);
+            Framebuffers.bind(Framebuffers.FRAMEBUFFER, framebuffer.framebuffer);
             return;
         }
         if (!screenTried) {

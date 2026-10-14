@@ -6,8 +6,9 @@ import java.io.InputStream;
 import java.util.Properties;
 
 import org.lwjgl.opengl.EXTFramebufferBlit;
-import org.lwjgl.opengl.EXTFramebufferObject;
 import org.lwjgl.opengl.GL11;
+
+import questcraft.legacy.xr.Framebuffers;
 
 /**
  * The headset on a desktop, to check VR without one (-Dquestcraft.legacy.vrsim=true): a head standing at
@@ -105,21 +106,20 @@ final class VRSim implements VRProvider {
 
     public void endFrame(VRFrame frame, int leftTexture, int rightTexture) {
         // both eyes into the window, side by side: read through a framebuffer of their own
-        int read = EXTFramebufferObject.glGenFramebuffersEXT();
-        EXTFramebufferObject.glBindFramebufferEXT(EXTFramebufferBlit.GL_DRAW_FRAMEBUFFER_EXT, 0);
+        int read = Framebuffers.gen();
+        Framebuffers.bind(Framebuffers.DRAW_FRAMEBUFFER, 0);
         GL11.glViewport(0, 0, windowWidth, windowHeight);
         GL11.glClearColor(0, 0, 0, 1);
         GL11.glClear(GL11.GL_COLOR_BUFFER_BIT);
         int half = windowWidth / 2;
         int size = Math.min(half, windowHeight);
         for (int eye = 0; eye < 2; eye++) {
-            EXTFramebufferObject.glBindFramebufferEXT(EXTFramebufferBlit.GL_READ_FRAMEBUFFER_EXT, read);
-            EXTFramebufferObject.glFramebufferTexture2DEXT(EXTFramebufferBlit.GL_READ_FRAMEBUFFER_EXT, EXTFramebufferObject.GL_COLOR_ATTACHMENT0_EXT,
-                    GL11.GL_TEXTURE_2D, eye == 0 ? leftTexture : rightTexture, 0);
+            Framebuffers.bind(Framebuffers.READ_FRAMEBUFFER, read);
+            Framebuffers.texture(Framebuffers.READ_FRAMEBUFFER, Framebuffers.COLOR_ATTACHMENT0, eye == 0 ? leftTexture : rightTexture);
             int x = eye * half + (half - size) / 2, y = (windowHeight - size) / 2;
             EXTFramebufferBlit.glBlitFramebufferEXT(0, 0, EYE, EYE, x, y, x + size, y + size, GL11.GL_COLOR_BUFFER_BIT, GL11.GL_LINEAR);
         }
-        EXTFramebufferObject.glBindFramebufferEXT(EXTFramebufferObject.GL_FRAMEBUFFER_EXT, 0);
-        EXTFramebufferObject.glDeleteFramebuffersEXT(read);
+        Framebuffers.bind(Framebuffers.FRAMEBUFFER, 0);
+        Framebuffers.delete(read);
     }
 }
