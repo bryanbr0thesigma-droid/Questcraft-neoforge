@@ -15,10 +15,17 @@ public final class Compat {
      */
     public static int modifiers;
     private static final Field MODIFIERS;
+    /**
+     * Stands in for Thread's private {@code target} (the Runnable it runs), which ModLoader reads off the game's
+     * thread to find the game. Java 19 moved it ({@code Thread.holder.task}); {@link #get} reads it from there.
+     */
+    public static Runnable threadTarget;
+    private static final Field THREAD_TARGET;
 
     static {
         try {
             MODIFIERS = Compat.class.getDeclaredField("modifiers");
+            THREAD_TARGET = Compat.class.getDeclaredField("threadTarget");
         } catch (NoSuchFieldException e) {
             throw new ExceptionInInitializerError(e);
         }
@@ -29,7 +36,34 @@ public final class Compat {
 
     public static Field getDeclaredField(Class<?> owner, String name) throws NoSuchFieldException {
         if (owner == Field.class && "modifiers".equals(name)) return MODIFIERS;
+        if (owner == Thread.class && "target".equals(name)) return THREAD_TARGET;
         return owner.getDeclaredField(name);
+    }
+
+    public static Object get(Field field, Object instance) throws IllegalAccessException {
+        if (field.equals(THREAD_TARGET) && instance instanceof Thread) return task((Thread) instance);
+        return field.get(instance);
+    }
+
+    /** What a thread runs: Thread.holder.task since Java 19, Thread.target before (java.lang is opened to the game). */
+    static Runnable task(Thread thread) {
+        try {
+            Field holder = Thread.class.getDeclaredField("holder");
+            holder.setAccessible(true);
+            Object fields = holder.get(thread);
+            Field task = fields.getClass().getDeclaredField("task");
+            task.setAccessible(true);
+            return (Runnable) task.get(fields);
+        } catch (ReflectiveOperationException | RuntimeException newer) {
+            try {
+                Field target = Thread.class.getDeclaredField("target");
+                target.setAccessible(true);
+                return (Runnable) target.get(thread);
+            } catch (ReflectiveOperationException | RuntimeException older) {
+                System.out.println("QuestCraft legacy launcher: cannot tell what thread " + thread.getName() + " runs: " + newer);
+                return null;
+            }
+        }
     }
 
     public static int getInt(Field field, Object instance) throws IllegalAccessException {

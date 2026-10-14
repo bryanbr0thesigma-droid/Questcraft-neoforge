@@ -1,6 +1,6 @@
 # QuestCraft for NeoForge
 
-A port of [QuestCraft](https://github.com/QuestCraftPlusPlus/QuestCraft) (Minecraft: Java Edition in VR on Meta Quest and other standalone headsets) from the **Fabric** mod loader to **NeoForge**. The launcher has a **loader toggle** between **Fabric**, **NeoForge** and **Quilt**, and NeoForge is the default.
+A port of [QuestCraft](https://github.com/QuestCraftPlusPlus/QuestCraft) (Minecraft: Java Edition in VR on Meta Quest and other standalone headsets) from the **Fabric** mod loader to **NeoForge**. The launcher has a **loader toggle** between **Fabric**, **NeoForge**, **Quilt**, **Forge**, **Vanilla** (1.12.2 in VR) and **ModLoader** (alpha to 1.6.2), and NeoForge is the default.
 
 ![QC](/QCSimple3.jpg)
 
@@ -22,9 +22,11 @@ QuestCraft itself is not a mod. It is a launcher app (a Unity project that calls
 
 **Vanilla: 1.12.2**, with OptiFine and Vivecraft 1.12.2 on OpenXR, see [Minecraft 1.12.2 in VR](#minecraft-1122-in-vr-vanilla).
 
+**ModLoader: 39 versions from alpha 1.1.2_01 to 1.6.2**, on a screen in VR, see [Risugami's ModLoader](#risugamis-modloader-alpha-beta-10-to-162).
+
 Left out of NeoForge: **1.21.10**. Upstream QuestCraft ships it, but the fork's `OpenXR-1.21.10` branch does not compile its shared module in this setup even when built exactly as shipped (Fabric only; the Minecraft classes never reach the compiler), so there is no working source to start from. (1.21.11 is newer and does not depend on it, see below.)
 
-## Loader toggle (Fabric / NeoForge / Quilt / Forge / Vanilla)
+## Loader toggle (Fabric / NeoForge / Quilt / Forge / Vanilla / ModLoader)
 
 The instance creator has a loader dropdown with **Fabric**, **NeoForge**, **Quilt** and **Forge**. It decides which Minecraft versions the creator offers (each loader has its own list), what the new instance is installed with, and which mod list its default mods come from. The choice is remembered (`lastSelectedLoader` in `launcher.conf`); a config from before the toggle counts as NeoForge.
 
@@ -215,6 +217,49 @@ What it takes, and how it is done:
 ### Forge 1.12.2 (still not possible)
 
 Forge 1.12.2 starts through LaunchWrapper, which needs the system class loader to be a `URLClassLoader` (gone in Java 9), and Forge changes the game's classes while it loads them, which the merged-jar way above cannot do. The app ships Java 22, so Forge 1.12.2 would need Java 8 on the headset or a Forge that runs on newer Java (Cleanroom); Vanilla 1.12.2 above is VR on 1.12.2 without it.
+
+## Risugami's ModLoader (alpha, beta, 1.0 to 1.6.2)
+
+The New instance screen has a sixth loader, **ModLoader**: Risugami's ModLoader on **39 Minecraft versions**, from alpha 1.1.2_01 through every beta with a ModLoader build up to 1.6.2, under **Release / Beta / Alpha** tabs. ModLoader is not a mod but classes put into the game's client, which is how its readme says to install it, and it then loads mods from the instance's `mods/` folder itself. Mods come from Modrinth's *ModLoader* category, as the Mod Manager searches the instance's loader.
+
+How it is done:
+
+- **The ModLoader builds** are the newest one per version that MCArchive (mcarchive.net) lists: its own copy when it has one, otherwise Risugami's Mediafire page, where the app reads the file's address the way a browser would. Either way the file must match MCArchive's SHA-256. Alpha and early beta builds are RAR archives, which the app reads with junrar. The list is [`pojlib/modloader-builds.json`](pojlib/modloader-builds.json), made by [`modloader-builder/make_registry.py`](modloader-builder/make_registry.py). Making the instance merges the build into the game's client (`RisugamiModLoader`).
+- **Java 22.** These versions were made for Java 8 (alpha and beta for Java 5/6), and the app has Java 22, so they start through the **legacy launcher** ([`legacy-launcher/`](legacy-launcher)). It runs the game's own `main()` in a class loader that rewrites, as classes load, what newer Java or a windowless headset does not allow:
+  - AWT windows and applets become stand-ins, LWJGL's `AWTGLCanvas` included (1.2.3 and 1.2.4 use it).
+  - ModLoader's `Field.modifiers` trick and final-field writes are handled, as is its lookup of the game through `Thread.target` (moved in Java 19).
+  - `Class.getPackage` for classes in no package, and `Thread.stop`.
+- **Old OpenGL**: gl4es, as for 1.12.2.
+- **Sounds**: copied from Mojang's asset objects to where these versions look: `resources/` for alpha to 1.5, `assets/virtual/legacy` for 1.6.
+
+**In VR: a screen.** No VR mod exists for these versions, so the game is shown on a flat screen in VR: 1.8 m wide, 1.6 m in front of where you look when it starts, and placed in front of you again when you recentre the headset. The game draws into a framebuffer of the launcher's, and each frame goes to an OpenXR quad layer on the game's own GL context (`legacy-launcher/src/questcraft/legacy/xr/`). The controllers act as keyboard and mouse:
+
+| Control | In game | In menus |
+|---|---|---|
+| Left stick | W A S D (move) | |
+| Right stick | look around | scroll |
+| Right trigger | left click (hit, break) | click |
+| Left trigger | right click (use, place) | right click |
+| A | jump (space) | |
+| B | sneak (shift) | |
+| X | inventory (E) | |
+| Y, Menu | Esc (pause, back) | Esc |
+| Grips | hotbar slot right / left | |
+| Right controller | | points at the screen; the cursor goes there |
+
+Not yet: typing (chat, world names; worlds get the default name), and "jar mods" (mods that must be put into the game's client, not `mods/`).
+
+**Checked here** (desktop, Java 21, headless AWT, LWJGL 2 standing in for the headset's):
+- All 39 builds download and match MCArchive's SHA-256.
+- Pojlib's own code reads every build, the RAR ones included, and merges it into Mojang's client (`RisugamiModLoaderTest`, run against the real files).
+- Each of the 39 starts through the legacy launcher with ModLoader loaded and reaches its title screen ([`modloader-builder/test_versions.sh`](modloader-builder/test_versions.sh)).
+- In more depth: b1.7.3 loaded a mod (Rei's Minimap) and generated a world; 1.5.2 created, played, saved and quit a world.
+- The screen's framebuffer: with `-Dquestcraft.legacy.framebuffer=true` the game draws into the launcher's framebuffer, as on the headset, and the title screens and a 1.5.2 world render through it.
+- The controller mapping and the pointer's hit on the screen have a self-test (run by `build.sh`), and the launcher screens have tests.
+
+**Not tried on a headset**: the OpenXR session and quad layer, the copy into its swapchain, the controllers reaching the game, and gl4es with these versions on the Quest. If the game starts and nothing is seen, the log has the `QuestCraft screen:` lines to send.
+
+**Also fixed for 1.12.2**: Pojlib left out every library with "lwjgl" in its name, which also dropped the sound system's OpenAL plug-in (`com.paulscode:librarylwjglopenal`) that 1.12.2 and 1.6 load at start. An existing 1.12.2 instance gets its class path repaired the next time it is started.
 
 ## Minecraft 26.x (not supported, and why)
 

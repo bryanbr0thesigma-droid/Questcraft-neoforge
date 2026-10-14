@@ -250,6 +250,8 @@ public class API {
                     Logger.getInstance().appendToLog("JVM is not properly installed despite retry!");
                     return false;
                 }
+                // the checks may have brought the instance's class path up to date: the game's process reads it from here
+                GsonUtils.objectToJsonFile(Constants.USER_HOME + "/instances.json", instances);
             } catch (Throwable e) {
                 Logger.getInstance().appendToLog("WARN! Instance launch failed!" + e);
                 return false;
@@ -263,7 +265,7 @@ public class API {
         }
         DownloadManager.reset();
 
-        if (!instance.usesVisor()) MinecraftInstances.CheckVivecraftConfig(instance);
+        if (instance.usesVivecraft()) MinecraftInstances.CheckVivecraftConfig(instance);
         return true;
     }
 
@@ -280,7 +282,7 @@ public class API {
             return false;
         }
         DownloadManager.reset();
-        if (!instance.usesVisor()) MinecraftInstances.CheckVivecraftConfig(instance);
+        if (instance.usesVivecraft()) MinecraftInstances.CheckVivecraftConfig(instance);
         return true;
     }
 

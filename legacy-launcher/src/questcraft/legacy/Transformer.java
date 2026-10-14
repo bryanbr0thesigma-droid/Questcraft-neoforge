@@ -16,16 +16,19 @@ import org.objectweb.asm.commons.SimpleRemapper;
  * Rewrites, in the game's classes and its mods' as they load, what does not work on Java 22 without a screen. The
  * changes keep each instruction's stack shape, so the classes' stack maps stay valid as they are.
  * <ul>
- * <li>{@code java.awt.Frame}, {@code Canvas}, {@code TextArea} and {@code java.applet.Applet} become
+ * <li>{@code java.awt.Frame}, {@code Canvas} (and LWJGL 2's {@code AWTGLCanvas}), {@code TextArea} and {@code java.applet.Applet} become
  * {@link HeadlessFrame}, {@link HeadlessCanvas}, {@link HeadlessTextArea} and {@link HeadlessApplet}: a headless JVM
  * cannot make windows, and the game's window draws nothing on the headset anyway.</li>
  * <li>{@code Field.modifiers} tricks (ModLoader's setPrivateValue, and mods' copies of it) go through {@link Compat}:
- * Java 12 hides that field, Java 18 refuses to set static finals by reflection.</li>
+ * Java 12 hides that field, Java 18 refuses to set static finals by reflection. So does reading Thread's private
+ * {@code target}, which ModLoader finds the game by and which Java 19 moved.</li>
  * <li>{@code Thread.stop()}, which throws since Java 20, interrupts instead (the network code stops its threads).</li>
  * <li>{@code Class.getPackage()} is null again for a class in no package, as before Java 9: ModLoader puts the
  * package's name in front of the mod classes it loads, which made ".mod_Something".</li>
  * <li>{@code Display.update()} goes through {@link Presenter}, where the frame is shown on the headset, and
  * {@code Display.setParent(canvas)} is dropped: the game draws without a window around it.</li>
+ * <li>{@code Display.create(...)} goes through {@link Presenter} too, which gives the game a framebuffer to draw into
+ * (the headset's GL context has no window), and binding framebuffer 0 binds that one.</li>
  * </ul>
  */
 public final class Transformer {
@@ -38,6 +41,8 @@ public final class Transformer {
         names.put("java/awt/Frame", "questcraft/legacy/HeadlessFrame");
         names.put("java/awt/TextArea", "questcraft/legacy/HeadlessTextArea");
         names.put("java/awt/Canvas", "questcraft/legacy/HeadlessCanvas");
+        // 1.2.3 and 1.2.4 make their canvas from LWJGL 2's AWTGLCanvas (an AWT Canvas with a GL context of its own)
+        names.put("org/lwjgl/opengl/AWTGLCanvas", "questcraft/legacy/HeadlessCanvas");
         names.put("java/applet/Applet", "questcraft/legacy/HeadlessApplet");
         AWT = new SimpleRemapper(names);
     }
@@ -61,8 +66,9 @@ public final class Transformer {
     private static boolean mayNeedWork(byte[] bytes) {
         String text = new String(bytes, StandardCharsets.ISO_8859_1);
         return text.contains("java/awt/Frame") || text.contains("java/awt/TextArea") || text.contains("java/awt/Canvas")
-                || text.contains("java/applet/Applet")
+                || text.contains("java/applet/Applet") || text.contains("org/lwjgl/opengl/AWTGLCanvas")
                 || text.contains("java/lang/reflect/Field") || text.contains("org/lwjgl/opengl/Display")
+                || text.contains("glBindFramebuffer")
                 || (text.contains("java/lang/Thread") && text.contains("stop")) || text.contains("getPackage");
     }
 
@@ -91,12 +97,27 @@ public final class Transformer {
                             replacement.substring(replacement.indexOf(' ') + 1), false);
                     return;
                 }
-            } else if (opcode == Opcodes.INVOKESTATIC && owner.equals("org/lwjgl/opengl/Display")
-                    && (name.equals("update") || name.equals("setParent"))) {
+            } else if (opcode == Opcodes.INVOKESTATIC && presented(owner, name, descriptor)) {
                 super.visitMethodInsn(Opcodes.INVOKESTATIC, PRESENTER, name, descriptor, false);
                 return;
             }
             super.visitMethodInsn(opcode, owner, name, descriptor, isInterface);
+        }
+
+        /** A static call {@link Presenter} has a method of the same name and descriptor for. */
+        private static boolean presented(String owner, String name, String descriptor) {
+            switch (owner) {
+                case "org/lwjgl/opengl/Display":
+                    return name.equals("update") || name.equals("setParent")
+                            || (name.equals("create") && (descriptor.equals("()V") || descriptor.equals("(Lorg/lwjgl/opengl/PixelFormat;)V")));
+                case "org/lwjgl/opengl/GL30":
+                case "org/lwjgl/opengl/ARBFramebufferObject":
+                    return name.equals("glBindFramebuffer") && descriptor.equals("(II)V");
+                case "org/lwjgl/opengl/EXTFramebufferObject":
+                    return name.equals("glBindFramebufferEXT") && descriptor.equals("(II)V");
+                default:
+                    return false;
+            }
         }
 
         /** "owner descriptor" of the static stand-in for an instance call, the receiver becoming the first argument */
@@ -104,6 +125,7 @@ public final class Transformer {
             switch (owner) {
                 case "java/lang/reflect/Field":
                     if ((name.equals("set") && descriptor.equals("(Ljava/lang/Object;Ljava/lang/Object;)V"))
+                            || (name.equals("get") && descriptor.equals("(Ljava/lang/Object;)Ljava/lang/Object;"))
                             || (name.equals("getInt") && descriptor.equals("(Ljava/lang/Object;)I"))
                             || (name.equals("setInt") && descriptor.equals("(Ljava/lang/Object;I)V"))) {
                         return COMPAT + " (Ljava/lang/reflect/Field;" + descriptor.substring(1);

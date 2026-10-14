@@ -124,10 +124,19 @@ public class MinecraftInstances {
             return "visor".equals(vrMod);
         }
 
+        /** Vivecraft runs in it: not Visor, and not a ModLoader instance (no VR mod exists for those versions). */
+        public boolean usesVivecraft() {
+            return !usesVisor() && loader() != ModLoader.RISUGAMI;
+        }
+
         /** Shown in the launcher next to the loader. */
         public String vrModName() {
+            if (loader() == ModLoader.RISUGAMI) return SCREEN;
             return usesVisor() ? "Visor" : "Vivecraft";
         }
+
+        /** What an instance without a VR mod shows the game on: a screen in VR (ModLoader's versions) */
+        public static final String SCREEN = "Screen";
 
         public boolean isNeoForge() {
             return loader() == ModLoader.NEOFORGE;

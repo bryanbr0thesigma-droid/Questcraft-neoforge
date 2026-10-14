@@ -133,11 +133,18 @@ public final class LauncherApi {
         return array.toString();
     }
 
-    /** The VR mods an instance of this loader and Minecraft version can run: Vivecraft, and Visor where QuestCraft has a build of it. */
+    /**
+     * The VR mods an instance of this loader and Minecraft version can run: Vivecraft, and Visor where QuestCraft has a
+     * build of it. ModLoader's versions have no VR mod: "Screen", the game on a screen in VR.
+     */
     public static String vrMods(String loader, String minecraftVersion) {
         JsonArray array = new JsonArray();
-        array.add("Vivecraft");
         ModLoader ml = ModLoader.fromName(loader);
+        if (ml == ModLoader.RISUGAMI) {
+            array.add(MinecraftInstances.Instance.SCREEN);
+            return array.toString();
+        }
+        array.add("Vivecraft");
         if (ml != null && VisorMods.isAvailable(VisorMods.registry(), ml.id, minecraftVersion)) array.add("Visor");
         return array.toString();
     }

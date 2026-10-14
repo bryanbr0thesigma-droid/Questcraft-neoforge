@@ -10,6 +10,8 @@ dependencies {
     implementation("commons-codec:commons-codec:1.15")
     implementation("com.microsoft.azure:msal4j:1.17.0")
     implementation("com.github.Mathias-Boulay:android_gamepad_remapper:2.0.3")
+    // reads the RAR archives ModLoader for alpha and early beta comes in (RisugamiModLoader)
+    implementation("com.github.junrar:junrar:8.1.2")
 **DEPS**}
 
 android {

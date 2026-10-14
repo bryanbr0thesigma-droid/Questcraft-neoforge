@@ -45,7 +45,10 @@ public final class GameClassLoader extends URLClassLoader {
         }
         bytes = Transformer.transform(name, bytes);
         ProtectionDomain domain = new ProtectionDomain(new CodeSource(location, (Certificate[]) null), null, this, null);
-        return defineClass(name, bytes, 0, bytes.length, domain);
+        Class<?> defined = defineClass(name, bytes, 0, bytes.length, domain);
+        // the builds for alpha log nothing: this says ModLoader is there at all
+        if (name.equals("ModLoader")) System.out.println("QuestCraft legacy launcher: ModLoader is in the game");
+        return defined;
     }
 
     /** Public, as old mods and ModLoader add jars to the game's class loader. */

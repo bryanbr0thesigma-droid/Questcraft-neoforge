@@ -1,0 +1,199 @@
+{
+  "versions": [
+    {
+      "name": "1.6.2",
+      "coreMods": [],
+      "defaultMods": []
+    },
+    {
+      "name": "1.6.1",
+      "coreMods": [],
+      "defaultMods": []
+    },
+    {
+      "name": "1.5.2",
+      "coreMods": [],
+      "defaultMods": []
+    },
+    {
+      "name": "1.5.1",
+      "coreMods": [],
+      "defaultMods": []
+    },
+    {
+      "name": "1.5",
+      "coreMods": [],
+      "defaultMods": []
+    },
+    {
+      "name": "1.4.7",
+      "coreMods": [],
+      "defaultMods": []
+    },
+    {
+      "name": "1.4.6",
+      "coreMods": [],
+      "defaultMods": []
+    },
+    {
+      "name": "1.4.5",
+      "coreMods": [],
+      "defaultMods": []
+    },
+    {
+      "name": "1.4.4",
+      "coreMods": [],
+      "defaultMods": []
+    },
+    {
+      "name": "1.4.2",
+      "coreMods": [],
+      "defaultMods": []
+    },
+    {
+      "name": "1.3.2",
+      "coreMods": [],
+      "defaultMods": []
+    },
+    {
+      "name": "1.3.1",
+      "coreMods": [],
+      "defaultMods": []
+    },
+    {
+      "name": "1.2.5",
+      "coreMods": [],
+      "defaultMods": []
+    },
+    {
+      "name": "1.2.4",
+      "coreMods": [],
+      "defaultMods": []
+    },
+    {
+      "name": "1.2.3",
+      "coreMods": [],
+      "defaultMods": []
+    },
+    {
+      "name": "1.1",
+      "coreMods": [],
+      "defaultMods": []
+    },
+    {
+      "name": "1.0",
+      "coreMods": [],
+      "defaultMods": []
+    },
+    {
+      "name": "b1.8.1",
+      "coreMods": [],
+      "defaultMods": []
+    },
+    {
+      "name": "b1.7.3",
+      "coreMods": [],
+      "defaultMods": []
+    },
+    {
+      "name": "b1.7.2",
+      "coreMods": [],
+      "defaultMods": []
+    },
+    {
+      "name": "b1.6.6",
+      "coreMods": [],
+      "defaultMods": []
+    },
+    {
+      "name": "b1.6.5",
+      "coreMods": [],
+      "defaultMods": []
+    },
+    {
+      "name": "b1.6.4",
+      "coreMods": [],
+      "defaultMods": []
+    },
+    {
+      "name": "b1.5_01",
+      "coreMods": [],
+      "defaultMods": []
+    },
+    {
+      "name": "b1.4_01",
+      "coreMods": [],
+      "defaultMods": []
+    },
+    {
+      "name": "b1.4",
+      "coreMods": [],
+      "defaultMods": []
+    },
+    {
+      "name": "b1.3_01",
+      "coreMods": [],
+      "defaultMods": []
+    },
+    {
+      "name": "b1.2_02",
+      "coreMods": [],
+      "defaultMods": []
+    },
+    {
+      "name": "b1.2_01",
+      "coreMods": [],
+      "defaultMods": []
+    },
+    {
+      "name": "b1.2",
+      "coreMods": [],
+      "defaultMods": []
+    },
+    {
+      "name": "b1.1_02",
+      "coreMods": [],
+      "defaultMods": []
+    },
+    {
+      "name": "b1.0_01",
+      "coreMods": [],
+      "defaultMods": []
+    },
+    {
+      "name": "a1.2.6",
+      "coreMods": [],
+      "defaultMods": []
+    },
+    {
+      "name": "a1.2.5",
+      "coreMods": [],
+      "defaultMods": []
+    },
+    {
+      "name": "a1.2.4_01",
+      "coreMods": [],
+      "defaultMods": []
+    },
+    {
+      "name": "a1.2.3_04",
+      "coreMods": [],
+      "defaultMods": []
+    },
+    {
+      "name": "a1.2.1_01",
+      "coreMods": [],
+      "defaultMods": []
+    },
+    {
+      "name": "a1.2.0_02",
+      "coreMods": [],
+      "defaultMods": []
+    },
+    {
+      "name": "a1.1.2_01",
+      "coreMods": [],
+      "defaultMods": []
+    }
+  ]
+}

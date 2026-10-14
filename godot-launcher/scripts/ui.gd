@@ -277,6 +277,15 @@ func _selector(options: Array, selected: String, changed := Callable()) -> HBoxC
 
 ## Every option as a button of its own, the chosen one greyed (so all of them are in view at once, unlike _selector,
 ## which needs a click per step). Read the choice with .get_meta("value"); `changed` is called with each new choice.
+## a Minecraft version's era, as the version picker groups them: "a1.2.6" alpha, "b1.7.3" beta, the rest release
+func _era(version: String) -> String:
+	if version.begins_with("a"):
+		return "Alpha"
+	if version.begins_with("b"):
+		return "Beta"
+	return "Release"
+
+
 func _choice_grid(options: Array, selected: String, changed := Callable(), columns := 6, min_size := Vector2(150, 50)) -> GridContainer:
 	var grid := GridContainer.new()
 	grid.columns = columns
@@ -640,7 +649,7 @@ func _instance_row(inst: Dictionary) -> Control:
 	info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(info)
 	info.add_child(_label(iname, 28))
-	var vr := "  |  Visor" if str(inst.get("vr", "")) == "Visor" else ""
+	var vr := "  |  " + str(inst.get("vr")) if str(inst.get("vr", "Vivecraft")) != "Vivecraft" else ""
 	info.add_child(_label("%s  |  %s%s  |  %d mods" % [inst.get("version", "?"), inst.get("loader", "?"), vr, int(inst.get("mods", 0))], 20, TEXT_DIM))
 	row.add_child(_button("Play", start_play.bind(iname), Vector2(120, 54)))
 	row.add_child(_button("Mods", show_mods.bind(inst), Vector2(120, 54)))
@@ -677,8 +686,11 @@ func show_create() -> void:
 		vr_row.add_child(_label("VR mod", 26))
 		var options = Bridge.api("vrMods", [state["loader"], state["version"]])
 		if typeof(options) != TYPE_ARRAY or options.size() < 2:
-			state["vr"] = "Vivecraft"
-			vr_row.add_child(_label("Vivecraft   (no Visor build for %s %s)" % [state["loader"], state["version"]], 22, TEXT_DIM))
+			state["vr"] = str(options[0]) if typeof(options) == TYPE_ARRAY and options.size() == 1 else "Vivecraft"
+			if state["vr"] == "Screen":
+				vr_row.add_child(_label("Screen   (no VR mod exists for %s: the game is on a screen in VR)" % state["version"], 22, TEXT_DIM))
+			else:
+				vr_row.add_child(_label("Vivecraft   (no Visor build for %s %s)" % [state["loader"], state["version"]], 22, TEXT_DIM))
 			return
 		var picked: String = state["vr"] if options.has(state["vr"]) else "Vivecraft"
 		vr_row.add_child(_choice_grid(options, picked, func(v: String): state["vr"] = v, options.size(), Vector2(170, 50)))
@@ -699,13 +711,27 @@ func show_create() -> void:
 				name_edit.text = v
 			state["version"] = v
 			rebuild_vr.call()
-		# all the versions at once, the newest first
-		version_holder.add_child(_choice_grid(versions, str(versions[0]), on_version, 6, Vector2(150, 48)))
+		# ModLoader goes back to alpha: its versions by era (release, beta, alpha), the others all at once. Newest first
+		var eras: Array = []
+		for v in versions:
+			if not eras.has(_era(str(v))):
+				eras.append(_era(str(v)))
+		if eras.size() < 2:
+			version_holder.add_child(_choice_grid(versions, str(versions[0]), on_version, 6, Vector2(150, 48)))
+			return
+		var grid_holder := VBoxContainer.new()
+		var show_era := func(era: String):
+			for c in grid_holder.get_children():
+				c.queue_free()
+			var of_era: Array = versions.filter(func(v): return _era(str(v)) == era)
+			grid_holder.add_child(_choice_grid(of_era, str(of_era[0]), on_version, 7, Vector2(140, 46)))
+		version_holder.add_child(_choice_grid(eras, str(eras[0]), show_era, eras.size(), Vector2(150, 44)))
+		version_holder.add_child(grid_holder)
 
 	var on_loader := func(l: String):
 		Config.last_loader = l
 		rebuild_versions.call(l)
-	var loader_sel := _choice_grid(_loaders, Config.last_loader, on_loader, maxi(_loaders.size(), 1), Vector2(170, 50))
+	var loader_sel := _choice_grid(_loaders, Config.last_loader, on_loader, maxi(_loaders.size(), 1), Vector2(170 if _loaders.size() <= 5 else 150, 50))
 	loader_row.add_child(loader_sel)
 
 	body.add_child(_label("Minecraft version", 26))

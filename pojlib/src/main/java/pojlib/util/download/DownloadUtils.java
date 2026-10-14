@@ -29,7 +29,8 @@ public class DownloadUtils {
                 conn.setDoInput(true);
                 conn.connect();
 
-                if (conn.getResponseCode() == HttpURLConnection.HTTP_OK) {
+                int code = conn.getResponseCode();
+                if (code == HttpURLConnection.HTTP_OK) {
                     if(size == -1) {
                         size = conn.getContentLengthLong();
                     }
@@ -38,6 +39,11 @@ public class DownloadUtils {
                         IOUtils.copy(is, os);
                     }
                     return;
+                }
+                // a missing file or a refusal is an attempt too: asking again forever would hang the launcher
+                conn.disconnect();
+                if (++attempts >= MAX_RETRIES) {
+                    throw new IOException("Unable to download from " + url + ": HTTP " + code);
                 }
             } catch (IOException e) {
                 if (++attempts >= MAX_RETRIES || e instanceof SSLException) {

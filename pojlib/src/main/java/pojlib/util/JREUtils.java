@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.Map;
 
 import pojlib.API;
+import pojlib.InstanceHandler;
 
 import pojlib.install.Installer;
 import pojlib.install.LegacyVivecraft;
@@ -34,6 +35,7 @@ import pojlib.install.VersionInfo;
 import pojlib.install.MinecraftMeta;
 import pojlib.install.ForgeInstaller;
 import pojlib.install.NeoForgeInstaller;
+import pojlib.install.RisugamiModLoader;
 import pojlib.util.json.MinecraftInstances;
 
 public class JREUtils {
@@ -227,10 +229,10 @@ public class JREUtils {
         JREUtils.relocateLibPath(activity, instance);
         setJavaEnvironment(activity, instance);
 
-        LwjglInstaller.installLWJGL(activity);
+        String lwjgl = LwjglInstaller.installLWJGL(activity);
         Installer.migrateOptionsOnce(instance);
-        Installer.installClient(MinecraftMeta.getVersionInfo(instance.versionName), Constants.USER_HOME).get();
-        Installer.installLibraries(MinecraftMeta.getVersionInfo(instance.versionName), Constants.USER_HOME).get();
+        String client = Installer.installClient(MinecraftMeta.getVersionInfo(instance.versionName), Constants.USER_HOME).get();
+        String libraries = Installer.installLibraries(MinecraftMeta.getVersionInfo(instance.versionName), Constants.USER_HOME).get();
         Installer.installAssets(MinecraftMeta.getVersionInfo(instance.versionName), Constants.USER_HOME).get();
 
         Installer.writeModernFixConfig(activity, instance);
@@ -240,9 +242,18 @@ public class JREUtils {
         } else if (instance.isForge()) {
             ForgeInstaller.install(activity, MinecraftMeta.getVersionInfo(instance.versionName), Constants.USER_HOME, instance.loaderVersion);
         } else if (instance.loader() == ModLoader.VANILLA) {
-            // the merged client, made again if it is gone or Vivecraft was updated
+            // the merged client, made again if it is gone or Vivecraft was updated. The class path too: one made by an
+            // older app lacks the sound system's OpenAL plug-in
             VersionInfo minecraft = MinecraftMeta.getVersionInfo(instance.versionName);
-            LegacyVivecraft.install(minecraft, Constants.USER_HOME, Installer.installClient(minecraft, Constants.USER_HOME).get());
+            String vivecraft = LegacyVivecraft.install(minecraft, Constants.USER_HOME, client);
+            instance.classpath = InstanceHandler.joinClasspath(vivecraft, libraries, lwjgl);
+        } else if (instance.loader() == ModLoader.RISUGAMI) {
+            // the client with ModLoader in it, the sounds where the old game looks for them and the launcher it starts from
+            VersionInfo minecraft = MinecraftMeta.getVersionInfo(instance.versionName);
+            String withModLoader = RisugamiModLoader.install(minecraft, Constants.USER_HOME, client);
+            instance.assetsDir = Installer.mapLegacyAssets(minecraft, Constants.USER_HOME, instance.gameDir);
+            instance.classpath = InstanceHandler.legacyLauncherClasspath(activity, Constants.USER_HOME, lwjgl);
+            instance.loaderJvmArgs = RisugamiModLoader.jvmArgs(minecraft, InstanceHandler.joinClasspath(withModLoader, libraries));
         }
 
         Installer.installJVM(activity, false);

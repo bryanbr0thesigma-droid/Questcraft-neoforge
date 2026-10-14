@@ -3,7 +3,6 @@ package pojlib.install;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
 
 import java.io.BufferedOutputStream;
 import java.io.File;
@@ -21,7 +20,6 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 import java.util.zip.ZipOutputStream;
 
-import pojlib.util.Constants;
 import pojlib.util.FileUtil;
 import pojlib.util.Logger;
 import pojlib.util.download.DownloadUtils;
@@ -46,19 +44,14 @@ public final class LegacyVivecraft {
             "--add-opens", "java.base/java.nio=ALL-UNNAMED",
             "--add-opens", "java.base/java.util=ALL-UNNAMED"};
 
-    private static volatile JsonObject cached;
+    private static final HostedList LIST = new HostedList(FILE, "vivecraft_legacy.json");
 
     private LegacyVivecraft() {
     }
 
     /** The registry's entry for a Minecraft version, or null if there is no Vivecraft for it. */
     public static JsonObject entry(JsonObject registry, String minecraftVersion) {
-        if (registry == null || !registry.has("versions") || minecraftVersion == null) return null;
-        for (JsonElement version : registry.getAsJsonArray("versions")) {
-            JsonObject v = version.getAsJsonObject();
-            if (minecraftVersion.equals(v.get("name").getAsString())) return v;
-        }
-        return null;
+        return HostedList.entry(registry, minecraftVersion);
     }
 
     public static boolean isAvailable(String minecraftVersion) {
@@ -175,21 +168,6 @@ public final class LegacyVivecraft {
 
     /** The registry: downloaded when there is a connection, else the last one, else the copy in the app. Null if there is none at all. */
     public static JsonObject registry() {
-        File file = new File(Constants.USER_HOME + "/vivecraft_legacy.json");
-        try {
-            DownloadUtils.downloadFile(Constants.PORT_RAW_URL + "/pojlib/" + FILE, file);
-        } catch (Throwable offline) {
-            if (cached != null) return cached;
-        }
-        try {
-            if (!file.exists()) {
-                byte[] bundled = FileUtil.loadFromAssetToByte(Constants.APP_CONTEXT, "loaders/" + FILE);
-                FileUtil.write(file.getAbsolutePath(), bundled);
-            }
-            cached = JsonParser.parseString(new String(Files.readAllBytes(file.toPath()), StandardCharsets.UTF_8)).getAsJsonObject();
-        } catch (Throwable t) {
-            Logger.getInstance().appendToLog("No list of Vivecraft for old versions: " + t);
-        }
-        return cached;
+        return LIST.get();
     }
 }

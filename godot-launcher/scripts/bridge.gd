@@ -7,6 +7,9 @@ var is_mock := true
 var init_error := ""
 
 # mock state
+## ModLoader's versions, as in pojlib/src/main/assets/loaders/supportedVersions-modloader.json
+const MOCK_MODLOADER_VERSIONS := ["1.6.2", "1.6.1", "1.5.2", "1.5.1", "1.5", "1.4.7", "1.4.6", "1.4.5", "1.4.4", "1.4.2", "1.3.2", "1.3.1", "1.2.5", "1.2.4", "1.2.3", "1.1", "1.0", "b1.8.1", "b1.7.3", "b1.7.2", "b1.6.6", "b1.6.5", "b1.6.4", "b1.5_01", "b1.4_01", "b1.4", "b1.3_01", "b1.2_02", "b1.2_01", "b1.2", "b1.1_02", "b1.0_01", "a1.2.6", "a1.2.5", "a1.2.4_01", "a1.2.3_04", "a1.2.1_01", "a1.2.0_02", "a1.1.2_01"]
+
 var _mock_instances := [
 	{"name": "1.21.1", "version": "1.21.1", "loader": "Fabric", "image": "", "mods": 6},
 	{"name": "Fabric 1.20.4", "version": "1.20.4", "loader": "Fabric", "image": "", "mods": 9},
@@ -53,14 +56,17 @@ func api_bool(method: String, args: Array = []) -> bool:
 func _mock(method: String, args: Array) -> Variant:
 	match method:
 		"init": return ""
-		"modLoaders": return ["Fabric", "NeoForge", "Quilt", "Forge", "Vanilla"]
+		"modLoaders": return ["Fabric", "NeoForge", "Quilt", "Forge", "Vanilla", "ModLoader"]
 		"supportedVersions":
 			# the lists the app carries (pojlib/src/main/assets/loaders/supportedVersions-*.json)
 			match str(args[0]):
 				"NeoForge", "Forge": return ["1.21.11", "1.21.8", "1.21.5", "1.21.4", "1.21.1", "1.20.6", "1.20.4"]
 				"Vanilla": return ["1.12.2"]
+				"ModLoader": return MOCK_MODLOADER_VERSIONS
 				_: return ["1.21.11", "1.21.10", "1.21.8", "1.21.5", "1.21.4", "1.21.1", "1.20.6", "1.20.4", "1.20.1", "1.19.4", "1.19.2"]
 		"vrMods":
+			if str(args[0]) == "ModLoader":
+				return ["Screen"]
 			# Visor where the app has a build: not for Forge 1.20.4 here, so that the screen shows both cases
 			if (str(args[0]) == "Forge" and str(args[1]) == "1.20.4") or str(args[0]) == "Vanilla":
 				return ["Vivecraft"]

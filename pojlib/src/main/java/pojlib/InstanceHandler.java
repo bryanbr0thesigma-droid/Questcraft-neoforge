@@ -38,6 +38,7 @@ import pojlib.install.ForgeMeta;
 import pojlib.install.NeoForgeInstaller;
 import pojlib.install.NeoForgeMeta;
 import pojlib.install.QuiltMeta;
+import pojlib.install.RisugamiModLoader;
 import pojlib.install.VersionInfo;
 import pojlib.util.Constants;
 import pojlib.util.FileUtil;
@@ -194,6 +195,12 @@ public class InstanceHandler {
             return null;
         }
 
+        if (loader == ModLoader.RISUGAMI && !RisugamiModLoader.isAvailable(minecraftVersion)) {
+            Logger.getInstance().appendToLog("There is no ModLoader for Minecraft " + minecraftVersion);
+            lastCreateError = "There is no ModLoader for Minecraft " + minecraftVersion;
+            return null;
+        }
+
         if (loader == ModLoader.NEOFORGE && !NeoForgeMeta.isSupported(minecraftVersion)) {
             Logger.getInstance().appendToLog("NeoForge does not exist for Minecraft " + minecraftVersion + " (it starts at 1.20.2)");
             return null;
@@ -282,6 +289,13 @@ public class InstanceHandler {
                     instance.mainClass = minecraftVersionInfo.mainClass;
                     instance.classpath = joinClasspath(vivecraft, libraries, lwjgl);
                     instance.loaderJvmArgs = LegacyVivecraft.JVM_ARGS;
+                } else if (loader == ModLoader.RISUGAMI) {
+                    // ModLoader put into the game's client; the legacy launcher is the program and loads the game
+                    String libraries = Installer.installLibraries(minecraftVersionInfo, gameDir).get();
+                    String client = RisugamiModLoader.install(minecraftVersionInfo, gameDir, clientClasspath.get());
+                    instance.mainClass = RisugamiModLoader.LAUNCHER_MAIN;
+                    instance.classpath = legacyLauncherClasspath(activity, gameDir, lwjgl);
+                    instance.loaderJvmArgs = RisugamiModLoader.jvmArgs(minecraftVersionInfo, joinClasspath(client, libraries));
                 } else {
                     CompletableFuture<String> minecraftClasspath = Installer.installLibraries(minecraftVersionInfo, gameDir);
                     CompletableFuture<String> modLoaderClasspath = Installer.installLibraries(finalModLoaderVersionInfo, gameDir);
@@ -293,10 +307,14 @@ public class InstanceHandler {
                 }
 
                 instance.assetsDir = assetsFuture.get();
+                if (loader == ModLoader.RISUGAMI) {
+                    // sounds and music where versions before 1.7 look for them
+                    instance.assetsDir = Installer.mapLegacyAssets(minecraftVersionInfo, gameDir, instance.gameDir);
+                }
                 Installer.moveLocalAssets(activity, instance);
             } catch (Exception e) {
                 e.printStackTrace();
-                if (loader == ModLoader.NEOFORGE || loader == ModLoader.FORGE || loader == ModLoader.VANILLA) {
+                if (loader == ModLoader.NEOFORGE || loader == ModLoader.FORGE || loader == ModLoader.VANILLA || loader == ModLoader.RISUGAMI) {
                     // an instance without a classpath can not be launched, so do not keep it around
                     Logger.getInstance().appendToLog("Could not create the instance: " + e.getMessage());
                     lastCreateError = String.valueOf(e.getMessage());
@@ -322,9 +340,17 @@ public class InstanceHandler {
         return instance;
     }
 
+    /**
+     * What the legacy launcher runs with: itself, the headset's LWJGL (the game's LWJGL 2 calls go to it, and it must be
+     * where the launcher's own classes see it) and the DNS fix.
+     */
+    public static String legacyLauncherClasspath(android.content.Context context, String gameDir, String lwjgl) throws IOException {
+        return joinClasspath(RisugamiModLoader.installLauncher(context, gameDir), lwjgl, gameDir + "/hacks/ResConfHack.jar");
+    }
+
     // Joins classpath strings, leaving out entries that are in there more than once.
     // A jar twice on the classpath would be two modules with the same packages for NeoForge's module layer.
-    static String joinClasspath(String... classpaths) {
+    public static String joinClasspath(String... classpaths) {
         Set<String> entries = new LinkedHashSet<>();
         for (String classpath : classpaths) {
             entries.addAll(Arrays.asList(classpath.split(File.pathSeparator)));

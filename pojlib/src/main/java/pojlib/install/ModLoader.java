@@ -45,7 +45,14 @@ public enum ModLoader {
             Constants.PORT_RAW_URL + "/pojlib/mods-vanilla.json",
             Constants.PORT_RAW_URL + "/pojlib/devmods-vanilla.json",
             Constants.PORT_RAW_URL + "/pojlib/supportedVersions-vanilla.json",
-            "minecraft");
+            "minecraft"),
+    // Risugami's ModLoader: alpha 1.1 to 1.6.2, put into the game's client and started by the legacy launcher (see
+    // RisugamiModLoader). Its mods are on Modrinth under the "modloader" loader
+    RISUGAMI("modloader", "ModLoader",
+            Constants.PORT_RAW_URL + "/pojlib/mods-modloader.json",
+            Constants.PORT_RAW_URL + "/pojlib/devmods-modloader.json",
+            Constants.PORT_RAW_URL + "/pojlib/supportedVersions-modloader.json",
+            "modloader");
 
     /** Stored in instances.json and the Modrinth category of the loader itself: lower case. */
     public final String id;

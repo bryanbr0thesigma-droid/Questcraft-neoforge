@@ -58,6 +58,8 @@ dependencies {
     implementation("androidx.core:core:1.13.1")
     implementation("com.microsoft.azure:msal4j:1.17.2")
     implementation("com.github.Mathias-Boulay:android_gamepad_remapper:2.0.3")
+    // reads the RAR archives ModLoader for alpha and early beta comes in (RisugamiModLoader)
+    implementation("com.github.junrar:junrar:8.1.2")
     implementation("blank:unity-classes")
 
     testImplementation("org.junit.jupiter:junit-jupiter:5.10.2")

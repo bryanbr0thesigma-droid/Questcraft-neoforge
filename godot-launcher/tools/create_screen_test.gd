@@ -117,15 +117,51 @@ func _initialize() -> void:
 			b.pressed.emit()
 	await process_frame
 	check(bridge._mock_instances.any(func(i): return i["version"] == "1.12.2" and i["loader"] == "Vanilla" and i["vr"] == "Vivecraft"), "Create makes a Vanilla 1.12.2 Vivecraft instance")
+	# ModLoader: alpha to 1.6, its many versions under Release / Beta / Alpha tabs, on a screen in VR
+	ui.show_create()
+	await process_frame
+	for b in ui.find_children("*", "Button", true, false):
+		if b.text == "ModLoader":
+			b.pressed.emit()
+	await process_frame
+	var tabs: Array = []
+	for b in ui.find_children("*", "Button", true, false):
+		if b.text in ["Release", "Beta", "Alpha"]:
+			tabs.append(b.text)
+	check(tabs == ["Release", "Beta", "Alpha"], "ModLoader's versions by era: " + str(tabs))
+	var release_versions: Array = _version_buttons(ui).map(func(b): return (b as Button).text)
+	check(release_versions.size() > 0 and release_versions.all(func(v): return v.begins_with("1.")), "Release tab: " + str(release_versions))
+	check(not _label_texts(ui).any(func(t): return t.begins_with("Vivecraft")), "no Vivecraft for ModLoader")
+	check(_label_texts(ui).any(func(t): return t.begins_with("Screen")), "ModLoader runs on a screen in VR")
+	for b in ui.find_children("*", "Button", true, false):
+		if b.text == "Beta":
+			b.pressed.emit()
+	await process_frame
+	var beta_versions: Array = _version_buttons(ui).map(func(b): return (b as Button).text)
+	check(beta_versions.has("b1.7.3") and beta_versions.all(func(v): return v.begins_with("b")), "Beta tab: " + str(beta_versions))
+	for b in _version_buttons(ui):
+		if b.text == "b1.7.3":
+			b.pressed.emit()
+	await process_frame
+	for b in ui.find_children("*", "Button", true, false):
+		if b.text == "Create":
+			b.pressed.emit()
+	await process_frame
+	check(bridge._mock_instances.any(func(i): return i["version"] == "b1.7.3" and i["loader"] == "ModLoader" and i["vr"] == "Screen"), "Create makes a ModLoader b1.7.3 instance on a screen")
 	print("CREATE SCREEN OK" if ok else "CREATE SCREEN FAILED")
 	quit()
 
 
-## the buttons of the version grid: the ones named like a Minecraft version
+## the buttons of the version grid: the ones named like a Minecraft version (1.x, or b1.x and a1.x for beta and alpha)
 func _version_buttons(ui: Control) -> Array:
 	var out: Array = []
 	for g in ui.find_children("*", "GridContainer", true, false):
 		for b in g.get_children():
-			if (b as Button).text.begins_with("1."):
+			var t: String = (b as Button).text
+			if t.begins_with("1.") or t.begins_with("b1.") or t.begins_with("a1."):
 				out.append(b)
 	return out
+
+
+func _label_texts(ui: Control) -> Array:
+	return ui.find_children("*", "Label", true, false).map(func(l): return (l as Label).text)

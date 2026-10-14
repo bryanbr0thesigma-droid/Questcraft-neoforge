@@ -19,6 +19,8 @@ class ModLoaderTest {
         assertEquals(ModLoader.FABRIC, ModLoader.fromName("Fabric"));
         assertEquals(ModLoader.FABRIC, ModLoader.fromName(" fabric "));
         assertEquals(ModLoader.QUILT, ModLoader.fromName("Quilt"));
+        assertEquals(ModLoader.RISUGAMI, ModLoader.fromName("ModLoader"));
+        assertEquals(ModLoader.RISUGAMI, ModLoader.fromStored("modloader"));
         assertNull(ModLoader.fromName("LiteLoader"));
         assertNull(ModLoader.fromName(""));
         assertNull(ModLoader.fromName(null));
@@ -32,8 +34,8 @@ class ModLoaderTest {
     }
 
     @Test
-    void theLauncherListsFabricNeoForgeQuiltForgeAndVanilla() {
-        assertArrayEquals(new String[]{"Fabric", "NeoForge", "Quilt", "Forge", "Vanilla"}, ModLoader.displayNames());
+    void theLauncherListsFabricNeoForgeQuiltForgeVanillaAndModLoader() {
+        assertArrayEquals(new String[]{"Fabric", "NeoForge", "Quilt", "Forge", "Vanilla", "ModLoader"}, ModLoader.displayNames());
         // what the launcher shows is accepted again when it passes it back
         for (String name : ModLoader.displayNames()) {
             assertEquals(name, ModLoader.fromName(name).displayName);

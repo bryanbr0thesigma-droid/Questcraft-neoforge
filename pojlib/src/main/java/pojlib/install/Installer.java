@@ -98,7 +98,9 @@ public class Installer {
                 // vanilla does not use ASM, the loaders do (NeoForge even loads it from its module path)
                 boolean isLoader = versionInfo.id.contains("fabric") || versionInfo.id.contains("neoforge")
                         || versionInfo.id.contains("forge") || versionInfo.id.contains("quilt");
-                if (library.name.contains("lwjgl") || (library.name.contains("org.ow2.asm") && !isLoader)) {
+                // LWJGL is the headset's own (lwjgl-glfw-classes.jar). Only LWJGL's own group: the sound system's OpenAL
+                // plug-in of 1.12.2 and older (com.paulscode:librarylwjglopenal) has "lwjgl" in its name and is needed
+                if (library.name.startsWith("org.lwjgl") || (library.name.contains("org.ow2.asm") && !isLoader)) {
                     continue;
                 }
                 if (!library.appliesToLinux() || library.nativesOnly()) {
@@ -200,6 +202,38 @@ public class Installer {
 
             return new File(gameDir + "/assets").getAbsolutePath();
         });
+    }
+
+    /**
+     * Minecraft before 1.7 reads its sounds and music from files under their own names, not from the objects
+     * {@link #installAssets} downloads: before 1.6 from {@code resources/} in its folder (Mojang's index says
+     * "map_to_resources"), 1.6 from {@code assets/virtual/legacy} ("virtual"). Copies them there, once.
+     *
+     * @param gameDir     where installAssets put the objects and the index
+     * @param instanceDir the instance's folder (the game's folder)
+     * @return the assets folder to give the game
+     */
+    public static String mapLegacyAssets(VersionInfo minecraftVersionInfo, String gameDir, String instanceDir) throws IOException {
+        File assetsDir = new File(gameDir, "assets");
+        File index = new File(assetsDir, "indexes/" + minecraftVersionInfo.assets + ".json");
+        JsonObject json = new Gson().fromJson(FileUtils.readFileToString(index, java.nio.charset.StandardCharsets.UTF_8), JsonObject.class);
+        boolean toResources = json.has("map_to_resources") && json.get("map_to_resources").getAsBoolean();
+        boolean virtual = json.has("virtual") && json.get("virtual").getAsBoolean();
+        if (!toResources && !virtual) return assetsDir.getAbsolutePath();
+
+        File target = toResources ? new File(instanceDir, "resources") : new File(assetsDir, "virtual/" + minecraftVersionInfo.assets);
+        for (Map.Entry<String, JsonElement> entry : json.getAsJsonObject("objects").entrySet()) {
+            VersionInfo.Asset asset = new Gson().fromJson(entry.getValue(), VersionInfo.Asset.class);
+            File file = new File(target, entry.getKey());
+            if (file.isFile() && file.length() == asset.size) continue;
+            File object = new File(assetsDir, "objects/" + asset.hash.substring(0, 2) + "/" + asset.hash);
+            if (!object.isFile()) {
+                Logger.getInstance().appendToLog("Missing sound or music file: " + entry.getKey());
+                continue;
+            }
+            FileUtils.copyFile(object, file);
+        }
+        return (toResources ? assetsDir : target).getAbsolutePath();
     }
 
     /** ModernFix's settings, written at every launch too: an instance made earlier has an older file. */

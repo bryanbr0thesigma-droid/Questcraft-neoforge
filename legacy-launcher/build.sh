@@ -1,6 +1,7 @@
 #!/bin/bash
 # Builds the launcher for old Minecraft versions (see src/questcraft/legacy/LegacyLauncher.java) into the app:
-# pojlib/src/main/assets/legacy/questcraft-legacy-launcher.jar. Java 8 bytecode, with ASM inside (BSD licence).
+# pojlib/src/main/assets/legacy/questcraft-legacy-launcher.jar. Java 8 bytecode, with ASM inside (BSD licence) and
+# LWJGL's OpenXR binding (BSD licence, QuestCraft's build) for the screen in VR.
 # Needs a JDK 11 or newer (JAVA_HOME) and the ASM 9.5 jars (ASM, ASM_COMMONS: downloaded when not given).
 set -e
 cd "$(dirname "$0")"
@@ -16,7 +17,13 @@ LWJGL=$REPO/pojlib/src/main/assets/lwjgl/lwjgl-glfw-classes.jar
 OPENXR=$REPO/visor-builder/lib/questcraft-lwjgl-openxr-3.3.3.jar
 rm -rf work/classes && mkdir -p work/classes
 "$JAVA_HOME/bin/javac" --release 8 -nowarn -d work/classes -cp "$ASM:$ASM_COMMONS:$LWJGL:$OPENXR" $(find src -name "*.java")
+# what can be checked without a headset: the controllers as keys and mouse, the pointer on the screen
+rm -rf work/test-classes && mkdir -p work/test-classes
+"$JAVA_HOME/bin/javac" --release 8 -nowarn -d work/test-classes -cp work/classes $(find test -name "*.java")
+"$JAVA_HOME/bin/java" -cp work/classes:work/test-classes questcraft.legacy.xr.SelfTest
 (cd work/classes && unzip -q -o "$OLDPWD/$ASM" 'org/*' && unzip -q -o "$OLDPWD/$ASM_COMMONS" 'org/*')
+# the OpenXR binding the screen in VR uses (LWJGL's core is the headset's own, on the class path)
+(cd work/classes && unzip -q -o "$OPENXR" 'org/lwjgl/openxr/*')
 OUT=$REPO/pojlib/src/main/assets/legacy/questcraft-legacy-launcher.jar
 mkdir -p "$(dirname "$OUT")"
 rm -f "$OUT"
