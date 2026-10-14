@@ -1,0 +1,32 @@
+# Beta 1.7.3 in VR: where the game calls its glue (src/questcraft/legacy/vr/b173/Hooks.java). Written with Feather's
+# names; build.sh translates them into the game's own. The format is in HookSpec (src/questcraft/legacy/HookSpec.java).
+hooks questcraft/legacy/vr/b173/Hooks
+
+# for the glue: the game's own camera and hand, around which it puts the headset's
+public net/minecraft/client/render/GameRenderer minecraft
+public net/minecraft/client/render/GameRenderer setupCamera (FI)V
+public net/minecraft/client/render/GameRenderer renderItemInHand (FI)V
+
+# a frame: is a menu open; the HUD and the menus are drawn onto the panels in VR
+head   net/minecraft/client/render/GameRenderer render (F)V frameStart
+call   net/minecraft/client/render/GameRenderer render (F)V net/minecraft/client/gui/GameGui render (FZII)V renderHud
+call   net/minecraft/client/render/GameRenderer render (F)V net/minecraft/client/gui/screen/Screen render (IIF)V renderScreen
+
+# the world, once an eye: the game's two anaglyph passes become the eyes
+head   net/minecraft/client/render/GameRenderer renderWorld (FJ)V renderWorldStart
+return net/minecraft/client/render/GameRenderer renderWorld (FJ)V renderWorldEnd
+get    net/minecraft/client/render/GameRenderer renderWorld (FJ)V net/minecraft/client/options/GameOptions anaglyph Z stereo
+call   net/minecraft/client/render/GameRenderer renderWorld (FJ)V org/lwjgl/opengl/GL11 glColorMask (ZZZZ)V colorMask
+call   net/minecraft/client/render/GameRenderer renderWorld (FJ)V org/lwjgl/opengl/GL11 glViewport (IIII)V viewport
+call   net/minecraft/client/render/GameRenderer renderWorld (FJ)V org/lwjgl/opengl/GL11 glClear (I)V clear
+call   net/minecraft/client/render/GameRenderer renderWorld (FJ)V net/minecraft/client/render/GameRenderer pick (F)V pick
+# the game aims again every tick: there too, with the controller
+call   net/minecraft/client/Minecraft tick ()V net/minecraft/client/render/GameRenderer pick (F)V pick
+call   net/minecraft/client/render/GameRenderer renderWorld (FJ)V net/minecraft/client/render/GameRenderer setupCamera (FI)V setupCamera
+call   net/minecraft/client/render/GameRenderer renderWorld (FJ)V net/minecraft/client/render/GameRenderer renderItemInHand (FI)V renderItemInHand
+
+# no crosshair on the HUD: the right controller aims
+call   net/minecraft/client/gui/GameGui render (FZII)V net/minecraft/client/gui/GameGui:net/minecraft/client/gui/GuiElement drawTexture (IIIIII)V drawGuiTexture
+
+# walking with the left stick
+return net/minecraft/client/entity/mob/player/KeyboardInput:net/minecraft/client/entity/mob/player/Input tick (Lnet/minecraft/entity/mob/player/PlayerEntity;)V input

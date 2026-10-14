@@ -3,9 +3,11 @@ package questcraft.legacy.xr;
 import java.util.ArrayList;
 import java.util.List;
 
+import questcraft.legacy.vr.VRMath;
+
 /**
  * Checks, on a desktop JVM (build.sh runs it), what of the screen in VR can be checked without a headset: how the
- * controllers become keys, buttons and the cursor, and where a pointer meets the screen.
+ * controllers become keys, buttons and the cursor, where a pointer meets the screen, and VR's room in the game's world.
  */
 public final class SelfTest {
     private static int failures;
@@ -139,8 +141,59 @@ public final class SelfTest {
         float[] v = ScreenMath.rotate(0, h, 0, h, 0, 0, -1);
         check(Math.abs(v[0] + 1) < 1e-5 && Math.abs(v[2]) < 1e-5, "rotate: " + str(v));
 
+        vr();
+
         System.out.println(failures == 0 ? "screen self test: all passed" : "screen self test: " + failures + " failed");
         System.exit(failures == 0 ? 0 : 1);
+    }
+
+    /** VR's room in the old game's world (questcraft.legacy.vr.VRMath) */
+    private static void vr() {
+        float[] room = VRMath.roomToWorld(0);
+        float[] ahead = VRMath.mul3(room, 0, 0, -1);
+        check(close(ahead, 0, 0, 1), "the room's ahead is the world's south (+z) at no turn: " + str(ahead));
+        float[] look = VRMath.yawPitch(ahead);
+        check(Math.abs(look[0]) < 1e-3 && Math.abs(look[1]) < 1e-3, "which is yaw 0, pitch 0: " + str(look));
+        float[] right = VRMath.mul3(room, 1, 0, 0);
+        check(close(right, -1, 0, 0), "facing south, the right is west (-x): " + str(right));
+        look = VRMath.yawPitch(VRMath.mul3(VRMath.roomToWorld(90), 0, 0, -1));
+        check(Math.abs(look[0] - 90) < 1e-3, "a turn of 90 looks along yaw 90: " + str(look));
+        // the head turned 30 degrees to the left (about +y): the game's yaw goes down
+        float s = (float) Math.sin(Math.toRadians(15)), c = (float) Math.cos(Math.toRadians(15));
+        float[] head = VRMath.quatToMatrix(0, s, 0, c);
+        look = VRMath.yawPitch(VRMath.mul3(room, VRMath.mul3(head, 0, 0, -1)[0], VRMath.mul3(head, 0, 0, -1)[1], VRMath.mul3(head, 0, 0, -1)[2]));
+        check(Math.abs(look[0] + 30) < 1e-2, "a head turned left 30 is yaw -30: " + str(look));
+        // looking down 20 degrees (about +x, negative): pitch +20
+        s = (float) Math.sin(Math.toRadians(-10));
+        c = (float) Math.cos(Math.toRadians(-10));
+        float[] down = VRMath.mul3(VRMath.quatToMatrix(s, 0, 0, c), 0, 0, -1);
+        look = VRMath.yawPitch(VRMath.mul3(room, down[0], down[1], down[2]));
+        check(Math.abs(look[1] - 20) < 1e-2, "looking down 20 is pitch 20: " + str(look));
+        // a point a metre ahead of the head, wherever the head is in the room, is a metre south of the camera
+        float[] point = VRMath.roomPointToWorld(room, new float[]{0.3f, 1.62f, -0.4f}, 0.3f, 1.62f, -1.4f);
+        check(close(point, 0, 0, 1), "a metre ahead of the head: " + str(point));
+        // ducking 0.5 m lowers the view 0.5 m below the player's eyes
+        point = VRMath.roomPointToWorld(room, new float[]{0, 1.12f, 0}, 0, 1.12f, 0);
+        check(close(point, 0, -0.5f, 0), "ducking: " + str(point));
+        // the eye's view: the world south of the camera is ahead (-z) of an unturned eye
+        float[] view = VRMath.viewMatrix(room, VRMath.quatToMatrix(0, 0, 0, 1), new float[]{0, 0, 0});
+        float[] eye = VRMath.transform(view, 0, 0, 1);
+        check(close(eye, 0, 0, -1), "view: south is ahead: " + str(eye));
+        // an eye 3 cm west of the camera sees the camera 3 cm to its left... in its own x
+        view = VRMath.viewMatrix(room, VRMath.quatToMatrix(0, 0, 0, 1), new float[]{-0.03f, 0, 0});
+        eye = VRMath.transform(view, 0, 0, 0);
+        check(close(eye, -0.03f, 0, 0), "view: an eye to the right sees the centre on its left: " + str(eye));
+        // the projection: straight ahead is the centre, near and far are -1 and 1
+        float[] p = VRMath.projection(-0.8f, 0.8f, 0.8f, -0.8f, 0.05f, 100);
+        float[] near = VRMath.transform(p, 0, 0, -0.05f), far = VRMath.transform(p, 0, 0, -100);
+        check(Math.abs(near[0]) < 1e-5 && Math.abs(near[2] / near[3] + 1) < 1e-3 && Math.abs(far[2] / far[3] - 1) < 1e-3,
+                "projection depth: " + str(near) + " / " + str(far));
+        float[] edge = VRMath.transform(p, (float) Math.tan(0.8f), 0, -1);
+        check(Math.abs(edge[0] / edge[3] - 1) < 1e-4, "projection: the right edge of the view is x 1: " + str(edge));
+    }
+
+    private static boolean close(float[] v, float x, float y, float z) {
+        return Math.abs(v[0] - x) < 1e-4 && Math.abs(v[1] - y) < 1e-4 && Math.abs(v[2] - z) < 1e-4;
     }
 
     private static float[] norm(float x, float y, float z) {

@@ -131,12 +131,14 @@ public class MinecraftInstances {
 
         /** Shown in the launcher next to the loader. */
         public String vrModName() {
-            if (loader() == ModLoader.RISUGAMI) return SCREEN;
+            if (loader() == ModLoader.RISUGAMI) return pojlib.install.RisugamiModLoader.hasVR(versionName) ? VR : SCREEN;
             return usesVisor() ? "Visor" : "Vivecraft";
         }
 
         /** What an instance without a VR mod shows the game on: a screen in VR (ModLoader's versions) */
         public static final String SCREEN = "Screen";
+        /** QuestCraft's own VR, for an old version no VR mod exists for (the legacy launcher's, beta 1.7.3) */
+        public static final String VR = "VR";
 
         public boolean isNeoForge() {
             return loader() == ModLoader.NEOFORGE;

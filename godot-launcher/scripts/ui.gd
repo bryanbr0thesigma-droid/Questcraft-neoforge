@@ -689,6 +689,8 @@ func show_create() -> void:
 			state["vr"] = str(options[0]) if typeof(options) == TYPE_ARRAY and options.size() == 1 else "Vivecraft"
 			if state["vr"] == "Screen":
 				vr_row.add_child(_label("Screen   (no VR mod exists for %s: the game is on a screen in VR)" % state["version"], 22, TEXT_DIM))
+			elif state["vr"] == "VR":
+				vr_row.add_child(_label("VR   (QuestCraft's own for %s: no VR mod exists for it)" % state["version"], 22, TEXT_DIM))
 			else:
 				vr_row.add_child(_label("Vivecraft   (no Visor build for %s %s)" % [state["loader"], state["version"]], 22, TEXT_DIM))
 			return

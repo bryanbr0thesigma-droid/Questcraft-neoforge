@@ -16,7 +16,7 @@ import org.lwjgl.system.SharedLibrary;
  * 1.12.2's XrBlit): the game draws through gl4es, which keeps its own idea of the GL state, so everything changed here
  * is put back afterwards. Also draws the pointer's dot, where the right controller points at the screen.
  */
-final class GlesBlit {
+public final class GlesBlit {
     private static final int GL_READ_FRAMEBUFFER = 0x8CA8, GL_DRAW_FRAMEBUFFER = 0x8CA9;
     private static final int GL_READ_FRAMEBUFFER_BINDING = 0x8CAA, GL_DRAW_FRAMEBUFFER_BINDING = 0x8CA6;
     private static final int GL_COLOR_ATTACHMENT0 = 0x8CE0, GL_COLOR_BUFFER_BIT = 0x4000, GL_LINEAR = 0x2601;
@@ -26,10 +26,11 @@ final class GlesBlit {
     private static final int GL_FRAMEBUFFER_SRGB = 0x8DB9;
 
     private final long glGetIntegerv, glGetFloatv, glGetBooleanv, glGenFramebuffers, glBindFramebuffer, glFramebufferTexture2D,
-            glBlitFramebuffer, glEnable, glDisable, glIsEnabled, glGetError, glScissor, glClearColor, glClear, glColorMask;
+            glFramebufferTextureLayer, glBlitFramebuffer, glEnable, glDisable, glIsEnabled, glGetError, glScissor, glClearColor,
+            glClear, glColorMask;
     private int readFbo, drawFbo;
 
-    GlesBlit() {
+    public GlesBlit() {
         SharedLibrary gles = Library.loadNative(GlesBlit.class, "org.lwjgl.opengles",
                 System.getProperty("org.lwjgl.opengles.libname", "libGLESv3.so"));
         glGetIntegerv = function(gles, "glGetIntegerv");
@@ -38,6 +39,7 @@ final class GlesBlit {
         glGenFramebuffers = function(gles, "glGenFramebuffers");
         glBindFramebuffer = function(gles, "glBindFramebuffer");
         glFramebufferTexture2D = function(gles, "glFramebufferTexture2D");
+        glFramebufferTextureLayer = function(gles, "glFramebufferTextureLayer");
         glBlitFramebuffer = function(gles, "glBlitFramebuffer");
         glEnable = function(gles, "glEnable");
         glDisable = function(gles, "glDisable");
@@ -61,6 +63,11 @@ final class GlesBlit {
      * when {@code pointer} is set.
      */
     void copy(int texture, int image, int width, int height, boolean pointer, int pointerX, int pointerY) {
+        copy(texture, image, -1, width, height, pointer, pointerX, pointerY);
+    }
+
+    /** As {@link #copy(int, int, int, int, boolean, int, int)}, into layer {@code layer} of an array image (-1: a plain one). */
+    public void copy(int texture, int image, int layer, int width, int height, boolean pointer, int pointerX, int pointerY) {
         GL11.glFlush(); // what gl4es still holds goes to the driver before the texture is read behind its back
 
         try (MemoryStack stack = MemoryStack.stackPush()) {
@@ -76,7 +83,8 @@ final class GlesBlit {
             JNI.callV(GL_READ_FRAMEBUFFER, readFbo, glBindFramebuffer);
             JNI.callV(GL_READ_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture, 0, glFramebufferTexture2D);
             JNI.callV(GL_DRAW_FRAMEBUFFER, drawFbo, glBindFramebuffer);
-            JNI.callV(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, image, 0, glFramebufferTexture2D);
+            if (layer < 0) JNI.callV(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, image, 0, glFramebufferTexture2D);
+            else JNI.callV(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, image, 0, layer, glFramebufferTextureLayer);
 
             boolean scissor = JNI.callZ(GL_SCISSOR_TEST, glIsEnabled);
             if (scissor) JNI.callV(GL_SCISSOR_TEST, glDisable);

@@ -55,6 +55,11 @@ public final class RisugamiModLoader {
     /** The legacy launcher: in the app, and where it is put to be started */
     public static final String LAUNCHER_ASSET = "legacy/questcraft-legacy-launcher.jar";
     public static final String LAUNCHER_MAIN = "questcraft.legacy.LegacyLauncher";
+    /**
+     * The versions played in VR (QuestCraft's own, in the legacy launcher: vr/VERSION.jar in it); the others are shown
+     * on a screen in VR.
+     */
+    public static final List<String> VR_VERSIONS = java.util.Collections.singletonList("b1.7.3");
     /** The game class whose main() starts versions before 1.6 (Mojang's version file has LaunchWrapper's) */
     static final String OLD_MAIN = "net.minecraft.client.Minecraft";
     static final String MAIN_1_6 = "net.minecraft.client.main.Main";
@@ -122,6 +127,11 @@ public final class RisugamiModLoader {
         return merged.getAbsolutePath();
     }
 
+    /** Whether the version is played in VR (else on a screen in VR). */
+    public static boolean hasVR(String minecraftVersion) {
+        return VR_VERSIONS.contains(minecraftVersion);
+    }
+
     /** The legacy launcher from the app, written where the game is started from. Every time: an app update brings a new one. */
     public static String installLauncher(Context context, String launcherDir) throws IOException {
         byte[] jar = FileUtil.loadFromAssetToByte(context, LAUNCHER_ASSET);
@@ -145,6 +155,8 @@ public final class RisugamiModLoader {
         }
         args.add("-Dquestcraft.legacy.classpath=" + gameClasspath);
         args.add("-Dquestcraft.legacy.main=" + gameMain(minecraft));
+        // the version picks its VR in the launcher
+        args.add("-Dquestcraft.legacy.version=" + minecraft.id);
         return args.toArray(new String[0]);
     }
 

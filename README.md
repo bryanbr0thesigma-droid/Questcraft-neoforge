@@ -22,7 +22,7 @@ QuestCraft itself is not a mod. It is a launcher app (a Unity project that calls
 
 **Vanilla: 1.12.2**, with OptiFine and Vivecraft 1.12.2 on OpenXR, see [Minecraft 1.12.2 in VR](#minecraft-1122-in-vr-vanilla).
 
-**Risugami (ModLoader): 39 versions from alpha 1.1.2_01 to 1.6.2**, on a screen in VR, see [Risugami's ModLoader](#risugamis-modloader-alpha-beta-10-to-162).
+**Risugami (ModLoader): 39 versions from alpha 1.1.2_01 to 1.6.2**: beta 1.7.3 in VR (QuestCraft's own), the others on a screen in VR, see [Risugami's ModLoader](#risugamis-modloader-alpha-beta-10-to-162).
 
 Left out of NeoForge: **1.21.10**. Upstream QuestCraft ships it, but the fork's `OpenXR-1.21.10` branch does not compile its shared module in this setup even when built exactly as shipped (Fabric only; the Minecraft classes never reach the compiler), so there is no working source to start from. (1.21.11 is newer and does not depend on it, see below.)
 
@@ -232,7 +232,18 @@ How it is done:
 - **Old OpenGL**: gl4es, as for 1.12.2.
 - **Sounds**: copied from Mojang's asset objects to where these versions look: `resources/` for alpha to 1.5, `assets/virtual/legacy` for 1.6.
 
-**In VR: a screen.** No VR mod exists for these versions, so the game is shown on a flat screen in VR: 1.8 m wide, 1.6 m in front of where you look when it starts, and placed in front of you again when you recentre the headset. The game draws into a framebuffer of the launcher's, and each frame goes to an OpenXR quad layer on the game's own GL context (`legacy-launcher/src/questcraft/legacy/xr/`). The controllers act as keyboard and mouse:
+**Beta 1.7.3: in VR.** No VR mod exists for these versions, so QuestCraft has its own for b1.7.3, in the legacy launcher (`legacy-launcher/src/questcraft/legacy/vr/`, and the version's part in [`legacy-launcher/glue/b1.7.3/`](legacy-launcher/glue/b1.7.3)). The New instance screen shows it as the VR mod "VR".
+
+- **The headset is the camera.** Each eye is drawn from where it is: the game's two anaglyph-3D passes became the two eyes, with the headset's projection and the eye's position. Your height and ducking count; the player looks where your head does.
+- **Walking in the room walks in the world**, stopped by walls as walking is.
+- **The right controller aims.** It holds the selected item, a thin line shows where it points, and what it hits is what you break or use (the game's own aiming, from the controller instead of the eyes).
+- **The HUD** (hotbar, health) is on a panel low in front of you that follows your head's turn. **Menus** (inventory, pause, title screen) are on a panel placed in front of you when they open; the right controller points at it, with a line and a dot, and the trigger clicks.
+- **Controls**: left stick walks where the left controller points, right stick turns 45 degrees a flick, right trigger hits or breaks, left trigger uses or places, A jumps, B sneaks, X opens the inventory, Y or Menu is Esc, grips change the hotbar slot.
+- **How it reaches the game**: hooks into b1.7.3's renderer, aiming and input (`hooks.txt`), written with OrnitheMC's Feather names and translated into the game's own when the launcher is built (Fabric's tiny-remapper). The build fails if any hook does not find its place in Mojang's b1.7.3 client. With ModLoader the same hooks apply, as ModLoader does not replace those classes.
+- **Checked here** with a simulated headset on a desktop (`-Dquestcraft.legacy.vrsim=true`, both eyes side by side; `-Dquestcraft.legacy.vrsim.file=` moves the head, the controllers and the sticks while the game runs): the title screen and its menus on the panel with the pointer; a world in stereo; breaking blocks where the controller points; picking up and holding the block; walking with the stick; turning; stepping in the room (and being stopped by a block); the inventory on its panel. The build also runs a self-test of the room-to-world maths.
+- **Not tried on a headset yet.** If something is wrong, the log has `QuestCraft VR:` lines to send; if VR cannot start, the game goes on, on the screen.
+
+**Other versions: a screen.** The other versions are shown on a flat screen in VR: 1.8 m wide, 1.6 m in front of where you look when it starts, and placed in front of you again when you recentre the headset. The game draws into a framebuffer of the launcher's, and each frame goes to an OpenXR quad layer on the game's own GL context (`legacy-launcher/src/questcraft/legacy/xr/`). The controllers act as keyboard and mouse:
 
 | Control | In game | In menus |
 |---|---|---|

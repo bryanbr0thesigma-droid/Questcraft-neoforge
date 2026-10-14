@@ -163,6 +163,8 @@ class RisugamiModLoaderTest {
         List<String> args = Arrays.asList(RisugamiModLoader.jvmArgs(beta, "/g/client-modloader.jar:/g/jutils.jar"));
         assertTrue(args.contains("-Dquestcraft.legacy.classpath=/g/client-modloader.jar:/g/jutils.jar"), args.toString());
         assertTrue(args.contains("-Dquestcraft.legacy.main=net.minecraft.client.Minecraft"), args.toString());
+        // the launcher picks the version's VR by its name
+        assertTrue(args.contains("-Dquestcraft.legacy.version=b1.7.3"), args.toString());
         // ModLoader sets fields of the game by reflection and the old network code reaches into java.net
         for (String open : new String[]{"java.base/java.lang=ALL-UNNAMED", "java.base/java.lang.reflect=ALL-UNNAMED", "java.base/java.net=ALL-UNNAMED"}) {
             int i = args.indexOf(open);
@@ -178,7 +180,17 @@ class RisugamiModLoaderTest {
             assertNotNull(zip.getEntry(RisugamiModLoader.LAUNCHER_MAIN.replace('.', '/') + ".class"));
             // ASM is inside: the game's classes are rewritten while they load
             assertNotNull(zip.getEntry("org/objectweb/asm/ClassReader.class"));
+            // and the VR of each version played in VR
+            for (String version : RisugamiModLoader.VR_VERSIONS) assertNotNull(zip.getEntry("vr/" + version + ".jar"), version);
         }
+    }
+
+    @Test
+    void beta173IsPlayedInVrTheOthersOnAScreen() {
+        assertTrue(RisugamiModLoader.hasVR("b1.7.3"));
+        assertFalse(RisugamiModLoader.hasVR("1.5.2"));
+        assertEquals("[\"VR\"]", pojlib.LauncherApi.vrMods("Risugami", "b1.7.3"));
+        assertEquals("[\"Screen\"]", pojlib.LauncherApi.vrMods("Risugami", "a1.2.6"));
     }
 
     /**

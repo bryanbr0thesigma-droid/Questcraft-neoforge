@@ -9,22 +9,26 @@ import org.lwjgl.opengl.EXTFramebufferObject;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.PixelFormat;
 
+import questcraft.legacy.vr.VR;
 import questcraft.legacy.xr.GameFramebuffer;
 import questcraft.legacy.xr.ScreenXR;
 
 /**
  * Where the game's display calls go ({@link Transformer}). On the headset the game draws into a framebuffer of ours
- * (its GL context has no window), and each finished frame ({@code Display.update()}) is shown on a screen in VR
- * ({@link ScreenXR}). On a desktop (the tests) the game draws into its window as it always did.
+ * (its GL context has no window), and each finished frame ({@code Display.update()}) goes to the headset: in VR
+ * ({@link VR}, for a version with VR glue), or else on a screen in VR ({@link ScreenXR}). On a desktop (the tests)
+ * the game draws into its window as it always did.
  */
 public final class Presenter {
     /** On the headset: Pojlib starts the game with os.version "Android-..." */
     static final boolean HEADSET = System.getProperty("os.version", "").startsWith("Android");
     /**
      * The game draws into our framebuffer: on the headset, and on a desktop with -Dquestcraft.legacy.framebuffer=true,
-     * where it is copied to the window (to check that the game draws right into it without a headset).
+     * where it is copied to the window (to check that the game draws right into it without a headset), or with the
+     * simulated headset (-Dquestcraft.legacy.vrsim=true).
      */
-    static final boolean OWN_FRAMEBUFFER = HEADSET || Boolean.getBoolean("questcraft.legacy.framebuffer");
+    static final boolean OWN_FRAMEBUFFER = HEADSET || Boolean.getBoolean("questcraft.legacy.framebuffer")
+            || Boolean.getBoolean("questcraft.legacy.vrsim");
     private static GameFramebuffer framebuffer;
     private static ScreenXR screen;
     private static boolean screenTried;
@@ -74,6 +78,18 @@ public final class Presenter {
 
     private static void show() {
         if (framebuffer == null) return;
+        if (VR.enabled()) {
+            VR.setGameFramebuffer(framebuffer);
+            try {
+                VR.endFrame();
+                return;
+            } catch (Throwable t) {
+                // the game goes on, on the screen in VR, rather than crashing at every frame; the log says why
+                System.out.println("QuestCraft VR: stopped, " + t);
+                t.printStackTrace();
+                VR.disable("it stopped");
+            }
+        }
         if (!HEADSET) {
             // the desktop check: the picture into the window, then the game draws into ours again
             EXTFramebufferObject.glBindFramebufferEXT(EXTFramebufferBlit.GL_READ_FRAMEBUFFER_EXT, framebuffer.framebuffer);

@@ -1,0 +1,397 @@
+package questcraft.legacy.vr;
+
+import java.nio.FloatBuffer;
+import java.nio.IntBuffer;
+
+import org.lwjgl.BufferUtils;
+import org.lwjgl.opengl.EXTFramebufferObject;
+import org.lwjgl.opengl.GL11;
+
+import questcraft.legacy.xr.GameFramebuffer;
+
+/**
+ * VR for the old versions, the part every version shares: the headset ({@link VRProvider}), each eye's framebuffer,
+ * the framebuffer the game's menus and HUD are drawn into and the panels they are shown on in the world, the
+ * controllers, and the order of it all in a frame. A version's own code (its "glue", made against that version's
+ * classes) puts the game's camera on the headset, aims with the controllers and draws through {@link #beginEye}.
+ * <p>
+ * A frame: the game renders (the glue calls {@link #beginEye} / {@link #endEyes} around each eye and
+ * {@link #beginGui} / {@link #endGui} around its menus and HUD), then Display.update() calls {@link #endFrame}, which
+ * hands the eyes to the headset and waits for its next frame, so the poses are fresh when the game renders again.
+ */
+public final class VR {
+    /** The menu panel's width in metres and its distance; its height follows the game's window. */
+    static final float MENU_WIDTH = 1.6f, MENU_DISTANCE = 1.5f;
+    /** The HUD panel (the hotbar, health): under the view, following the head */
+    static final float HUD_WIDTH = 1.4f, HUD_DISTANCE = 1.3f, HUD_DROP = 0.55f;
+    /** One snap turn, degrees */
+    static final float SNAP = 45;
+
+    private static boolean enabled, headset;
+    private static VRProvider provider;
+    private static boolean started, failed, frameBegun;
+    private static final VRFrame frame = new VRFrame();
+    /** The game's turn of the room, degrees: snap turns */
+    public static float bodyYaw;
+    private static GameFramebuffer[] eyes;
+    private static GameFramebuffer gui;
+    private static GameFramebuffer game;
+    private static int windowWidth, windowHeight;
+    private static boolean eyesRendered, guiCleared;
+    /** Nothing was drawn through the glue this frame (a loading screen): the game's own picture goes on the panel */
+    private static boolean showGame;
+    private static int currentEye = -1;
+    /** A menu is open (set by the glue each frame): the panel in front, the pointer on it */
+    private static boolean menuOpen, menuWasOpen;
+    private static final float[] menuCenter = new float[3];
+    private static float menuYaw;
+    private static boolean menuPlaced;
+    private static final float[] hudCenter = new float[3];
+    private static float hudYaw;
+    private static boolean hudPlaced;
+    private static boolean pointing;
+    private static float pointerU, pointerV;
+    private static VRControls controls;
+
+    private VR() {
+    }
+
+    /** Turned on by the launcher for a version that has VR glue. */
+    public static void enable(int width, int height, boolean headset) {
+        enabled = true;
+        VR.headset = headset;
+        windowWidth = width;
+        windowHeight = height;
+        provider = headset ? new VRSessionXR() : new VRSim(width, height);
+        controls = new VRControls(headset, width, height);
+    }
+
+    public static boolean enabled() {
+        return enabled && !failed;
+    }
+
+    /** VR goes off for good (a hook the glue needs is not in this game): the game is drawn as it always was. */
+    public static void disable(String reason) {
+        if (failed) return;
+        failed = true;
+        System.out.println("QuestCraft VR: off, " + reason);
+    }
+
+    /** The game's own framebuffer (where it draws outside the eyes and menus), made by the launcher's Presenter. */
+    public static void setGameFramebuffer(GameFramebuffer framebuffer) {
+        game = framebuffer;
+    }
+
+    public static VRFrame frame() {
+        return frame;
+    }
+
+    /** Starts the headset, the first time: the game's GL context has to be current. */
+    private static boolean ensureStarted() {
+        if (started || failed) return started;
+        if (!provider.start()) {
+            failed = true;
+            System.out.println("QuestCraft VR: no headset, the game runs on without VR");
+            return false;
+        }
+        started = true;
+        eyes = new GameFramebuffer[]{GameFramebuffer.create(provider.eyeWidth(), provider.eyeHeight()),
+                GameFramebuffer.create(provider.eyeWidth(), provider.eyeHeight())};
+        gui = GameFramebuffer.create(windowWidth, windowHeight);
+        bindGame();
+        // the game pauses when its window is not focused; on the headset nothing else focuses it
+        if (headset) questcraft.legacy.xr.GameInput.focus();
+        frameBegun = provider.beginFrame(frame);
+        System.out.println("QuestCraft VR: on, eyes " + provider.eyeWidth() + " x " + provider.eyeHeight());
+        return true;
+    }
+
+    // ---- the world, as seen from the headset ----
+
+    /** The room's axes in the world (3x3, row major) at the current turn. */
+    public static float[] room() {
+        return VRMath.roomToWorld(bodyYaw);
+    }
+
+    /** A point of the room in the world, relative to the game's camera (the player's eyes). */
+    public static float[] toWorld(float[] roomPoint) {
+        return VRMath.roomPointToWorld(room(), frame.headPosition, roomPoint[0], roomPoint[1], roomPoint[2]);
+    }
+
+    /** The direction {@code (x, y, z)} of something oriented as {@code quaternion} in the room, in the world. */
+    public static float[] directionToWorld(float[] quaternion, float x, float y, float z) {
+        float[] local = VRMath.mul3(VRMath.quatToMatrix(quaternion[0], quaternion[1], quaternion[2], quaternion[3]), x, y, z);
+        return VRMath.mul3(room(), local[0], local[1], local[2]);
+    }
+
+    /** The game's yaw and pitch (degrees) of where the head looks. */
+    public static float[] headYawPitch() {
+        return VRMath.yawPitch(directionToWorld(frame.headOrientation, 0, 0, -1));
+    }
+
+    /** The eye's model-view matrix (column major): from the world relative to the camera into the eye. */
+    public static float[] eyeView(int eye) {
+        float[] q = frame.eyeOrientation[eye];
+        return VRMath.viewMatrix(room(), VRMath.quatToMatrix(q[0], q[1], q[2], q[3]), toWorld(frame.eyePosition[eye]));
+    }
+
+    public static float[] eyeProjection(int eye, float near, float far) {
+        float[] fov = frame.eyeFov[eye];
+        return VRMath.projection(fov[0], fov[1], fov[2], fov[3], near, far);
+    }
+
+    // ---- drawing ----
+
+    /** Draws into an eye (0 left, 1 right) from now on. False without VR: nothing changed. */
+    public static boolean beginEye(int eye) {
+        if (!enabled() || !ensureStarted()) return false;
+        currentEye = eye;
+        EXTFramebufferObject.glBindFramebufferEXT(EXTFramebufferObject.GL_FRAMEBUFFER_EXT, eyes[eye].framebuffer);
+        GL11.glViewport(0, 0, eyes[eye].width, eyes[eye].height);
+        return true;
+    }
+
+    public static int currentEye() {
+        return currentEye;
+    }
+
+    /** The size of the eye being drawn: the glue's viewport. */
+    public static int eyeWidth() {
+        return eyes != null ? eyes[0].width : windowWidth;
+    }
+
+    public static int eyeHeight() {
+        return eyes != null ? eyes[0].height : windowHeight;
+    }
+
+    /** Back to the game's own framebuffer after the eyes. */
+    public static void endEyes() {
+        if (currentEye >= 0) eyesRendered = true;
+        currentEye = -1;
+        bindGame();
+    }
+
+    private static void bindGame() {
+        EXTFramebufferObject.glBindFramebufferEXT(EXTFramebufferObject.GL_FRAMEBUFFER_EXT, game != null ? game.framebuffer : 0);
+        GL11.glViewport(0, 0, windowWidth, windowHeight);
+    }
+
+    /** The game's menus or HUD are drawn from now on: into the panel's framebuffer, cleared once a frame. */
+    public static void beginGui() {
+        if (!enabled() || !ensureStarted()) return;
+        EXTFramebufferObject.glBindFramebufferEXT(EXTFramebufferObject.GL_FRAMEBUFFER_EXT, gui.framebuffer);
+        GL11.glViewport(0, 0, windowWidth, windowHeight);
+        if (!guiCleared) {
+            guiCleared = true;
+            FloatBuffer clear = BufferUtils.createFloatBuffer(16);
+            GL11.glGetFloat(GL11.GL_COLOR_CLEAR_VALUE, clear);
+            GL11.glClearColor(0, 0, 0, 0);
+            GL11.glClear(GL11.GL_COLOR_BUFFER_BIT);
+            GL11.glClearColor(clear.get(0), clear.get(1), clear.get(2), clear.get(3));
+        }
+        // the HUD's items and a menu over it are drawn with depth, each on its own
+        GL11.glClear(GL11.GL_DEPTH_BUFFER_BIT);
+    }
+
+    public static void endGui() {
+        if (!enabled() || !started) return;
+        if (menuOpen && pointing) dot((int) (pointerU * windowWidth), windowHeight - (int) (pointerV * windowHeight));
+        bindGame();
+    }
+
+    /** Whether a menu is open: set by the glue every frame. */
+    public static void setMenuOpen(boolean open) {
+        menuOpen = open;
+    }
+
+    public static boolean menuOpen() {
+        return menuOpen;
+    }
+
+    /**
+     * Draws the panel the menus (or, without one, the HUD) are on, in the eye being drawn: over everything, as the
+     * menu should not hide in a wall. The GL state it changes is put back.
+     */
+    public static void drawPanels(int eye) {
+        if (!started || gui == null) return;
+        boolean menu = menuOpen || showGame;
+        float[] center = menu ? menuCenter : hudCenter;
+        float yaw = menu ? menuYaw : hudYaw;
+        float width = menu ? MENU_WIDTH : HUD_WIDTH;
+        float height = width * windowHeight / windowWidth;
+        float tilt = menu ? 0 : (float) Math.toRadians(25);   // the HUD leans back towards the eyes
+
+        // the panel's corners in the room, then in the world
+        float c = (float) Math.cos(yaw), s = (float) Math.sin(yaw);
+        float[] right = {c, 0, -s};
+        // leaning back: the top edge away from the eyes (the panel's front, +z, tilted up)
+        float[] up = {(float) (-Math.sin(tilt) * s), (float) Math.cos(tilt), (float) (-Math.sin(tilt) * c)};
+        float[][] corners = new float[4][];
+        float[][] signs = {{-1, -1}, {1, -1}, {1, 1}, {-1, 1}};
+        for (int i = 0; i < 4; i++) {
+            float[] p = new float[3];
+            for (int k = 0; k < 3; k++) p[k] = center[k] + right[k] * width / 2 * signs[i][0] + up[k] * height / 2 * signs[i][1];
+            corners[i] = toWorld(p);
+        }
+
+        GL11.glPushAttrib(GL11.GL_ENABLE_BIT | GL11.GL_COLOR_BUFFER_BIT | GL11.GL_DEPTH_BUFFER_BIT | GL11.GL_TEXTURE_BIT | GL11.GL_CURRENT_BIT
+                | GL11.GL_LINE_BIT);
+        GL11.glMatrixMode(GL11.GL_PROJECTION);
+        GL11.glPushMatrix();
+        GL11.glLoadMatrix(buffer(eyeProjection(eye, 0.05f, 100f)));
+        GL11.glMatrixMode(GL11.GL_MODELVIEW);
+        GL11.glPushMatrix();
+        GL11.glLoadMatrix(buffer(eyeView(eye)));
+        GL11.glDisable(GL11.GL_DEPTH_TEST);
+        GL11.glDisable(GL11.GL_CULL_FACE);
+        GL11.glDisable(GL11.GL_LIGHTING);
+        GL11.glDisable(GL11.GL_FOG);
+        GL11.glDisable(GL11.GL_ALPHA_TEST);
+        GL11.glEnable(GL11.GL_BLEND);
+        GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
+        GL11.glEnable(GL11.GL_TEXTURE_2D);
+        GL11.glBindTexture(GL11.GL_TEXTURE_2D, showGame && game != null ? game.texture : gui.texture);
+        GL11.glColor4f(1, 1, 1, 1);
+        float[][] uv = {{0, 0}, {1, 0}, {1, 1}, {0, 1}};
+        GL11.glBegin(GL11.GL_QUADS);
+        for (int i = 0; i < 4; i++) {
+            GL11.glTexCoord2f(uv[i][0], uv[i][1]);
+            GL11.glVertex3f(corners[i][0], corners[i][1], corners[i][2]);
+        }
+        GL11.glEnd();
+        if (menuOpen && pointing) {
+            // the pointer's line, from the right controller to its dot on the menu
+            float[] from = toWorld(frame.aimPosition[1]), to = toWorld(pointerHit());
+            GL11.glDisable(GL11.GL_TEXTURE_2D);
+            GL11.glLineWidth(2);
+            GL11.glColor4f(1, 1, 1, 0.6f);
+            GL11.glBegin(GL11.GL_LINES);
+            GL11.glVertex3f(from[0], from[1], from[2]);
+            GL11.glVertex3f(to[0], to[1], to[2]);
+            GL11.glEnd();
+        }
+        GL11.glPopMatrix();
+        GL11.glMatrixMode(GL11.GL_PROJECTION);
+        GL11.glPopMatrix();
+        GL11.glMatrixMode(GL11.GL_MODELVIEW);
+        GL11.glPopAttrib();
+    }
+
+    private static FloatBuffer buffer(float[] m) {
+        FloatBuffer b = BufferUtils.createFloatBuffer(16);
+        b.put(m).flip();
+        return b;
+    }
+
+    /** The pointer's dot on the menu: a white square with a dark edge, cleared into the panel's framebuffer. */
+    private static void dot(int x, int y) {
+        IntBuffer box = BufferUtils.createIntBuffer(16);
+        GL11.glGetInteger(GL11.GL_SCISSOR_BOX, box);
+        FloatBuffer clear = BufferUtils.createFloatBuffer(16);
+        GL11.glGetFloat(GL11.GL_COLOR_CLEAR_VALUE, clear);
+        boolean scissor = GL11.glIsEnabled(GL11.GL_SCISSOR_TEST);
+        GL11.glEnable(GL11.GL_SCISSOR_TEST);
+        GL11.glScissor(x - 6, y - 6, 12, 12);
+        GL11.glClearColor(0.1f, 0.1f, 0.1f, 1);
+        GL11.glClear(GL11.GL_COLOR_BUFFER_BIT);
+        GL11.glScissor(x - 4, y - 4, 8, 8);
+        GL11.glClearColor(1, 1, 1, 1);
+        GL11.glClear(GL11.GL_COLOR_BUFFER_BIT);
+        if (!scissor) GL11.glDisable(GL11.GL_SCISSOR_TEST);
+        GL11.glScissor(box.get(0), box.get(1), box.get(2), box.get(3));
+        GL11.glClearColor(clear.get(0), clear.get(1), clear.get(2), clear.get(3));
+    }
+
+    // ---- the frame ----
+
+    /** The end of a game frame (Display.update): the eyes to the headset, the controllers to the game, the next frame. */
+    public static void endFrame() {
+        if (!enabled() || !ensureStarted()) return;
+        // neither the world nor a menu through the glue: a loading screen, drawn by the game into its own picture
+        showGame = !eyesRendered && !guiCleared && game != null;
+        placePanels();
+        if (frameBegun) {
+            if (!eyesRendered) menuEyes();
+            provider.endFrame(frame, eyes[0].texture, eyes[1].texture);
+        }
+        eyesRendered = false;
+        guiCleared = false;
+        frameBegun = provider.beginFrame(frame);
+        updatePointer();
+        controls.update(frame, menuOpen, pointing, pointerU, pointerV);
+        bodyYaw += controls.takeTurn() * SNAP;
+        menuWasOpen = menuOpen || showGame;
+        bindGame();
+    }
+
+    /** Without a world (the title screen and its menus): each eye is a dark room with the menu panel in it. */
+    private static void menuEyes() {
+        for (int eye = 0; eye < 2; eye++) {
+            EXTFramebufferObject.glBindFramebufferEXT(EXTFramebufferObject.GL_FRAMEBUFFER_EXT, eyes[eye].framebuffer);
+            GL11.glViewport(0, 0, eyes[eye].width, eyes[eye].height);
+            GL11.glClearColor(0.06f, 0.06f, 0.09f, 1);
+            GL11.glClear(GL11.GL_COLOR_BUFFER_BIT | GL11.GL_DEPTH_BUFFER_BIT);
+            drawPanels(eye);
+        }
+        bindGame();
+    }
+
+    /** The menu panel in front of the head when a menu opens; the HUD follows the head's turn, a bit behind it. */
+    private static void placePanels() {
+        float[] forward = VRMath.mul3(VRMath.quatToMatrix(frame.headOrientation[0], frame.headOrientation[1],
+                frame.headOrientation[2], frame.headOrientation[3]), 0, 0, -1);
+        float length = (float) Math.hypot(forward[0], forward[2]);
+        float fx = length > 1e-3f ? forward[0] / length : 0, fz = length > 1e-3f ? forward[2] / length : -1;
+        float headYaw = (float) Math.atan2(-fx, -fz);
+        if ((menuOpen || showGame) && (!menuWasOpen || !menuPlaced)) {
+            menuCenter[0] = frame.headPosition[0] + fx * MENU_DISTANCE;
+            menuCenter[1] = frame.headPosition[1];
+            menuCenter[2] = frame.headPosition[2] + fz * MENU_DISTANCE;
+            menuYaw = headYaw;
+            menuPlaced = true;
+        }
+        // the HUD turns with the head when it has turned well away from it, smoothly
+        if (!hudPlaced) {
+            hudYaw = headYaw;
+            hudPlaced = true;
+        }
+        float difference = (float) Math.atan2(Math.sin(headYaw - hudYaw), Math.cos(headYaw - hudYaw));
+        if (Math.abs(difference) > Math.toRadians(30)) hudYaw += difference * 0.1f;
+        float hx = (float) -Math.sin(hudYaw), hz = (float) -Math.cos(hudYaw);
+        hudCenter[0] = frame.headPosition[0] + hx * HUD_DISTANCE;
+        hudCenter[1] = frame.headPosition[1] - HUD_DROP;
+        hudCenter[2] = frame.headPosition[2] + hz * HUD_DISTANCE;
+    }
+
+    /** Where the right controller's pointer meets the menu panel, in the room. */
+    private static float[] pointerHit() {
+        float height = MENU_WIDTH * windowHeight / windowWidth;
+        float c = (float) Math.cos(menuYaw), s = (float) Math.sin(menuYaw);
+        float x = (pointerU - 0.5f) * MENU_WIDTH, y = (0.5f - pointerV) * height;
+        return new float[]{menuCenter[0] + c * x, menuCenter[1] + y, menuCenter[2] - s * x};
+    }
+
+    /** Where the right controller points on the menu panel (u, v from its top left). */
+    private static void updatePointer() {
+        pointing = false;
+        if (!menuOpen || !menuPlaced || !frame.handTracked[1]) return;
+        float[] q = frame.aimOrientation[1];
+        float[] direction = VRMath.mul3(VRMath.quatToMatrix(q[0], q[1], q[2], q[3]), 0, 0, -1);
+        float height = MENU_WIDTH * windowHeight / windowWidth;
+        float[] hit = questcraft.legacy.xr.ScreenMath.hit(menuCenter, menuYaw, MENU_WIDTH, height, frame.aimPosition[1], direction);
+        if (hit != null) {
+            pointing = true;
+            pointerU = hit[0];
+            pointerV = hit[1];
+        }
+    }
+
+    /** How the left stick wants the player to move: forward and sideways, -1..1 (the glue's movement input). */
+    public static float moveForward() {
+        return controls.moveForward();
+    }
+
+    public static float moveSideways() {
+        return controls.moveSideways();
+    }
+}

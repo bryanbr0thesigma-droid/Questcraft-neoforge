@@ -29,6 +29,7 @@ import org.objectweb.asm.commons.SimpleRemapper;
  * {@code Display.setParent(canvas)} is dropped: the game draws without a window around it.</li>
  * <li>{@code Display.create(...)} goes through {@link Presenter} too, which gives the game a framebuffer to draw into
  * (the headset's GL context has no window), and binding framebuffer 0 binds that one.</li>
+ * <li>With VR, the hooks of the version's glue ({@link HookSpec}) go into the classes they are for.</li>
  * </ul>
  */
 public final class Transformer {
@@ -51,12 +52,19 @@ public final class Transformer {
     }
 
     public static byte[] transform(String name, byte[] bytes) {
-        if (!mayNeedWork(bytes)) return bytes;
+        HookSpec hooks = HookSpec.active();
+        String internalName = name.replace('.', '/');
+        boolean hooked = hooks != null && hooks.targets(internalName);
+        if (!hooked && !mayNeedWork(bytes)) return bytes;
         try {
             ClassReader reader = new ClassReader(bytes);
-            ClassWriter writer = new ClassWriter(0);
-            reader.accept(new ClassRemapper(new CompatClassVisitor(writer), AWT), 0);
-            return writer.toByteArray();
+            // the hooks add calls with arguments: the stack may need more room (no branches are added, the frames stay)
+            ClassWriter writer = new ClassWriter(hooked ? ClassWriter.COMPUTE_MAXS : 0);
+            ClassVisitor next = hooked ? hooks.visitor(internalName, writer, false) : writer;
+            reader.accept(new ClassRemapper(new CompatClassVisitor(next), AWT), 0);
+            byte[] result = writer.toByteArray();
+            if (hooked) hooks.checked(internalName, false);
+            return result;
         } catch (RuntimeException e) {
             System.out.println("QuestCraft legacy launcher: could not adapt " + name + ", loading it as it is: " + e);
             return bytes;
