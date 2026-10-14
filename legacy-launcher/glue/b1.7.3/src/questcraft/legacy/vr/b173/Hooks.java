@@ -11,6 +11,8 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.entity.mob.player.KeyboardInput;
 import net.minecraft.client.gui.GameGui;
 import net.minecraft.client.gui.screen.Screen;
+import net.minecraft.client.gui.screen.options.OptionsScreen;
+import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.client.options.GameOptions;
 import net.minecraft.client.render.GameRenderer;
 import net.minecraft.client.render.platform.Lighting;
@@ -27,6 +29,7 @@ import net.minecraft.world.HitResult;
 import questcraft.legacy.vr.VR;
 import questcraft.legacy.vr.VRFrame;
 import questcraft.legacy.vr.VRMath;
+import questcraft.legacy.vr.VRSettings;
 
 /**
  * Beta 1.7.3 in VR: what the game calls where hooks.txt puts its hooks. The headset is the camera (the game's two
@@ -325,15 +328,36 @@ public final class Hooks {
         GL11.glMultMatrix(matrix);
     }
 
+    // ---- VR's options ----
+
+    /** The walk button's id: none of the Options screen's own (below 100, 100, 101, 200) */
+    static final int WALK_BUTTON = 3001;
+
+    /** OptionsScreen.init, last: VR's options, in the free place right of Difficulty. */
+    @SuppressWarnings("unchecked")
+    public static void optionsInit(OptionsScreen screen) {
+        if (!VR.enabled()) return;
+        screen.buttons.add(new ButtonWidget(WALK_BUTTON, screen.width / 2 + 5, screen.height / 6 + 48, 150, 20, VRSettings.walkLabel()));
+    }
+
+    /** OptionsScreen.buttonClicked, first: VR's buttons (the screen's own code leaves them alone). */
+    public static void optionsClicked(OptionsScreen screen, ButtonWidget button) {
+        if (button.id != WALK_BUTTON || !button.active) return;
+        VRSettings.walkWithHead = !VRSettings.walkWithHead;
+        VRSettings.save();
+        button.message = VRSettings.walkLabel();
+    }
+
     // ---- walking ----
 
-    /** KeyboardInput.tick, last: the left stick walks where the left controller points. */
+    /** KeyboardInput.tick, last: the left stick walks where the left controller points, or the head looks (the VR Walk option). */
     public static void input(KeyboardInput input, PlayerEntity player) {
         if (!VR.enabled()) return;
         float forward = VR.moveForward(), sideways = VR.moveSideways();
         if (forward == 0 && sideways == 0) return;
         VRFrame frame = VR.frame();
-        if (frame.handTracked[0]) {
+        // with HMD the player's own yaw (the head's) is the way: the game's movement already goes there
+        if (frame.handTracked[0] && !VRSettings.walkWithHead) {
             float[] direction = VR.directionToWorld(frame.aimOrientation[0], 0, 0, -1);
             double turn = Math.toRadians(VRMath.yawPitch(direction)[0] - player.yaw);
             float f = (float) (forward * Math.cos(turn) + sideways * Math.sin(turn));

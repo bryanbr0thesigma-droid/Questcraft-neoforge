@@ -28,5 +28,10 @@ call   net/minecraft/client/render/GameRenderer renderWorld (FJ)V net/minecraft/
 # no crosshair on the HUD: the right controller aims
 call   net/minecraft/client/gui/GameGui render (FZII)V net/minecraft/client/gui/GameGui:net/minecraft/client/gui/GuiElement drawTexture (IIIIII)V drawGuiTexture
 
+# VR's options in the game's Options screen
+public net/minecraft/client/gui/screen/Screen buttons
+return net/minecraft/client/gui/screen/options/OptionsScreen:net/minecraft/client/gui/screen/Screen init ()V optionsInit
+head   net/minecraft/client/gui/screen/options/OptionsScreen:net/minecraft/client/gui/screen/Screen buttonClicked (Lnet/minecraft/client/gui/widget/ButtonWidget;)V optionsClicked
+
 # walking with the left stick
 return net/minecraft/client/entity/mob/player/KeyboardInput:net/minecraft/client/entity/mob/player/Input tick (Lnet/minecraft/entity/mob/player/PlayerEntity;)V input

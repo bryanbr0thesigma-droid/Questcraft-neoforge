@@ -55,6 +55,7 @@ public final class LegacyLauncher {
             gameUrls.add(glue.toURI().toURL());
             HookSpec.activate(HookSpec.parse(hooks(glue)), line -> VR.disable("this game is not the " + version + " the VR was made for"));
             VR.enable(Presenter.windowSize().width, Presenter.windowSize().height, Presenter.HEADSET);
+            questcraft.legacy.vr.VRSettings.load(gameDir);
             System.out.println("QuestCraft legacy launcher: " + version + " in VR");
         }
         GameClassLoader loader = new GameClassLoader(gameUrls.toArray(new URL[0]), LegacyLauncher.class.getClassLoader());
