@@ -1,0 +1,128 @@
+package questcraft.legacy;
+
+import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
+import java.util.Map;
+
+import org.objectweb.asm.ClassReader;
+import org.objectweb.asm.ClassVisitor;
+import org.objectweb.asm.ClassWriter;
+import org.objectweb.asm.MethodVisitor;
+import org.objectweb.asm.Opcodes;
+import org.objectweb.asm.commons.ClassRemapper;
+import org.objectweb.asm.commons.SimpleRemapper;
+
+/**
+ * Rewrites, in the game's classes and its mods' as they load, what does not work on Java 22 without a screen. The
+ * changes keep each instruction's stack shape, so the classes' stack maps stay valid as they are.
+ * <ul>
+ * <li>{@code java.awt.Frame}, {@code Canvas}, {@code TextArea} and {@code java.applet.Applet} become
+ * {@link HeadlessFrame}, {@link HeadlessCanvas}, {@link HeadlessTextArea} and {@link HeadlessApplet}: a headless JVM
+ * cannot make windows, and the game's window draws nothing on the headset anyway.</li>
+ * <li>{@code Field.modifiers} tricks (ModLoader's setPrivateValue, and mods' copies of it) go through {@link Compat}:
+ * Java 12 hides that field, Java 18 refuses to set static finals by reflection.</li>
+ * <li>{@code Thread.stop()}, which throws since Java 20, interrupts instead (the network code stops its threads).</li>
+ * <li>{@code Class.getPackage()} is null again for a class in no package, as before Java 9: ModLoader puts the
+ * package's name in front of the mod classes it loads, which made ".mod_Something".</li>
+ * <li>{@code Display.update()} goes through {@link Presenter}, where the frame is shown on the headset, and
+ * {@code Display.setParent(canvas)} is dropped: the game draws without a window around it.</li>
+ * </ul>
+ */
+public final class Transformer {
+    private static final String COMPAT = "questcraft/legacy/Compat";
+    private static final String PRESENTER = "questcraft/legacy/Presenter";
+    private static final SimpleRemapper AWT;
+
+    static {
+        Map<String, String> names = new HashMap<>();
+        names.put("java/awt/Frame", "questcraft/legacy/HeadlessFrame");
+        names.put("java/awt/TextArea", "questcraft/legacy/HeadlessTextArea");
+        names.put("java/awt/Canvas", "questcraft/legacy/HeadlessCanvas");
+        names.put("java/applet/Applet", "questcraft/legacy/HeadlessApplet");
+        AWT = new SimpleRemapper(names);
+    }
+
+    private Transformer() {
+    }
+
+    public static byte[] transform(String name, byte[] bytes) {
+        if (!mayNeedWork(bytes)) return bytes;
+        try {
+            ClassReader reader = new ClassReader(bytes);
+            ClassWriter writer = new ClassWriter(0);
+            reader.accept(new ClassRemapper(new CompatClassVisitor(writer), AWT), 0);
+            return writer.toByteArray();
+        } catch (RuntimeException e) {
+            System.out.println("QuestCraft legacy launcher: could not adapt " + name + ", loading it as it is: " + e);
+            return bytes;
+        }
+    }
+
+    private static boolean mayNeedWork(byte[] bytes) {
+        String text = new String(bytes, StandardCharsets.ISO_8859_1);
+        return text.contains("java/awt/Frame") || text.contains("java/awt/TextArea") || text.contains("java/awt/Canvas")
+                || text.contains("java/applet/Applet")
+                || text.contains("java/lang/reflect/Field") || text.contains("org/lwjgl/opengl/Display")
+                || (text.contains("java/lang/Thread") && text.contains("stop")) || text.contains("getPackage");
+    }
+
+    private static final class CompatClassVisitor extends ClassVisitor {
+        CompatClassVisitor(ClassVisitor next) {
+            super(Opcodes.ASM9, next);
+        }
+
+        @Override
+        public MethodVisitor visitMethod(int access, String name, String descriptor, String signature, String[] exceptions) {
+            return new CompatMethodVisitor(super.visitMethod(access, name, descriptor, signature, exceptions));
+        }
+    }
+
+    private static final class CompatMethodVisitor extends MethodVisitor {
+        CompatMethodVisitor(MethodVisitor next) {
+            super(Opcodes.ASM9, next);
+        }
+
+        @Override
+        public void visitMethodInsn(int opcode, String owner, String name, String descriptor, boolean isInterface) {
+            if (opcode == Opcodes.INVOKEVIRTUAL) {
+                String replacement = replacement(owner, name, descriptor);
+                if (replacement != null) {
+                    super.visitMethodInsn(Opcodes.INVOKESTATIC, replacement.substring(0, replacement.indexOf(' ')), name,
+                            replacement.substring(replacement.indexOf(' ') + 1), false);
+                    return;
+                }
+            } else if (opcode == Opcodes.INVOKESTATIC && owner.equals("org/lwjgl/opengl/Display")
+                    && (name.equals("update") || name.equals("setParent"))) {
+                super.visitMethodInsn(Opcodes.INVOKESTATIC, PRESENTER, name, descriptor, false);
+                return;
+            }
+            super.visitMethodInsn(opcode, owner, name, descriptor, isInterface);
+        }
+
+        /** "owner descriptor" of the static stand-in for an instance call, the receiver becoming the first argument */
+        private static String replacement(String owner, String name, String descriptor) {
+            switch (owner) {
+                case "java/lang/reflect/Field":
+                    if ((name.equals("set") && descriptor.equals("(Ljava/lang/Object;Ljava/lang/Object;)V"))
+                            || (name.equals("getInt") && descriptor.equals("(Ljava/lang/Object;)I"))
+                            || (name.equals("setInt") && descriptor.equals("(Ljava/lang/Object;I)V"))) {
+                        return COMPAT + " (Ljava/lang/reflect/Field;" + descriptor.substring(1);
+                    }
+                    return null;
+                case "java/lang/Class":
+                    if (name.equals("getDeclaredField") && descriptor.equals("(Ljava/lang/String;)Ljava/lang/reflect/Field;")) {
+                        return COMPAT + " (Ljava/lang/Class;Ljava/lang/String;)Ljava/lang/reflect/Field;";
+                    }
+                    if (name.equals("getPackage") && descriptor.equals("()Ljava/lang/Package;")) {
+                        return COMPAT + " (Ljava/lang/Class;)Ljava/lang/Package;";
+                    }
+                    return null;
+                case "java/lang/Thread":
+                    if (name.equals("stop") && descriptor.equals("()V")) return COMPAT + " (Ljava/lang/Thread;)V";
+                    return null;
+                default:
+                    return null;
+            }
+        }
+    }
+}
