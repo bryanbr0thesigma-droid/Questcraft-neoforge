@@ -27,6 +27,8 @@ public final class GameFramebuffer {
     public static GameFramebuffer create(int width, int height) {
         System.out.println("QuestCraft screen: making a framebuffer of " + width + " x " + height);
         int texture = GL11.glGenTextures();
+        // a GL never names a texture 0: the GL is not working on this thread (no current context) and nothing would be seen
+        if (texture == 0) throw new IllegalStateException("the GL made no texture: no GL context is current on the game's thread");
         GL11.glBindTexture(GL11.GL_TEXTURE_2D, texture);
         GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_LINEAR);
         GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_LINEAR);
@@ -38,6 +40,10 @@ public final class GameFramebuffer {
         Framebuffers.texture(Framebuffers.FRAMEBUFFER, Framebuffers.COLOR_ATTACHMENT0, texture);
         Framebuffers.depth(width, height);
         int status = Framebuffers.status();
+        if (framebuffer == 0 || status == 0) {
+            throw new IllegalStateException("the GL made no framebuffer (name " + framebuffer + ", status 0x" + Integer.toHexString(status)
+                    + "): no GL context is current on the game's thread");
+        }
         if (status != Framebuffers.FRAMEBUFFER_COMPLETE) {
             System.out.println("QuestCraft screen: the game's framebuffer is not complete: 0x" + Integer.toHexString(status));
         }

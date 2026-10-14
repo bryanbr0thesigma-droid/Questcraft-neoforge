@@ -116,8 +116,22 @@ final class VRSessionXR implements VRProvider {
         } catch (Throwable t) {
             System.out.println("QuestCraft VR: OpenXR could not start: " + t);
             t.printStackTrace();
+            destroy();
             return false;
         }
+    }
+
+    /** What was made of OpenXR, given back (its other handles go with the session and the instance). */
+    private void destroy() {
+        try {
+            if (session != null) XR10.xrDestroySession(session);
+            if (instance != null) XR10.xrDestroyInstance(instance);
+        } catch (Throwable t) {
+            System.out.println("QuestCraft VR: could not close OpenXR: " + t);
+        }
+        session = null;
+        instance = null;
+        running = false;
     }
 
     private void createInstance() {

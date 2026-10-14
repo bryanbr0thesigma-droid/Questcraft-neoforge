@@ -139,6 +139,12 @@ public final class ScreenXR {
         } catch (Throwable t) {
             System.out.println("QuestCraft screen: OpenXR could not start, the game will not be seen: " + t);
             t.printStackTrace();
+            // what was made goes back (its other handles go with the session and the instance)
+            try {
+                if (screen.session != null) XR10.xrDestroySession(screen.session);
+                if (screen.instance != null) XR10.xrDestroyInstance(screen.instance);
+            } catch (Throwable ignored) {
+            }
             return null;
         }
     }

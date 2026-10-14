@@ -8,9 +8,11 @@ import org.lwjgl.opengl.GL30;
 import org.lwjgl.opengl.GLContext;
 
 /**
- * Framebuffer objects through whichever functions the GL has, as Minecraft 1.12.2 picks them: OpenGL 3.0's, else
- * ARB_framebuffer_object's (the same functions), else EXT_framebuffer_object's. The headset's LWJGL calls a function
- * its GL does not have without checking (the game dies without a word), so none is called that is not there.
+ * Framebuffer objects through whichever functions the GL has: ARB_framebuffer_object's (the same functions as OpenGL
+ * 3.0's), else OpenGL 3.0's on a real 3.0 GL, else EXT_framebuffer_object's. The headset's LWJGL reports every OpenGL
+ * version up to 3.3 as present whatever the GL is, so the version is read from GL_VERSION; its extension flags are
+ * right. It calls a function its GL does not have without checking (the game dies without a word), so none is
+ * called that is not there. gl4es always has the unsuffixed (ARB) names.
  */
 public final class Framebuffers {
     public static final int FRAMEBUFFER = 0x8D40, RENDERBUFFER = 0x8D41, READ_FRAMEBUFFER = 0x8CA8, DRAW_FRAMEBUFFER = 0x8CA9;
@@ -28,13 +30,23 @@ public final class Framebuffers {
     private static Kind kind() {
         if (kind != null) return kind;
         ContextCapabilities caps = GLContext.getCapabilities();
-        if (caps.OpenGL30) kind = Kind.CORE;
-        else if (caps.GL_ARB_framebuffer_object) kind = Kind.ARB;
+        String version = String.valueOf(GL11.glGetString(GL11.GL_VERSION));
+        boolean gl4es = version.contains("gl4es");
+        if (caps.GL_ARB_framebuffer_object) kind = Kind.ARB;
+        else if (majorVersion(version) >= 3 && !gl4es) kind = Kind.CORE;
         else if (caps.GL_EXT_framebuffer_object) kind = Kind.EXT;
-        System.out.println("QuestCraft screen: GL " + GL11.glGetString(GL11.GL_VERSION) + " (" + GL11.glGetString(GL11.GL_RENDERER)
-                + "), framebuffers: " + (kind != null ? kind : "none"));
+        else if (gl4es) kind = Kind.ARB;
+        System.out.println("QuestCraft screen: GL " + version + " (" + GL11.glGetString(GL11.GL_RENDERER) + "), framebuffers: "
+                + (kind != null ? kind : "none") + " (ARB " + caps.GL_ARB_framebuffer_object + ", EXT " + caps.GL_EXT_framebuffer_object + ")");
         if (kind == null) throw new IllegalStateException("this GL has no framebuffer objects (OpenGL 3.0, ARB or EXT)");
         return kind;
+    }
+
+    /** The leading number of GL_VERSION ("2.1 gl4es wrapper", "4.5 (Compatibility Profile) Mesa"), 0 if none */
+    static int majorVersion(String version) {
+        int end = 0;
+        while (end < version.length() && Character.isDigit(version.charAt(end))) end++;
+        return end > 0 ? Integer.parseInt(version.substring(0, end)) : 0;
     }
 
     public static int gen() {

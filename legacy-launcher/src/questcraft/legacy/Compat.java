@@ -4,7 +4,8 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 
 /**
- * What {@link Transformer} puts in place of reflection and threading calls that Java 22 no longer allows the old way.
+ * What {@link Transformer} puts in place of reflection and threading calls that Java 22 no longer allows the old way,
+ * and of what the headset's LWJGL does not have.
  * Every method takes the instance the original call was made on as its first argument.
  */
 public final class Compat {
@@ -95,5 +96,13 @@ public final class Compat {
     /** {@code Thread.stop()} throws since Java 20: the thread is interrupted instead. */
     public static void stop(Thread thread) {
         thread.interrupt();
+    }
+
+    /**
+     * The game's {@code GLContext.getCapabilities().GL_ARB_occlusion_query}: never on the headset, whose LWJGL says
+     * every extension is there; the game's "Advanced OpenGL" would then call query functions it does not have.
+     */
+    public static boolean occlusionQuery(org.lwjgl.opengl.ContextCapabilities capabilities) {
+        return !Presenter.HEADSET && capabilities.GL_ARB_occlusion_query;
     }
 }

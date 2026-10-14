@@ -1,69 +1,96 @@
 diff --git a/src/glx/hardext.c b/src/glx/hardext.c
-index c89a1237..d40f4fb0 100644
+index c89a1237..48834d38 100644
 --- a/src/glx/hardext.c
 +++ b/src/glx/hardext.c
-@@ -150,11 +150,22 @@ void GetHardwareExtensions(int notest)
+@@ -150,13 +150,31 @@ void GetHardwareExtensions(int notest)
      LOAD_EGL(eglCreateContext);
      LOAD_EGL(eglQueryString);
      LOAD_EGL(eglTerminate);
 +    LOAD_EGL(eglGetCurrentContext);
 +    LOAD_EGL(eglGetCurrentDisplay);
-+    LOAD_EGL(eglGetCurrentSurface);
  
-     EGLDisplay eglDisplay;
-     EGLSurface eglSurface;
-     EGLContext eglContext;
+-    EGLDisplay eglDisplay;
+-    EGLSurface eglSurface;
+-    EGLContext eglContext;
++    EGLDisplay eglDisplay = EGL_NO_DISPLAY;
++    EGLSurface eglSurface = EGL_NO_SURFACE;
++    EGLContext eglContext = EGL_NO_CONTEXT;
  
-+    // QuestCraft: the program may already have its context current on this thread (LWJGL loads gl4es right after
-+    // making it current): it is given back after the test, and the display it lives on is not terminated
-+    EGLContext prevContext = egl_eglGetCurrentContext ? egl_eglGetCurrentContext() : EGL_NO_CONTEXT;
-+    EGLDisplay prevDisplay = egl_eglGetCurrentDisplay ? egl_eglGetCurrentDisplay() : EGL_NO_DISPLAY;
-+    EGLSurface prevDraw = egl_eglGetCurrentSurface ? egl_eglGetCurrentSurface(EGL_DRAW) : EGL_NO_SURFACE;
-+    EGLSurface prevRead = egl_eglGetCurrentSurface ? egl_eglGetCurrentSurface(EGL_READ) : EGL_NO_SURFACE;
-+    int keepDisplay = prevContext != EGL_NO_CONTEXT;
-+
      SHUT_LOGD("Using GLES %s backend\n", (hardext.esversion==1)?"1.1":"2.0");
  
++    // QuestCraft: when the program already has its context current on this thread (LWJGL loads gl4es right after
++    // making the game's context current), the test runs on that context, as the NOEGL build does: making a context
++    // of its own current and then none would leave the program without its context.
++    EGLContext programContext = egl_eglGetCurrentContext ? egl_eglGetCurrentContext() : EGL_NO_CONTEXT;
++    EGLDisplay programDisplay = egl_eglGetCurrentDisplay ? egl_eglGetCurrentDisplay() : EGL_NO_DISPLAY;
++    int onProgramContext = programContext != EGL_NO_CONTEXT && programDisplay != EGL_NO_DISPLAY;
++    if(onProgramContext) {
++        SHUT_LOGD("Hardware test on the program's current context\n");
++        eglDisplay = programDisplay;
++        const char* eglExts = egl_eglQueryString(eglDisplay, EGL_EXTENSIONS);
++        if(eglExts && strstr(eglExts, "EGL_ANDROID_image_native_buffer ")) {
++            hardext.android = 1;
++            SHUT_LOGD("Android driver detected, disabling X11 direct_copy for PBuffer\n");
++        }
++    } else {
++
      // Create a PBuffer first...
-@@ -216,7 +227,7 @@ void GetHardwareExtensions(int notest)
+     EGLint egl_context_attrib_es2[] = {
+         EGL_CONTEXT_CLIENT_VERSION, 2,
+@@ -216,7 +234,9 @@ void GetHardwareExtensions(int notest)
      egl_eglBindAPI(EGL_OPENGL_ES_API);
      if (egl_eglInitialize(eglDisplay, NULL, NULL) != EGL_TRUE) {
          LOGE("Error while gathering supported extension (eglInitialize: %s), default to none\n", PrintEGLError(0));
--        egl_eglTerminate(eglDisplay);
-+        if(!keepDisplay) egl_eglTerminate(eglDisplay);
++        #ifndef ANDROID
+         egl_eglTerminate(eglDisplay);
++#endif
          return;
      }
  
-@@ -246,7 +257,7 @@ void GetHardwareExtensions(int notest)
+@@ -246,7 +266,9 @@ void GetHardwareExtensions(int notest)
  #endif
      if(!configsFound) {
          SHUT_LOGE("Error while gathering supported extension (eglChooseConfig: %s), default to none\n", PrintEGLError(0));
--        egl_eglTerminate(eglDisplay);
-+        if(!keepDisplay) egl_eglTerminate(eglDisplay);
++        #ifndef ANDROID
+         egl_eglTerminate(eglDisplay);
++#endif
          return;
      }
      eglContext = egl_eglCreateContext(eglDisplay, pbufConfigs[0], EGL_NO_CONTEXT, (hardext.esversion==1)?egl_context_attrib:egl_context_attrib_es2);
-@@ -258,7 +269,7 @@ void GetHardwareExtensions(int notest)
+@@ -258,10 +280,13 @@ void GetHardwareExtensions(int notest)
      if(!eglSurface) {
          SHUT_LOGE("Error while gathering supported extension (eglCreatePBufferSurface: %s), default to none\n", PrintEGLError(0));
          egl_eglDestroyContext(eglDisplay, eglContext);
--        egl_eglTerminate(eglDisplay);
-+        if(!keepDisplay) egl_eglTerminate(eglDisplay);
++        #ifndef ANDROID
+         egl_eglTerminate(eglDisplay);
++#endif
          return;
      }
      egl_eglMakeCurrent(eglDisplay, eglSurface, eglSurface, eglContext);
-@@ -488,6 +499,13 @@ void GetHardwareExtensions(int notest)
-     egl_eglDestroySurface(eglDisplay, eglSurface);
-     egl_eglDestroyContext(eglDisplay, eglContext);
++    }
+ #endif
+     tested = 1;
+     LOAD_GLES(glGetString);
+@@ -483,11 +508,16 @@ void GetHardwareExtensions(int notest)
+         hardext.khr_renderbuffer = 1;
+     }
  
+-    // End, cleanup
+-    egl_eglMakeCurrent(eglDisplay, 0, 0, EGL_NO_CONTEXT);
+-    egl_eglDestroySurface(eglDisplay, eglSurface);
+-    egl_eglDestroyContext(eglDisplay, eglContext);
+-
 -    egl_eglTerminate(eglDisplay);
-+    if(keepDisplay) {
-+        // QuestCraft: the program's context, current again as it was
-+        if(egl_eglMakeCurrent(prevDisplay, prevDraw, prevRead, prevContext) != EGL_TRUE)
-+            SHUT_LOGE("Could not make the program's context current again after the hardware test: %s\n", PrintEGLError(0));
-+        else
-+            SHUT_LOGD("Hardware test done, the program's context is current again\n");
-+    } else
++    // End, cleanup (QuestCraft: only what the test made; the program's context stays current)
++    if(onProgramContext) {
++        SHUT_LOGD("Hardware test done, the program's context stays current\n");
++    } else {
++        egl_eglMakeCurrent(eglDisplay, 0, 0, EGL_NO_CONTEXT);
++        egl_eglDestroySurface(eglDisplay, eglSurface);
++        egl_eglDestroyContext(eglDisplay, eglContext);
++#ifndef ANDROID
 +        egl_eglTerminate(eglDisplay);
++#endif
++    }
  #endif
  }

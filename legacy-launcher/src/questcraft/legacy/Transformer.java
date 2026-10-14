@@ -29,6 +29,8 @@ import org.objectweb.asm.commons.SimpleRemapper;
  * {@code Display.setParent(canvas)} is dropped: the game draws without a window around it.</li>
  * <li>{@code Display.create(...)} goes through {@link Presenter} too, which gives the game a framebuffer to draw into
  * (the headset's GL context has no window), and binding framebuffer 0 binds that one.</li>
+ * <li>The game's check for occlusion queries ("Advanced OpenGL") goes through {@link Compat}: the headset's LWJGL
+ * says every extension is there, and the game would call query functions it does not have.</li>
  * <li>With VR, the hooks of the version's glue ({@link HookSpec}) go into the classes they are for.</li>
  * </ul>
  */
@@ -77,7 +79,8 @@ public final class Transformer {
                 || text.contains("java/applet/Applet") || text.contains("org/lwjgl/opengl/AWTGLCanvas")
                 || text.contains("java/lang/reflect/Field") || text.contains("org/lwjgl/opengl/Display")
                 || text.contains("glBindFramebuffer")
-                || (text.contains("java/lang/Thread") && text.contains("stop")) || text.contains("getPackage");
+                || (text.contains("java/lang/Thread") && text.contains("stop")) || text.contains("getPackage")
+                || text.contains("GL_ARB_occlusion_query");
     }
 
     private static final class CompatClassVisitor extends ClassVisitor {
@@ -94,6 +97,15 @@ public final class Transformer {
     private static final class CompatMethodVisitor extends MethodVisitor {
         CompatMethodVisitor(MethodVisitor next) {
             super(Opcodes.ASM9, next);
+        }
+
+        @Override
+        public void visitFieldInsn(int opcode, String owner, String name, String descriptor) {
+            if (opcode == Opcodes.GETFIELD && owner.equals("org/lwjgl/opengl/ContextCapabilities") && name.equals("GL_ARB_occlusion_query")) {
+                super.visitMethodInsn(Opcodes.INVOKESTATIC, COMPAT, "occlusionQuery", "(Lorg/lwjgl/opengl/ContextCapabilities;)Z", false);
+                return;
+            }
+            super.visitFieldInsn(opcode, owner, name, descriptor);
         }
 
         @Override
