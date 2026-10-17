@@ -97,8 +97,27 @@ void* pojavGetCurrentContext() {
     return xrEglContext;
 }
 
+// gl4es (old versions) tests the hardware and sets up its state when it is loaded, on an EGL context of its own, as
+// its EGL build expects: before the program has a context. LWJGL would load it inside Display.create, right after the
+// game's context was made current (the game then crashed in gl4es' start-up); loaded here first, from the folder LWJGL
+// loads it from (org.lwjgl.librarypath, the app's native library folder), LWJGL's load gets this same library.
+// PojavLauncher loads its GL library early the same way.
+static void loadGl4esEarly() {
+    static int loaded = 0;
+    if (loaded) return;
+    loaded = 1;
+    const char* dir = getenv("POJLIB_NATIVEDIR");
+    char path[1024];
+    snprintf(path, sizeof(path), "%s/libgl4es.so", dir != NULL ? dir : ".");
+    void* handle = dlopen(path, RTLD_NOW | RTLD_GLOBAL);
+    if (handle == NULL) printf("XREGLBridge: could not load gl4es early (%s): %s\n", path, dlerror());
+    else printf("XREGLBridge: gl4es loaded before the game's GL context (%s)\n", path);
+}
+
 int xrEglInit() {
     dlsym_egl();
+    const char* renderer = getenv("POJLIB_RENDERER");
+    if (renderer != NULL && strcmp(renderer, "gl4es") == 0) loadGl4esEarly();
 
     if (xrEglDisplay == NULL || xrEglDisplay == EGL_NO_DISPLAY) {
         xrEglDisplay = eglGetDisplay_p(EGL_DEFAULT_DISPLAY);
