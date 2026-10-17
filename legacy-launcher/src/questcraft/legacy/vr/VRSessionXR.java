@@ -71,7 +71,8 @@ import questcraft.legacy.xr.GlesBlit;
 
 /**
  * The headset: an OpenXR session on the game's own GL context (as QuestCraft's Vivecraft makes it), the room as
- * OpenXR's stage space (the floor at y 0), the two eyes as one swapchain with a layer each, and the Quest controllers.
+ * OpenXR's stage space (the floor at y 0), a swapchain for each eye, and the Quest controllers. (One swapchain with a
+ * layer an eye showed only the left eye on the Quest: the copy into the second layer did not arrive.)
  */
 final class VRSessionXR implements VRProvider {
     private static final String TOUCH = "/interaction_profiles/oculus/touch_controller";
@@ -84,8 +85,8 @@ final class VRSessionXR implements VRProvider {
     private long systemId;
     private XrSpace roomSpace, viewSpace;
     private final XrSpace[] aimSpaces = new XrSpace[2], gripSpaces = new XrSpace[2];
-    private XrSwapchain swapchain;
-    private int[] images;
+    private final XrSwapchain[] swapchains = new XrSwapchain[2];
+    private final int[][] images = new int[2][];
     private int width, height;
     private XrEventDataBuffer events;
     private XrView.Buffer views;
@@ -349,24 +350,27 @@ final class VRSessionXR implements VRProvider {
                 }
             }
             if (format == 0) throw new IllegalStateException("no usable swapchain format");
-            XrSwapchainCreateInfo info = XrSwapchainCreateInfo.calloc(stack);
-            info.type(XR10.XR_TYPE_SWAPCHAIN_CREATE_INFO);
-            info.usageFlags(XR10.XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT | XR10.XR_SWAPCHAIN_USAGE_TRANSFER_DST_BIT);
-            info.format(format);
-            info.sampleCount(1);
-            info.width(width);
-            info.height(height);
-            info.faceCount(1);
-            info.arraySize(2);
-            info.mipCount(1);
-            check(XR10.xrCreateSwapchain(session, info, handle), "xrCreateSwapchain");
-            swapchain = new XrSwapchain(handle.get(0), session);
-            check(XR10.xrEnumerateSwapchainImages(swapchain, count, null), "xrEnumerateSwapchainImages");
-            XrSwapchainImageOpenGLESKHR.Buffer list = XrSwapchainImageOpenGLESKHR.calloc(count.get(0), stack);
-            for (XrSwapchainImageOpenGLESKHR image : list) image.type(KHROpenGLESEnable.XR_TYPE_SWAPCHAIN_IMAGE_OPENGL_ES_KHR);
-            check(XR10.xrEnumerateSwapchainImages(swapchain, count, XrSwapchainImageBaseHeader.create(list.address(), list.capacity())), "xrEnumerateSwapchainImages");
-            images = new int[list.capacity()];
-            for (int i = 0; i < images.length; i++) images[i] = list.get(i).image();
+            for (int eye = 0; eye < 2; eye++) {
+                XrSwapchainCreateInfo info = XrSwapchainCreateInfo.calloc(stack);
+                info.type(XR10.XR_TYPE_SWAPCHAIN_CREATE_INFO);
+                info.usageFlags(XR10.XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT | XR10.XR_SWAPCHAIN_USAGE_TRANSFER_DST_BIT);
+                info.format(format);
+                info.sampleCount(1);
+                info.width(width);
+                info.height(height);
+                info.faceCount(1);
+                info.arraySize(1);
+                info.mipCount(1);
+                check(XR10.xrCreateSwapchain(session, info, handle), "xrCreateSwapchain");
+                swapchains[eye] = new XrSwapchain(handle.get(0), session);
+                check(XR10.xrEnumerateSwapchainImages(swapchains[eye], count, null), "xrEnumerateSwapchainImages");
+                XrSwapchainImageOpenGLESKHR.Buffer list = XrSwapchainImageOpenGLESKHR.calloc(count.get(0), stack);
+                for (XrSwapchainImageOpenGLESKHR image : list) image.type(KHROpenGLESEnable.XR_TYPE_SWAPCHAIN_IMAGE_OPENGL_ES_KHR);
+                check(XR10.xrEnumerateSwapchainImages(swapchains[eye], count, XrSwapchainImageBaseHeader.create(list.address(), list.capacity())),
+                        "xrEnumerateSwapchainImages");
+                images[eye] = new int[list.capacity()];
+                for (int i = 0; i < images[eye].length; i++) images[eye][i] = list.get(i).image();
+            }
         }
     }
 
@@ -410,25 +414,33 @@ final class VRSessionXR implements VRProvider {
         try (MemoryStack stack = MemoryStack.stackPush()) {
             PointerBuffer layers = null;
             if (frame.shouldRender && leftTexture > 0 && rightTexture > 0) {
-                IntBuffer index = stack.callocInt(1);
-                if (!log(XR10.xrAcquireSwapchainImage(swapchain, XrSwapchainImageAcquireInfo.calloc(stack).type(XR10.XR_TYPE_SWAPCHAIN_IMAGE_ACQUIRE_INFO), index), "xrAcquireSwapchainImage")) {
+                if (blit == null) blit = new GlesBlit();
+                boolean copied = true;
+                int[] textures = {leftTexture, rightTexture};
+                for (int eye = 0; eye < 2 && copied; eye++) {
+                    IntBuffer index = stack.callocInt(1);
+                    if (log(XR10.xrAcquireSwapchainImage(swapchains[eye], XrSwapchainImageAcquireInfo.calloc(stack).type(XR10.XR_TYPE_SWAPCHAIN_IMAGE_ACQUIRE_INFO),
+                            index), "xrAcquireSwapchainImage")) {
+                        copied = false;
+                        break;
+                    }
                     XrSwapchainImageWaitInfo wait = XrSwapchainImageWaitInfo.calloc(stack).type(XR10.XR_TYPE_SWAPCHAIN_IMAGE_WAIT_INFO);
                     wait.timeout(XR10.XR_INFINITE_DURATION);
-                    log(XR10.xrWaitSwapchainImage(swapchain, wait), "xrWaitSwapchainImage");
-                    if (blit == null) blit = new GlesBlit();
-                    int image = images[index.get(0)];
-                    blit.copy(leftTexture, image, 0, width, height, false, 0, 0);
-                    blit.copy(rightTexture, image, 1, width, height, false, 0, 0);
-                    log(XR10.xrReleaseSwapchainImage(swapchain, XrSwapchainImageReleaseInfo.calloc(stack).type(XR10.XR_TYPE_SWAPCHAIN_IMAGE_RELEASE_INFO)), "xrReleaseSwapchainImage");
-
+                    log(XR10.xrWaitSwapchainImage(swapchains[eye], wait), "xrWaitSwapchainImage");
+                    // a plain 2D image: the same copy for both eyes
+                    blit.copy(textures[eye], images[eye][index.get(0)], -1, width, height, false, 0, 0);
+                    log(XR10.xrReleaseSwapchainImage(swapchains[eye], XrSwapchainImageReleaseInfo.calloc(stack).type(XR10.XR_TYPE_SWAPCHAIN_IMAGE_RELEASE_INFO)),
+                            "xrReleaseSwapchainImage");
+                }
+                if (copied) {
                     XrCompositionLayerProjectionView.Buffer projectionViews = XrCompositionLayerProjectionView.calloc(2, stack);
                     for (int eye = 0; eye < 2; eye++) {
                         XrCompositionLayerProjectionView view = projectionViews.get(eye);
                         view.type(XR10.XR_TYPE_COMPOSITION_LAYER_PROJECTION_VIEW);
                         view.pose(views.get(eye).pose());
                         view.fov(views.get(eye).fov());
-                        view.subImage().swapchain(swapchain);
-                        view.subImage().imageArrayIndex(eye);
+                        view.subImage().swapchain(swapchains[eye]);
+                        view.subImage().imageArrayIndex(0);
                         view.subImage().imageRect().offset().set(0, 0);
                         view.subImage().imageRect().extent().set(width, height);
                     }
