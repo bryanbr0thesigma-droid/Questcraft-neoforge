@@ -31,12 +31,15 @@ import org.objectweb.asm.commons.SimpleRemapper;
  * (the headset's GL context has no window), and binding framebuffer 0 binds that one.</li>
  * <li>The game's check for occlusion queries ("Advanced OpenGL") goes through {@link Compat}: the headset's LWJGL
  * says every extension is there, and the game would call query functions it does not have.</li>
+ * <li>{@code URL.openConnection} goes through {@link SkinFix}: the servers the old versions get skins and capes from
+ * are gone, Mojang's profile service has them.</li>
  * <li>With VR, the hooks of the version's glue ({@link HookSpec}) go into the classes they are for.</li>
  * </ul>
  */
 public final class Transformer {
     private static final String COMPAT = "questcraft/legacy/Compat";
     private static final String PRESENTER = "questcraft/legacy/Presenter";
+    private static final String SKIN_FIX = "questcraft/legacy/SkinFix";
     private static final SimpleRemapper AWT;
 
     static {
@@ -80,7 +83,7 @@ public final class Transformer {
                 || text.contains("java/lang/reflect/Field") || text.contains("org/lwjgl/opengl/Display")
                 || text.contains("glBindFramebuffer")
                 || (text.contains("java/lang/Thread") && text.contains("stop")) || text.contains("getPackage")
-                || text.contains("GL_ARB_occlusion_query");
+                || text.contains("GL_ARB_occlusion_query") || text.contains("openConnection");
     }
 
     private static final class CompatClassVisitor extends ClassVisitor {
@@ -161,6 +164,12 @@ public final class Transformer {
                     return null;
                 case "java/lang/Thread":
                     if (name.equals("stop") && descriptor.equals("()V")) return COMPAT + " (Ljava/lang/Thread;)V";
+                    return null;
+                case "java/net/URL":
+                    if (name.equals("openConnection") && (descriptor.equals("()Ljava/net/URLConnection;")
+                            || descriptor.equals("(Ljava/net/Proxy;)Ljava/net/URLConnection;"))) {
+                        return SKIN_FIX + " (Ljava/net/URL;" + descriptor.substring(1);
+                    }
                     return null;
                 default:
                     return null;

@@ -145,6 +145,8 @@ public final class SelfTest {
 
         // VR's controllers and keyboard
         failures += questcraft.legacy.vr.ControlsTest.run();
+        // skins from Mojang for the old versions
+        failures += questcraft.legacy.SkinFixTest.run();
         System.out.println(failures == 0 ? "screen self test: all passed" : "screen self test: " + failures + " failed");
         System.exit(failures == 0 ? 0 : 1);
     }
