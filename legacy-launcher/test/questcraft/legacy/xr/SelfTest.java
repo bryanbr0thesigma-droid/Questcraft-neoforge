@@ -143,6 +143,8 @@ public final class SelfTest {
 
         vr();
 
+        // VR's controllers and keyboard
+        failures += questcraft.legacy.vr.ControlsTest.run();
         System.out.println(failures == 0 ? "screen self test: all passed" : "screen self test: " + failures + " failed");
         System.exit(failures == 0 ? 0 : 1);
     }

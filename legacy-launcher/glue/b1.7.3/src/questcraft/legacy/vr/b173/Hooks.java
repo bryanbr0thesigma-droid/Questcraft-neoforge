@@ -10,12 +10,22 @@ import net.minecraft.client.CreativeInteractionManager;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.entity.mob.player.KeyboardInput;
 import net.minecraft.client.gui.GameGui;
+import net.minecraft.client.gui.screen.ChatScreen;
+import net.minecraft.client.gui.screen.JoinMultiplayerScreen;
 import net.minecraft.client.gui.screen.Screen;
+import net.minecraft.client.gui.screen.inventory.menu.SignEditScreen;
+import net.minecraft.client.gui.screen.world.CreateWorldScreen;
+import net.minecraft.client.gui.screen.world.EditWorldScreen;
 import net.minecraft.client.gui.screen.options.OptionsScreen;
 import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.client.options.GameOptions;
 import net.minecraft.client.render.GameRenderer;
+import net.minecraft.client.render.entity.EntityRenderDispatcher;
+import net.minecraft.client.render.entity.PlayerRenderer;
+import net.minecraft.client.render.model.ModelPart;
+import net.minecraft.client.render.model.entity.HumanoidModel;
 import net.minecraft.client.render.platform.Lighting;
+import net.minecraft.block.Block;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.mob.MobEntity;
 import net.minecraft.entity.mob.player.PlayerEntity;
@@ -25,6 +35,7 @@ import net.minecraft.util.math.Box;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.HitResult;
+import net.minecraft.world.HitResult__Type;
 
 import questcraft.legacy.vr.VR;
 import questcraft.legacy.vr.VRFrame;
@@ -58,9 +69,17 @@ public final class Hooks {
     public static void frameStart(GameRenderer renderer, float tickDelta) {
         if (!VR.enabled()) return;
         Minecraft minecraft = renderer.minecraft;
+        radial(minecraft);
         VR.setMenuOpen(minecraft.screen != null);
+        VR.setKeyboardWanted(wantsText(minecraft.screen));
         // the camera is the headset's: there is no third person
         minecraft.options.perspective = false;
+    }
+
+    /** The screens b1.7.3 types text in: the VR keyboard shows with them. */
+    static boolean wantsText(Screen screen) {
+        return screen instanceof ChatScreen || screen instanceof SignEditScreen || screen instanceof CreateWorldScreen
+                || screen instanceof EditWorldScreen || screen instanceof JoinMultiplayerScreen;
     }
 
     /** GameGui.render (the HUD), from GameRenderer.render */
@@ -258,42 +277,77 @@ public final class Hooks {
         Minecraft minecraft = renderer.minecraft;
         loadEye(eye, minecraft);
         PlayerEntity player = minecraft.player;
-        if (player != null && !minecraft.options.hideGui && !player.isSleeping()) {
-            heldItem(renderer, minecraft, player, tickDelta);
+        // the HUD option (F1, the radial menu) hides the HUD only: the hands and their line stay
+        if (player != null && !player.isSleeping()) {
+            hands(renderer, minecraft, player, tickDelta);
             if (!VR.menuOpen()) line();
         }
         VR.drawPanels(eye);
     }
 
-    private static void heldItem(GameRenderer renderer, Minecraft minecraft, PlayerEntity player, float tickDelta) {
-        VRFrame frame = VR.frame();
-        ItemStack stack = player.inventory.getSelectedItem();
-        if (stack == null || !frame.handTracked[1]) return;
-        float[] at = VR.toWorld(frame.gripPosition[1]);
-        float[] q = frame.gripOrientation[1];
-        float[] rotation = VRMath.mul33(VR.room(), VRMath.quatToMatrix(q[0], q[1], q[2], q[3]));
+    /** How big the arms are drawn: the game's 12 pixel arm, 0.375 m; how far it slopes down from the hand to the elbow */
+    static final float ARM_SCALE = 0.5F, ARM_SLOPE = 40;
 
+    /** The player's arms at the controllers (skin and model of their own), the selected item in the right hand. */
+    private static void hands(GameRenderer renderer, Minecraft minecraft, PlayerEntity player, float tickDelta) {
+        VRFrame frame = VR.frame();
         float light = minecraft.world.getBrightness(MathHelper.floor(player.x), MathHelper.floor(player.y), MathHelper.floor(player.z));
+        float swing = player.getAttackAnimationProgress(tickDelta);
+        ItemStack stack = player.inventory.getSelectedItem();
+        // the lights in the world, as the game's world has them (the eye's view is loaded)
+        Lighting.turnOn();
+        GL11.glEnable(32826); // GL_RESCALE_NORMAL
+        for (int hand = 0; hand < 2; hand++) {
+            if (!frame.handTracked[hand]) continue;
+            float[] at = VR.toWorld(frame.gripPosition[hand]);
+            float[] q = frame.gripOrientation[hand];
+            GL11.glPushMatrix();
+            GL11.glTranslatef(at[0], at[1], at[2]);
+            multiply(VRMath.mul33(VR.room(), VRMath.quatToMatrix(q[0], q[1], q[2], q[3])));
+            // a hit swings the right hand down
+            if (hand == 1) GL11.glRotatef(-MathHelper.sin((float) Math.sqrt(swing) * (float) Math.PI) * 50, 1, 0, 0);
+            arm(minecraft, player, hand, light);
+            if (hand == 1 && stack != null) item(renderer, player, stack, light);
+            GL11.glPopMatrix();
+        }
+        GL11.glDisable(32826);
+        Lighting.turnOff();
+    }
+
+    /** One of the player's arms in the controller's frame: the hand at the grip, the arm running back along it. */
+    private static void arm(Minecraft minecraft, PlayerEntity player, int hand, float light) {
+        PlayerRenderer playerRenderer = (PlayerRenderer) EntityRenderDispatcher.INSTANCE.getRenderer(player);
+        HumanoidModel model = playerRenderer.player;
+        ModelPart part = hand == 1 ? model.rightArm : model.leftArm;
+        minecraft.textureManager.bind(minecraft.textureManager.loadHttpTexture(player.skin, player.getTexture()));
+        GL11.glColor4f(light, light, light, 1);
+        GL11.glPushMatrix();
+        // the model's arm hangs along +y, from the shoulder to the hand: that is ahead along the controller (-z),
+        // the elbow lower than the hand
+        GL11.glRotatef(-90 + ARM_SLOPE, 1, 0, 0);
+        GL11.glScalef(ARM_SCALE, ARM_SCALE, ARM_SCALE);
+        // its hand end (12 pixels under the shoulder, 6 to the side) at the grip
+        GL11.glTranslatef((hand == 1 ? 6 : -6) / 16F, -12 / 16F, 0);
+        float rotationX = part.rotationX, rotationY = part.rotationY, rotationZ = part.rotationZ;
+        part.rotationX = part.rotationY = part.rotationZ = 0;
+        part.render(1 / 16F);
+        part.rotationX = rotationX;
+        part.rotationY = rotationY;
+        part.rotationZ = rotationZ;
+        GL11.glPopMatrix();
+    }
+
+    /** The selected item in the right hand: held in the fist, pointing along the controller. */
+    private static void item(GameRenderer renderer, PlayerEntity player, ItemStack stack, float light) {
         int color = Item.BY_ID[stack.id].getDisplayColor(stack.getMetadata());
         GL11.glPushMatrix();
-        // the lights in the world, as the game's world has them
-        Lighting.turnOn();
-        GL11.glTranslatef(at[0], at[1], at[2]);
-        multiply(rotation);
-        // a hit swings the hand down
-        float swing = player.getAttackAnimationProgress(tickDelta);
-        GL11.glRotatef(-MathHelper.sin((float) Math.sqrt(swing) * (float) Math.PI) * 50, 1, 0, 0);
-        // held in the fist, pointing along the controller
         GL11.glRotatef(-90, 1, 0, 0);
         GL11.glTranslatef(0, -0.04F, 0);
         float scale = stack.id < 256 ? 0.2F : 0.35F;
         GL11.glScalef(scale, scale, scale);
         if (stack.getItem().shouldRotate()) GL11.glRotatef(180, 0, 1, 0);
         GL11.glColor4f(light * (color >> 16 & 255) / 255f, light * (color >> 8 & 255) / 255f, light * (color & 255) / 255f, 1);
-        GL11.glEnable(32826); // GL_RESCALE_NORMAL
         renderer.itemInHandRenderer.render(player, stack);
-        GL11.glDisable(32826);
-        Lighting.turnOff();
         GL11.glPopMatrix();
     }
 
@@ -326,6 +380,83 @@ public final class Hooks {
         }
         matrix.flip();
         GL11.glMultMatrix(matrix);
+    }
+
+    // ---- the radial menu ----
+
+    private static boolean bWasDown;
+    /** What the right controller aimed at when B opened the radial menu: the menu panel takes the aim while it is open */
+    private static HitResult radialTarget;
+
+    /** B in the game opens the radial menu; letting it go picks the item the pointer is on (or none). */
+    private static void radial(Minecraft minecraft) {
+        boolean b = VR.frame().b;
+        if (b && !bWasDown && minecraft.screen == null && minecraft.world != null && minecraft.player != null) {
+            radialTarget = minecraft.crosshairTarget;
+            minecraft.openScreen(new RadialScreen());
+        } else if (!b && bWasDown && minecraft.screen instanceof RadialScreen) {
+            int item = ((RadialScreen) minecraft.screen).hovered();
+            minecraft.openScreen(null);
+            if (item >= 0) radialAction(minecraft, item);
+        }
+        bWasDown = b;
+    }
+
+    /** A radial menu item, the menu closed. */
+    static void radialAction(Minecraft minecraft, int item) {
+        PlayerEntity player = minecraft.player;
+        if (player == null) return;
+        switch (item) {
+            case RadialScreen.DROP:
+                minecraft.player.dropItem();
+                break;
+            case RadialScreen.CHAT:
+                if (minecraft.isMultiplayer()) minecraft.openScreen(new ChatScreen());
+                break;
+            case RadialScreen.ROTATE_RIGHT:
+                VR.turn(1);
+                break;
+            case RadialScreen.ROTATE_LEFT:
+                VR.turn(-1);
+                break;
+            case RadialScreen.PICK_BLOCK:
+                if (radialTarget != null) {
+                    HitResult target = minecraft.crosshairTarget;
+                    minecraft.crosshairTarget = radialTarget;
+                    minecraft.handlePickBlock();
+                    minecraft.crosshairTarget = target;
+                }
+                break;
+            case RadialScreen.WALK:
+                VRSettings.walkWithHead = !VRSettings.walkWithHead;
+                VRSettings.save();
+                break;
+            case RadialScreen.HUD:
+                minecraft.options.hideGui = !minecraft.options.hideGui;
+                break;
+            case RadialScreen.QUICK_TORCH:
+                quickTorch(minecraft, player);
+                break;
+        }
+        radialTarget = null;
+    }
+
+    /** A torch from the hotbar onto the block that was aimed at (the right click, with the torch selected for it). */
+    private static void quickTorch(Minecraft minecraft, PlayerEntity player) {
+        if (radialTarget == null || radialTarget.type != HitResult__Type.BLOCK) return;
+        int torch = -1;
+        for (int slot = 0; slot < 9 && torch < 0; slot++) {
+            ItemStack stack = player.inventory.items[slot];
+            if (stack != null && stack.id == Block.TORCH.id) torch = slot;
+        }
+        if (torch < 0) return;
+        int selected = player.inventory.selectedSlot;
+        HitResult target = minecraft.crosshairTarget;
+        player.inventory.selectedSlot = torch;
+        minecraft.crosshairTarget = radialTarget;
+        minecraft.handleMouseClick(1);
+        minecraft.crosshairTarget = target;
+        player.inventory.selectedSlot = selected;
     }
 
     // ---- VR's options ----

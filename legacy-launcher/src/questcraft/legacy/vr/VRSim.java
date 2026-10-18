@@ -14,7 +14,9 @@ import questcraft.legacy.xr.Framebuffers;
  * The headset on a desktop, to check VR without one (-Dquestcraft.legacy.vrsim=true): a head standing at
  * questcraft.legacy.vrsim.x, .height, .z in the room (0, the game's eye height, 0), turned by .yaw and .pitch
  * (degrees), the controllers held in front pointing where the head looks (.aimYaw and .aimPitch turn them), the
- * sticks at .leftX, .leftY, .rightX, .rightY, and both eyes shown side by side in the game's window. With
+ * sticks at .leftX, .leftY, .rightX, .rightY, the triggers and grips at .leftTrigger, .rightTrigger, .leftGrip,
+ * .rightGrip, the buttons at .a, .b, .xButton, .yButton, .menu, .rightStickClick (1 pressed), and both eyes shown side by side in
+ * the game's window. On a desktop the buttons reach only VR's own parts (the keyboard), not the game. With
  * questcraft.legacy.vrsim.file, these are read from that properties file as it changes, while the game runs.
  */
 final class VRSim implements VRProvider {
@@ -83,8 +85,10 @@ final class VRSim implements VRProvider {
             frame.eyeFov[eye][3] = -0.8f;
         }
         float[] aim = yawPitchQuat(aimYaw, aimPitch);
-        float[][] offset = {{-0.2f, -0.3f, -0.35f}, {0.2f, -0.3f, -0.35f}};
-        float[] m = VRMath.quatToMatrix(head[0], head[1], head[2], head[3]);
+        float[][] offset = {{-0.2f, -0.45f, -0.4f}, {0.2f, -0.45f, -0.4f}};
+        // the hands where a person holds them: in front of the body, turned with the head but not tilted with it
+        float[] turn = yawPitchQuat(yaw, 0);
+        float[] m = VRMath.quatToMatrix(turn[0], turn[1], turn[2], turn[3]);
         for (int hand = 0; hand < 2; hand++) {
             float[] o = VRMath.mul3(m, offset[hand][0], offset[hand][1], offset[hand][2]);
             for (int i = 0; i < 3; i++) {
@@ -99,6 +103,17 @@ final class VRSim implements VRProvider {
         frame.leftY = get("leftY", 0);
         frame.rightX = get("rightX", 0);
         frame.rightY = get("rightY", 0);
+        frame.leftTrigger = get("leftTrigger", 0);
+        frame.rightTrigger = get("rightTrigger", 0);
+        frame.leftGrip = get("leftGrip", 0);
+        frame.rightGrip = get("rightGrip", 0);
+        frame.a = get("a", 0) > 0.5f;
+        frame.b = get("b", 0) > 0.5f;
+        // not .x: that is where the head is
+        frame.x = get("xButton", 0) > 0.5f;
+        frame.y = get("yButton", 0) > 0.5f;
+        frame.menu = get("menu", 0) > 0.5f;
+        frame.rightStickClick = get("rightStickClick", 0) > 0.5f;
         frame.headTracked = true;
         frame.shouldRender = true;
         return true;

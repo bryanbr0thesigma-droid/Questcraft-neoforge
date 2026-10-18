@@ -7,6 +7,13 @@ public net/minecraft/client/render/GameRenderer minecraft
 public net/minecraft/client/render/GameRenderer setupCamera (FI)V
 public net/minecraft/client/render/GameRenderer renderItemInHand (FI)V
 
+# the player's arm model, drawn at the controllers
+public net/minecraft/client/render/entity/PlayerRenderer player
+
+# the radial menu's pick block and quick torch (the middle and the right click)
+public net/minecraft/client/Minecraft handlePickBlock ()V
+public net/minecraft/client/Minecraft handleMouseClick (I)V
+
 # a frame: is a menu open; the HUD and the menus are drawn onto the panels in VR
 head   net/minecraft/client/render/GameRenderer render (F)V frameStart
 call   net/minecraft/client/render/GameRenderer render (F)V net/minecraft/client/gui/GameGui render (FZII)V renderHud

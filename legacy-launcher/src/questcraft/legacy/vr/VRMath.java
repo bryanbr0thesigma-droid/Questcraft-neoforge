@@ -105,6 +105,24 @@ public final class VRMath {
         return m;
     }
 
+    /**
+     * Where a ray from {@code origin} along {@code direction} meets a panel (centre, unit right and up vectors, size),
+     * as u, v from its top left (0..1), or null if it misses it or points away from it.
+     */
+    public static float[] hitPanel(float[] center, float[] right, float[] up, float width, float height, float[] origin, float[] direction) {
+        // the panel's normal, towards the side the ray comes from
+        float nx = right[1] * up[2] - right[2] * up[1], ny = right[2] * up[0] - right[0] * up[2], nz = right[0] * up[1] - right[1] * up[0];
+        float denominator = direction[0] * nx + direction[1] * ny + direction[2] * nz;
+        if (Math.abs(denominator) < 1e-6f) return null;
+        float t = ((center[0] - origin[0]) * nx + (center[1] - origin[1]) * ny + (center[2] - origin[2]) * nz) / denominator;
+        if (t <= 0) return null;
+        float dx = origin[0] + direction[0] * t - center[0], dy = origin[1] + direction[1] * t - center[1], dz = origin[2] + direction[2] * t - center[2];
+        float u = (dx * right[0] + dy * right[1] + dz * right[2]) / width + 0.5f;
+        float v = 0.5f - (dx * up[0] + dy * up[1] + dz * up[2]) / height;
+        if (u < 0 || u > 1 || v < 0 || v > 1) return null;
+        return new float[]{u, v};
+    }
+
     /** A point through a column-major 4x4 matrix (w = 1), as x, y, z, w. */
     public static float[] transform(float[] m, float x, float y, float z) {
         return new float[]{m[0] * x + m[4] * y + m[8] * z + m[12], m[1] * x + m[5] * y + m[9] * z + m[13],

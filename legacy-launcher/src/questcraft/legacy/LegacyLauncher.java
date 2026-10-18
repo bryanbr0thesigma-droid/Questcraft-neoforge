@@ -59,6 +59,7 @@ public final class LegacyLauncher {
             System.out.println("QuestCraft legacy launcher: " + version + " in VR");
         }
         GameClassLoader loader = new GameClassLoader(gameUrls.toArray(new URL[0]), LegacyLauncher.class.getClassLoader());
+        if (glue != null) VR.setGameClassLoader(loader);
         Thread.currentThread().setContextClassLoader(loader);
         Class<?> main = Class.forName(mainClass, false, loader);
         Method mainMethod = main.getMethod("main", String[].class);

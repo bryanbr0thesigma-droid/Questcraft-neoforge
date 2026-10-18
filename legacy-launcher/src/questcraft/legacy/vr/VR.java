@@ -38,6 +38,8 @@ public final class VR {
     private static GameFramebuffer game;
     private static int windowWidth, windowHeight;
     private static boolean eyesRendered, guiCleared;
+    /** The menus or the HUD were drawn into the panel's framebuffer last frame (the HUD can be hidden: F1) */
+    private static boolean guiShown;
     /** Nothing was drawn through the glue this frame (a loading screen): the game's own picture goes on the panel */
     private static boolean showGame;
     private static int currentEye = -1;
@@ -52,6 +54,9 @@ public final class VR {
     private static boolean pointing;
     private static float pointerU, pointerV;
     private static VRControls controls;
+    private static VRKeyboard keyboard;
+    /** The game wanted the keyboard last frame (a text screen): it shows when that starts, hides when it ends */
+    private static boolean keyboardWanted;
 
     private VR() {
     }
@@ -64,6 +69,22 @@ public final class VR {
         windowHeight = height;
         provider = headset ? new VRSessionXR() : new VRSim(width, height);
         controls = new VRControls(headset, width, height);
+        keyboard = new VRKeyboard(VRControls.keyboardSink(headset));
+    }
+
+    /** The game's class loader: the keyboard draws with the game's font. */
+    public static void setGameClassLoader(ClassLoader loader) {
+        if (keyboard != null) keyboard.setGameClassLoader(loader);
+    }
+
+    /**
+     * Whether the game asks for text now (set by the glue every frame: chat, a sign, a world's name...). The keyboard
+     * shows when that starts and hides when it ends; X in a menu shows or hides it in between.
+     */
+    public static void setKeyboardWanted(boolean wanted) {
+        if (keyboard == null) return;
+        if (wanted != keyboardWanted) keyboard.setVisible(wanted);
+        keyboardWanted = wanted;
     }
 
     public static boolean enabled() {
@@ -74,6 +95,8 @@ public final class VR {
     public static void disable(String reason) {
         if (failed) return;
         failed = true;
+        // what the controllers hold for the game is let go: nothing else ever would
+        if (controls != null) controls.releaseAll();
         System.out.println("QuestCraft VR: off, " + reason);
     }
 
@@ -220,6 +243,8 @@ public final class VR {
         float width = menu ? MENU_WIDTH : HUD_WIDTH;
         float height = width * windowHeight / windowWidth;
         float tilt = menu ? 0 : (float) Math.toRadians(25);   // the HUD leans back towards the eyes
+        // the panel's picture is last frame's: none, if nothing was drawn into it
+        boolean panel = menu || guiShown;
 
         // the panel's corners in the room, then in the world
         float c = (float) Math.cos(yaw), s = (float) Math.sin(yaw);
@@ -253,28 +278,60 @@ public final class VR {
         GL11.glBindTexture(GL11.GL_TEXTURE_2D, showGame && game != null ? game.texture : gui.texture);
         GL11.glColor4f(1, 1, 1, 1);
         float[][] uv = {{0, 0}, {1, 0}, {1, 1}, {0, 1}};
-        GL11.glBegin(GL11.GL_QUADS);
-        for (int i = 0; i < 4; i++) {
-            GL11.glTexCoord2f(uv[i][0], uv[i][1]);
-            GL11.glVertex3f(corners[i][0], corners[i][1], corners[i][2]);
-        }
-        GL11.glEnd();
-        if (menuOpen && pointing) {
-            // the pointer's line, from the right controller to its dot on the menu
-            float[] from = toWorld(frame.aimPosition[1]), to = toWorld(pointerHit());
-            GL11.glDisable(GL11.GL_TEXTURE_2D);
-            GL11.glLineWidth(2);
-            GL11.glColor4f(1, 1, 1, 0.6f);
-            GL11.glBegin(GL11.GL_LINES);
-            GL11.glVertex3f(from[0], from[1], from[2]);
-            GL11.glVertex3f(to[0], to[1], to[2]);
+        if (panel) {
+            GL11.glBegin(GL11.GL_QUADS);
+            for (int i = 0; i < 4; i++) {
+                GL11.glTexCoord2f(uv[i][0], uv[i][1]);
+                GL11.glVertex3f(corners[i][0], corners[i][1], corners[i][2]);
+            }
             GL11.glEnd();
         }
+        // not under a loading screen: no menu is there, whatever the last one was
+        boolean keys = menuOpen && !showGame && keyboard.visible() && keyboard.texture() != 0;
+        if (keys) {
+            // the keyboard, under the menu
+            GL11.glBindTexture(GL11.GL_TEXTURE_2D, keyboard.texture());
+            quad(keyboard.center(), keyboard.right(), keyboard.up(), keyboard.width(), keyboard.height());
+        }
+        GL11.glDisable(GL11.GL_TEXTURE_2D);
+        GL11.glLineWidth(2);
+        GL11.glColor4f(1, 1, 1, 0.6f);
+        GL11.glBegin(GL11.GL_LINES);
+        if (menuOpen && pointing) {
+            // the pointer's line, from the right controller to its dot on the menu
+            line(frame.aimPosition[1], pointerHit());
+        }
+        for (int hand = 0; keys && hand < 2; hand++) {
+            if (keyboard.onKeyboard(hand)) line(frame.aimPosition[hand], keyboard.hitPoint(hand));
+        }
+        GL11.glEnd();
         GL11.glPopMatrix();
         GL11.glMatrixMode(GL11.GL_PROJECTION);
         GL11.glPopMatrix();
         GL11.glMatrixMode(GL11.GL_MODELVIEW);
         GL11.glPopAttrib();
+    }
+
+    /** A textured quad (centre, right and up vectors, size; in the room), the texture bound. */
+    private static void quad(float[] center, float[] right, float[] up, float width, float height) {
+        float[][] signs = {{-1, -1}, {1, -1}, {1, 1}, {-1, 1}};
+        float[][] uv = {{0, 0}, {1, 0}, {1, 1}, {0, 1}};
+        GL11.glBegin(GL11.GL_QUADS);
+        for (int i = 0; i < 4; i++) {
+            float[] p = new float[3];
+            for (int k = 0; k < 3; k++) p[k] = center[k] + right[k] * width / 2 * signs[i][0] + up[k] * height / 2 * signs[i][1];
+            float[] w = toWorld(p);
+            GL11.glTexCoord2f(uv[i][0], uv[i][1]);
+            GL11.glVertex3f(w[0], w[1], w[2]);
+        }
+        GL11.glEnd();
+    }
+
+    /** A line between two points of the room (inside glBegin(GL_LINES)). */
+    private static void line(float[] from, float[] to) {
+        float[] a = toWorld(from), b = toWorld(to);
+        GL11.glVertex3f(a[0], a[1], a[2]);
+        GL11.glVertex3f(b[0], b[1], b[2]);
     }
 
     private static FloatBuffer buffer(float[] m) {
@@ -310,15 +367,25 @@ public final class VR {
         // neither the world nor a menu through the glue: a loading screen, drawn by the game into its own picture
         showGame = !eyesRendered && !guiCleared && game != null;
         placePanels();
+        if (!menuOpen) keyboard.setVisible(false);
+        keyboard.place(menuCenter, menuYaw);
+        if (!showGame) keyboard.render();
+        bindGame();
         if (frameBegun) {
             if (!eyesRendered) menuEyes();
             provider.endFrame(frame, eyes[0].texture, eyes[1].texture);
         }
         eyesRendered = false;
+        guiShown = guiCleared;
         guiCleared = false;
         frameBegun = provider.beginFrame(frame);
         updatePointer();
-        controls.update(frame, menuOpen, pointing, pointerU, pointerV);
+        // a loading screen (no menu this frame) types nothing
+        if (showGame) keyboard.updatePointers(null);
+        else keyboard.updatePointers(frame);
+        // the right controller on the keyboard does not move the menu's cursor
+        if (keyboard.onKeyboard(1)) pointing = false;
+        controls.update(frame, menuOpen, pointing, pointerU, pointerV, keyboard);
         bodyYaw += controls.takeTurn() * SNAP;
         menuWasOpen = menuOpen || showGame;
         bindGame();
@@ -384,6 +451,11 @@ public final class VR {
             pointerU = hit[0];
             pointerV = hit[1];
         }
+    }
+
+    /** Turns the room by snap turns (+1 right, -1 left): the radial menu's rotate items. */
+    public static void turn(int steps) {
+        bodyYaw += steps * SNAP;
     }
 
     /** How the left stick wants the player to move: forward and sideways, -1..1 (the glue's movement input). */

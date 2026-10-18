@@ -1,6 +1,7 @@
 package questcraft.legacy.xr;
 
 import org.lwjgl.glfw.GLFW;
+import org.lwjgl.glfw.GLFWCharCallback;
 import org.lwjgl.glfw.GLFWCursorPosCallback;
 import org.lwjgl.glfw.GLFWKeyCallback;
 import org.lwjgl.glfw.GLFWMouseButtonCallback;
@@ -34,6 +35,12 @@ public final class GameInput {
     public static void cursor(double x, double y) {
         GLFWCursorPosCallback callback = GLFW.mGLFWCursorPosCallback;
         if (callback != null) callback.invoke(window(), x, y);
+    }
+
+    /** A typed character (the VR keyboard): what text fields and chat read. */
+    public static void character(int codepoint) {
+        GLFWCharCallback callback = GLFW.mGLFWCharCallback;
+        if (callback != null) callback.invoke(window(), codepoint);
     }
 
     public static void scroll(double amount) {
