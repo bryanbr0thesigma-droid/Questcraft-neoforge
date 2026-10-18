@@ -3,6 +3,7 @@ package questcraft.legacy.vr.b173;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.widget.ButtonWidget;
 
+import questcraft.legacy.vr.VR;
 import questcraft.legacy.vr.VRSettings;
 
 /**
@@ -67,6 +68,11 @@ public final class RadialScreen extends Screen {
     @Override
     public void render(int mouseX, int mouseY, float tickDelta) {
         hovered = -1;
+        // off the panel the game's cursor is wherever the pointer last was: nothing is pointed at
+        if (!VR.pointing()) {
+            mouseX = -1000;
+            mouseY = -1000;
+        }
         for (int i = 0; i < 8; i++) {
             int[] r = rects[i];
             if (r != null && mouseX >= r[0] && mouseY >= r[1] && mouseX < r[0] + r[2] && mouseY < r[1] + r[3]

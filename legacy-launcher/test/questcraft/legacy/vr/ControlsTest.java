@@ -93,6 +93,18 @@ public final class ControlsTest {
         controls.update(f, false, false, 0, 0, null);
         r.take();
 
+        // held through a menu and back: no new use when the game comes back
+        f.leftTrigger = 1;
+        controls.update(f, false, false, 0, 0, null);
+        check(r.take().equals(list("button 1 down")), "the left trigger uses");
+        controls.update(f, true, true, 0.5f, 0.5f, null);
+        check(r.take().equals(list("button 1 up")), "a menu opening lets go of it");
+        controls.update(f, false, false, 0, 0, null);
+        check(r.take().isEmpty(), "held through a menu and back, it does not use again");
+        f.leftTrigger = 0;
+        controls.update(f, false, false, 0, 0, null);
+        r.take();
+
         // the right trigger pressed off the menu panel clicks nothing, even when the pointer comes onto it
         f.rightTrigger = 1;
         controls.update(f, true, false, 0, 0, null);

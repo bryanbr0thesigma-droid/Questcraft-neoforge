@@ -40,6 +40,8 @@ public final class VR {
     private static boolean eyesRendered, guiCleared;
     /** The menus or the HUD were drawn into the panel's framebuffer last frame (the HUD can be hidden: F1) */
     private static boolean guiShown;
+    /** What it was: a menu (or the HUD) */
+    private static boolean guiWasMenu;
     /** Nothing was drawn through the glue this frame (a loading screen): the game's own picture goes on the panel */
     private static boolean showGame;
     private static int currentEye = -1;
@@ -231,6 +233,11 @@ public final class VR {
         return menuOpen;
     }
 
+    /** Whether the right controller points at the menu panel (not off it, not at the keyboard): the cursor is its. */
+    public static boolean pointing() {
+        return pointing;
+    }
+
     /**
      * Draws the panel the menus (or, without one, the HUD) are on, in the eye being drawn: over everything, as the
      * menu should not hide in a wall. The GL state it changes is put back.
@@ -244,7 +251,7 @@ public final class VR {
         float height = width * windowHeight / windowWidth;
         float tilt = menu ? 0 : (float) Math.toRadians(25);   // the HUD leans back towards the eyes
         // the panel's picture is last frame's: none, if nothing was drawn into it
-        boolean panel = menu || guiShown;
+        boolean panel = showGame || (guiShown && guiWasMenu == menuOpen);
 
         // the panel's corners in the room, then in the world
         float c = (float) Math.cos(yaw), s = (float) Math.sin(yaw);
@@ -377,6 +384,7 @@ public final class VR {
         }
         eyesRendered = false;
         guiShown = guiCleared;
+        guiWasMenu = menuOpen;
         guiCleared = false;
         frameBegun = provider.beginFrame(frame);
         updatePointer();

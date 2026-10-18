@@ -44,18 +44,23 @@ final class VRControls {
         void scroll(double amount);
     }
 
-    /** A controller button, and where it was pressed: it counts only there (in a menu or not), until it is let go */
+    /**
+     * A controller button, and where it was pressed: it counts only there (in a menu or not), and once a menu opens or
+     * closes while it is held it counts no more until it is let go.
+     */
     static final class Press {
-        boolean down, inMenu, onPanel;
+        boolean down, inMenu, onPanel, dead;
 
-        /** This frame's state; true while it is held and was pressed in the current mode. */
+        /** This frame's state; true while it is held, was pressed in the current mode and has not left it since. */
         boolean update(boolean now, boolean menu, boolean pointing) {
             if (now && !down) {
                 inMenu = menu;
                 onPanel = pointing;
+                dead = false;
             }
+            if (now && inMenu != menu) dead = true;
             down = now;
-            return now && inMenu == menu;
+            return now && !dead;
         }
 
         /** Held, pressed in a menu while pointing at the menu panel: a click there. */

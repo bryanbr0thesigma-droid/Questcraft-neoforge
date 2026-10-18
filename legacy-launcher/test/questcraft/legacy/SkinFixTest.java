@@ -26,6 +26,9 @@ public final class SkinFixTest {
         check("cape Notch".equals(SkinFix.target("http://www.minecraft.net/cloak/get.jsp?user=Notch")), "alpha's cape address");
         check(SkinFix.target("http://s3.amazonaws.com/MinecraftResources/") == null, "the resources are left alone");
         check(SkinFix.target("jar:file:/x.jar!/a.ogg") == null, "other addresses are left alone");
+        check(SkinFix.validName("jeb_") && SkinFix.validName("Notch"), "Mojang's names");
+        check(!SkinFix.validName("jeb_#x") && !SkinFix.validName("%6Aeb_") && !SkinFix.validName("J\u00f6hn") && !SkinFix.validName(""),
+                "other names are not looked up");
 
         // a 64 x 64 slim skin: the right arm's front (3 wide at 44, 20) has columns a, b, c
         BufferedImage modern = new BufferedImage(64, 64, BufferedImage.TYPE_INT_ARGB);

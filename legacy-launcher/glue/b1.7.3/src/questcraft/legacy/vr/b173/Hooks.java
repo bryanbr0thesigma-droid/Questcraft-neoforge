@@ -211,6 +211,12 @@ public final class Hooks {
             renderer.pick(tickDelta);
             return;
         }
+        // the radial menu acts on what was aimed at when it opened: that stays outlined
+        if (minecraft.screen instanceof RadialScreen) {
+            minecraft.crosshairTarget = radialTarget;
+            rayValid = false;
+            return;
+        }
         MobEntity camera = minecraft.camera;
         double cx = camera.prevX + (camera.x - camera.prevX) * tickDelta;
         double cy = camera.prevY + (camera.y - camera.prevY) * tickDelta;
@@ -395,7 +401,9 @@ public final class Hooks {
             radialTarget = minecraft.crosshairTarget;
             minecraft.openScreen(new RadialScreen());
         } else if (!b && bWasDown && minecraft.screen instanceof RadialScreen) {
-            int item = ((RadialScreen) minecraft.screen).hovered();
+            // only what the pointer is on: letting go pointing elsewhere picks nothing (the game's cursor stays where
+            // the pointer last was)
+            int item = VR.pointing() ? ((RadialScreen) minecraft.screen).hovered() : -1;
             minecraft.openScreen(null);
             if (item >= 0) radialAction(minecraft, item);
         }

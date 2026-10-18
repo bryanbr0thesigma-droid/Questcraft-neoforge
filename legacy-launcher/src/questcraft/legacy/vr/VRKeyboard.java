@@ -267,6 +267,7 @@ final class VRKeyboard {
                 sink.key(key.glfw, false);
             }
             log(key.label);
+            shift = false;
         } else {
             char c = shift ? key.shiftCh : key.ch;
             if (!typeable(c)) return;
