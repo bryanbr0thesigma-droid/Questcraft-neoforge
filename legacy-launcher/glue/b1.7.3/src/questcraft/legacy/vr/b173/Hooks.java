@@ -37,6 +37,7 @@ import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.HitResult;
 import net.minecraft.world.HitResult__Type;
 
+import questcraft.legacy.vr.SkinModel;
 import questcraft.legacy.vr.VR;
 import questcraft.legacy.vr.VRFrame;
 import questcraft.legacy.vr.VRMath;
@@ -325,7 +326,10 @@ public final class Hooks {
         PlayerRenderer playerRenderer = (PlayerRenderer) EntityRenderDispatcher.INSTANCE.getRenderer(player);
         HumanoidModel model = playerRenderer.player;
         ModelPart part = hand == 1 ? model.rightArm : model.leftArm;
-        minecraft.textureManager.bind(minecraft.textureManager.loadHttpTexture(player.skin, player.getTexture()));
+        // the whole skin from Mojang when there is one (its own left arm, slim arms, the sleeve), else the game's
+        SkinModel.Skin skin = SkinModel.skin(player.name);
+        if (skin != null) GL11.glBindTexture(GL11.GL_TEXTURE_2D, skin.texture);
+        else minecraft.textureManager.bind(minecraft.textureManager.loadHttpTexture(player.skin, player.getTexture()));
         GL11.glColor4f(light, light, light, 1);
         GL11.glPushMatrix();
         // the model's arm hangs along +y, from the shoulder to the hand: that is ahead along the controller (-z),
@@ -334,12 +338,16 @@ public final class Hooks {
         GL11.glScalef(ARM_SCALE, ARM_SCALE, ARM_SCALE);
         // its hand end (12 pixels under the shoulder, 6 to the side) at the grip
         GL11.glTranslatef((hand == 1 ? 6 : -6) / 16F, -12 / 16F, 0);
-        float rotationX = part.rotationX, rotationY = part.rotationY, rotationZ = part.rotationZ;
-        part.rotationX = part.rotationY = part.rotationZ = 0;
-        part.render(1 / 16F);
-        part.rotationX = rotationX;
-        part.rotationY = rotationY;
-        part.rotationZ = rotationZ;
+        if (skin != null) {
+            SkinModel.part(skin, hand == 1 ? SkinModel.RIGHT_ARM : SkinModel.LEFT_ARM, part.x, part.y, part.z, 0, 0, 0, 1 / 16F, true, true);
+        } else {
+            float rotationX = part.rotationX, rotationY = part.rotationY, rotationZ = part.rotationZ;
+            part.rotationX = part.rotationY = part.rotationZ = 0;
+            part.render(1 / 16F);
+            part.rotationX = rotationX;
+            part.rotationY = rotationY;
+            part.rotationZ = rotationZ;
+        }
         GL11.glPopMatrix();
     }
 
@@ -386,6 +394,58 @@ public final class Hooks {
         }
         matrix.flip();
         GL11.glMultMatrix(matrix);
+    }
+
+    // ---- today's skins on the old model ----
+
+    /** The player PlayerRenderer.render is drawing, the model it draws with and the player's skin from Mojang (or null) */
+    private static HumanoidModel drawnModel;
+    private static SkinModel.Skin drawnSkin;
+
+    /** PlayerRenderer.render, first: whose skin the model gets. */
+    public static void playerStart(PlayerRenderer renderer, PlayerEntity player, double x, double y, double z, float yaw, float tickDelta) {
+        drawnModel = renderer.player;
+        drawnSkin = SkinModel.skin(player.name);
+    }
+
+    /** PlayerRenderer.render, last. */
+    public static void playerEnd(PlayerRenderer renderer, PlayerEntity player, double x, double y, double z, float yaw, float tickDelta) {
+        drawnModel = null;
+        drawnSkin = null;
+    }
+
+    /**
+     * HumanoidModel.render, first: for a player with a skin from Mojang, the game does not draw the parts it would
+     * draw from the wrong place (the left arm and leg: the right ones mirrored; a slim right arm: 4 pixels wide).
+     */
+    public static void modelStart(HumanoidModel model, float walk, float walkSpeed, float bob, float yaw, float pitch, float scale) {
+        if (drawnSkin == null || model != drawnModel) return;
+        model.leftArm.visible = false;
+        model.leftLeg.visible = false;
+        if (drawnSkin.slim) model.rightArm.visible = false;
+    }
+
+    /** HumanoidModel.render, last: those parts from the whole skin, and the outer layer over the body and limbs. */
+    public static void modelEnd(HumanoidModel model, float walk, float walkSpeed, float bob, float yaw, float pitch, float scale) {
+        if (drawnSkin == null || model != drawnModel) return;
+        model.leftArm.visible = true;
+        model.leftLeg.visible = true;
+        model.rightArm.visible = true;
+        int bound = GL11.glGetInteger(GL11.GL_TEXTURE_BINDING_2D);
+        GL11.glBindTexture(GL11.GL_TEXTURE_2D, drawnSkin.texture);
+        SkinModel.Skin skin = drawnSkin;
+        draw(skin, SkinModel.BODY, model.body, scale, false);
+        draw(skin, SkinModel.RIGHT_ARM, model.rightArm, scale, skin.slim);
+        draw(skin, SkinModel.LEFT_ARM, model.leftArm, scale, true);
+        draw(skin, SkinModel.RIGHT_LEG, model.rightLeg, scale, false);
+        draw(skin, SkinModel.LEFT_LEG, model.leftLeg, scale, true);
+        GL11.glBindTexture(GL11.GL_TEXTURE_2D, bound);
+    }
+
+    /** A part of the whole skin where the game's part is (when the game shows it). */
+    private static void draw(SkinModel.Skin skin, int which, ModelPart part, float scale, boolean base) {
+        if (!part.visible || part.invisible) return;
+        SkinModel.part(skin, which, part.x, part.y, part.z, part.rotationX, part.rotationY, part.rotationZ, scale, base, true);
     }
 
     // ---- the radial menu ----

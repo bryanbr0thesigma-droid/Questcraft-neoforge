@@ -10,6 +10,12 @@ public net/minecraft/client/render/GameRenderer renderItemInHand (FI)V
 # the player's arm model, drawn at the controllers
 public net/minecraft/client/render/entity/PlayerRenderer player
 
+# today's skins on the old model (questcraft/legacy/vr/SkinModel): the player being drawn, and its model's parts
+head   net/minecraft/client/render/entity/PlayerRenderer render (Lnet/minecraft/entity/mob/player/PlayerEntity;DDDFF)V playerStart
+return net/minecraft/client/render/entity/PlayerRenderer render (Lnet/minecraft/entity/mob/player/PlayerEntity;DDDFF)V playerEnd
+head   net/minecraft/client/render/model/entity/HumanoidModel:net/minecraft/client/render/model/Model render (FFFFFF)V modelStart
+return net/minecraft/client/render/model/entity/HumanoidModel:net/minecraft/client/render/model/Model render (FFFFFF)V modelEnd
+
 # the radial menu's pick block and quick torch (the middle and the right click)
 public net/minecraft/client/Minecraft handlePickBlock ()V
 public net/minecraft/client/Minecraft handleMouseClick (I)V
