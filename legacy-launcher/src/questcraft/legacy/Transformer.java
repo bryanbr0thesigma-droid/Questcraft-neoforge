@@ -33,6 +33,8 @@ import org.objectweb.asm.commons.SimpleRemapper;
  * says every extension is there, and the game would call query functions it does not have.</li>
  * <li>{@code URL.openConnection} goes through {@link SkinFix}: the servers the old versions get skins and capes from
  * are gone, Mojang's profile service has them.</li>
+ * <li>The Tesselator of alpha and beta draws quads as quads, not as triangles that lose half their normals
+ * ({@link QuadFix}): gl4es has no flat shading to hide it.</li>
  * <li>With VR, the hooks of the version's glue ({@link HookSpec}) go into the classes they are for.</li>
  * </ul>
  */
@@ -66,7 +68,7 @@ public final class Transformer {
             // the hooks add calls with arguments: the stack may need more room (no branches are added, the frames stay)
             ClassWriter writer = new ClassWriter(hooked ? ClassWriter.COMPUTE_MAXS : 0);
             ClassVisitor next = hooked ? hooks.visitor(internalName, writer, false) : writer;
-            reader.accept(new ClassRemapper(new CompatClassVisitor(next), AWT), 0);
+            reader.accept(new ClassRemapper(new CompatClassVisitor(next, internalName, QuadFix.triangleFlag(bytes)), AWT), 0);
             byte[] result = writer.toByteArray();
             if (hooked) hooks.checked(internalName, false);
             return result;
@@ -83,17 +85,25 @@ public final class Transformer {
                 || text.contains("java/lang/reflect/Field") || text.contains("org/lwjgl/opengl/Display")
                 || text.contains("glBindFramebuffer")
                 || (text.contains("java/lang/Thread") && text.contains("stop")) || text.contains("getPackage")
-                || text.contains("GL_ARB_occlusion_query") || text.contains("openConnection");
+                || text.contains("GL_ARB_occlusion_query") || text.contains("openConnection") || text.contains("Not tesselating!");
     }
 
     private static final class CompatClassVisitor extends ClassVisitor {
-        CompatClassVisitor(ClassVisitor next) {
+        private final String internalName;
+        /** The Tesselator's triangle-mode flag ({@link QuadFix}), null in any other class */
+        private final String triangleFlag;
+
+        CompatClassVisitor(ClassVisitor next, String internalName, String triangleFlag) {
             super(Opcodes.ASM9, next);
+            this.internalName = internalName;
+            this.triangleFlag = triangleFlag;
         }
 
         @Override
         public MethodVisitor visitMethod(int access, String name, String descriptor, String signature, String[] exceptions) {
-            return new CompatMethodVisitor(super.visitMethod(access, name, descriptor, signature, exceptions));
+            MethodVisitor method = new CompatMethodVisitor(super.visitMethod(access, name, descriptor, signature, exceptions));
+            if (triangleFlag != null && name.equals("<clinit>")) method = QuadFix.initializer(method, internalName, triangleFlag);
+            return method;
         }
     }
 

@@ -211,6 +211,8 @@ public class JREUtils {
             reader.close();
         }
         envMap.put("LIBGL_ES", "2");
+        // the old versions' models have normals 127 long in their display lists: gl4es must normalize them
+        if (gl4es) envMap.put("LIBGL_NORMALIZE", "1");
         for (Map.Entry<String, String> env : envMap.entrySet()) {
             Logger.getInstance().appendToLog("Added custom env: " + env.getKey() + "=" + env.getValue());
             Os.setenv(env.getKey(), env.getValue(), true);

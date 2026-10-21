@@ -29,6 +29,7 @@ public final class GlesBlit {
             glFramebufferTextureLayer, glBlitFramebuffer, glEnable, glDisable, glIsEnabled, glGetError, glScissor, glClearColor,
             glClear, glColorMask;
     private int readFbo, drawFbo;
+    private boolean srgbLogged;
 
     public GlesBlit() {
         SharedLibrary gles = Library.loadNative(GlesBlit.class, "org.lwjgl.opengles",
@@ -89,6 +90,14 @@ public final class GlesBlit {
             boolean scissor = JNI.callZ(GL_SCISSOR_TEST, glIsEnabled);
             if (scissor) JNI.callV(GL_SCISSOR_TEST, glDisable);
             boolean srgbWrites = JNI.callZ(GL_FRAMEBUFFER_SRGB, glIsEnabled);
+            if (!srgbLogged) {
+                // without sRGB write control an sRGB swapchain encodes the game's (already encoded) picture again:
+                // everything would look washed out
+                srgbLogged = true;
+                int error = JNI.callI(glGetError);
+                System.out.println("QuestCraft screen: sRGB write control " + (error == 0 ? "there, " + (srgbWrites ? "on (turned off for the copy)" : "off")
+                        : "missing (GL error " + error + ")"));
+            }
             if (srgbWrites) JNI.callV(GL_FRAMEBUFFER_SRGB, glDisable);
 
             JNI.callV(0, 0, width, height, 0, 0, width, height, GL_COLOR_BUFFER_BIT, GL_LINEAR, glBlitFramebuffer);

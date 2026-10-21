@@ -70,6 +70,12 @@ public final class Hooks {
     public static void frameStart(GameRenderer renderer, float tickDelta) {
         if (!VR.enabled()) return;
         Minecraft minecraft = renderer.minecraft;
+        // 3D anaglyph would tint every texture, block and item red and cyan: the eyes are VR's
+        if (minecraft.options.anaglyph) {
+            minecraft.options.anaglyph = false;
+            minecraft.textureManager.reload();
+            if (minecraft.worldRenderer != null) minecraft.worldRenderer.reload();
+        }
         radial(minecraft);
         VR.setMenuOpen(minecraft.screen != null);
         VR.setKeyboardWanted(wantsText(minecraft.screen));
@@ -298,15 +304,28 @@ public final class Hooks {
     /** The player's arms at the controllers (skin and model of their own), the selected item in the right hand. */
     private static void hands(GameRenderer renderer, Minecraft minecraft, PlayerEntity player, float tickDelta) {
         VRFrame frame = VR.frame();
-        float light = minecraft.world.getBrightness(MathHelper.floor(player.x), MathHelper.floor(player.y), MathHelper.floor(player.z));
+        float headLight = minecraft.world.getBrightness(MathHelper.floor(player.x), MathHelper.floor(player.y), MathHelper.floor(player.z));
         float swing = player.getAttackAnimationProgress(tickDelta);
         ItemStack stack = player.inventory.getSelectedItem();
         // the lights in the world, as the game's world has them (the eye's view is loaded)
         Lighting.turnOn();
-        GL11.glEnable(32826); // GL_RESCALE_NORMAL
+        // a little more ambient, a little less from the lights: a held block's faces as bright as the same block's in
+        // the world (top 1, sides 0.8 and 0.5 to 0.7, bottom 0.5 rather than the game's 0.4 for its hand, whose bottom
+        // never shows on a screen)
+        GL11.glLightModel(GL11.GL_LIGHT_MODEL_AMBIENT, vector(0.5F));
+        GL11.glLight(GL11.GL_LIGHT0, GL11.GL_DIFFUSE, vector(0.55F));
+        GL11.glLight(GL11.GL_LIGHT1, GL11.GL_DIFFUSE, vector(0.55F));
+        double cx = player.prevX + (player.x - player.prevX) * tickDelta;
+        double cy = player.prevY + (player.y - player.prevY) * tickDelta;
+        double cz = player.prevZ + (player.z - player.prevZ) * tickDelta;
         for (int hand = 0; hand < 2; hand++) {
             if (!frame.handTracked[hand]) continue;
             float[] at = VR.toWorld(frame.gripPosition[hand]);
+            // lit as the place the hand is (no darker than the head's: a hand in a wall)
+            float light = Math.max(headLight, minecraft.world.getBrightness(MathHelper.floor(cx + at[0]), MathHelper.floor(cy + at[1]),
+                    MathHelper.floor(cz + at[2])));
+            // the game's item drawing turns normal rescaling off (flat items): on again for each hand
+            GL11.glEnable(32826); // GL_RESCALE_NORMAL
             float[] q = frame.gripOrientation[hand];
             GL11.glPushMatrix();
             GL11.glTranslatef(at[0], at[1], at[2]);
@@ -382,6 +401,15 @@ public final class Hooks {
         GL11.glVertex3f(rayEnd[0], rayEnd[1], rayEnd[2]);
         GL11.glEnd();
         GL11.glPopAttrib();
+    }
+
+    private static final FloatBuffer vector = BufferUtils.createFloatBuffer(16);
+
+    /** (v, v, v, 1) for glLight / glLightModel */
+    private static FloatBuffer vector(float v) {
+        vector.clear();
+        vector.put(v).put(v).put(v).put(1).flip();
+        return vector;
     }
 
     /** Multiplies the model-view matrix by a rotation (3x3, row major). */

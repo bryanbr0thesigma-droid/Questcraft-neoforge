@@ -284,6 +284,8 @@ public final class VR {
         GL11.glEnable(GL11.GL_TEXTURE_2D);
         GL11.glBindTexture(GL11.GL_TEXTURE_2D, showGame && game != null ? game.texture : gui.texture);
         GL11.glColor4f(1, 1, 1, 1);
+        // the panel pictures already hold colour times alpha (the game blends into a clear framebuffer)
+        GL11.glBlendFunc(GL11.GL_ONE, GL11.GL_ONE_MINUS_SRC_ALPHA);
         float[][] uv = {{0, 0}, {1, 0}, {1, 1}, {0, 1}};
         if (panel) {
             GL11.glBegin(GL11.GL_QUADS);
@@ -301,6 +303,7 @@ public final class VR {
             quad(keyboard.center(), keyboard.right(), keyboard.up(), keyboard.width(), keyboard.height());
         }
         GL11.glDisable(GL11.GL_TEXTURE_2D);
+        GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
         GL11.glLineWidth(2);
         GL11.glColor4f(1, 1, 1, 0.6f);
         GL11.glBegin(GL11.GL_LINES);

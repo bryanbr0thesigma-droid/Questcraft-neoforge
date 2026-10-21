@@ -56,8 +56,8 @@ done
 
 # what can be checked without a headset: the controllers as keys and mouse, the pointer on the screen
 rm -rf work/test-classes && mkdir -p work/test-classes
-"$JAVA_HOME/bin/javac" --release 8 -nowarn -d work/test-classes -cp work/classes $(find test -name "*.java")
-"$JAVA_HOME/bin/java" -cp work/classes:work/test-classes questcraft.legacy.xr.SelfTest
+"$JAVA_HOME/bin/javac" --release 8 -nowarn -d work/test-classes -cp "work/classes:$ASM:$ASM_COMMONS" $(find test -name "*.java")
+"$JAVA_HOME/bin/java" -cp "work/classes:work/test-classes:$ASM:$ASM_COMMONS" questcraft.legacy.xr.SelfTest
 (cd work/classes && unzip -q -o "$OLDPWD/$ASM" 'org/*' && unzip -q -o "$OLDPWD/$ASM_COMMONS" 'org/*')
 # the OpenXR binding the screen in VR uses (LWJGL's core is the headset's own, on the class path)
 (cd work/classes && unzip -q -o "$OPENXR" 'org/lwjgl/openxr/*')
