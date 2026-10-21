@@ -26,6 +26,13 @@ public final class VR {
     static final float HUD_WIDTH = 1.4f, HUD_DISTANCE = 1.3f, HUD_DROP = 0.55f;
     /** One snap turn, degrees */
     static final float SNAP = 45;
+    /**
+     * The HUD on the left wrist (Vivecraft's "wrist" HUD): its width in metres; where its centre is in the left
+     * controller's grip frame (above the wrist, back from the hand); how far it leans towards the eyes from lying flat
+     * on the forearm; how near the right controller has to come to it to touch a hotbar slot.
+     */
+    static final float WRIST_WIDTH = 0.24f, WRIST_TILT = (float) Math.toRadians(30), WRIST_TOUCH = 0.06f;
+    static final float[] WRIST_OFFSET = {0, 0.05f, 0.1f};
 
     private static boolean enabled, headset;
     private static VRProvider provider;
@@ -55,6 +62,15 @@ public final class VR {
     private static boolean hudPlaced;
     private static boolean pointing;
     private static float pointerU, pointerV;
+    /**
+     * The part of the HUD that goes on the wrist (health, armor, air, the hotbar), in the panel's pixels from its top
+     * left: left, top, right, bottom; and the hotbar's slots: the first one's left, a slot's width, their top. Set by
+     * the glue every frame; null: the whole HUD stays in front.
+     */
+    private static int[] wristPart, hotbarSlots;
+    private static boolean wristShown;
+    private static final float[] wristCenter = new float[3], wristRight = new float[3], wristUp = new float[3], wristNormal = new float[3];
+    private static int touchedSlot = -1;
     private static VRControls controls;
     private static VRKeyboard keyboard;
     /** The game wanted the keyboard last frame (a text screen): it shows when that starts, hides when it ends */
@@ -233,6 +249,20 @@ public final class VR {
         return menuOpen;
     }
 
+    /**
+     * Where the wrist HUD's part of the HUD is (window pixels from the top left: left, top, right, bottom) and its hotbar
+     * slots (the first slot's left, a slot's width, the slots' top), every frame from the glue.
+     */
+    public static void setWristHud(int left, int top, int right, int bottom, int slotsLeft, int slotWidth, int slotsTop) {
+        wristPart = new int[]{left, top, right, bottom};
+        hotbarSlots = new int[]{slotsLeft, slotWidth, slotsTop};
+    }
+
+    /** The hotbar slot the right controller touches on the wrist HUD (-1 none). */
+    public static int touchedSlot() {
+        return touchedSlot;
+    }
+
     /** Whether the right controller points at the menu panel (not off it, not at the keyboard): the cursor is its. */
     public static boolean pointing() {
         return pointing;
@@ -287,7 +317,17 @@ public final class VR {
         // the panel pictures already hold colour times alpha (the game blends into a clear framebuffer)
         GL11.glBlendFunc(GL11.GL_ONE, GL11.GL_ONE_MINUS_SRC_ALPHA);
         float[][] uv = {{0, 0}, {1, 0}, {1, 1}, {0, 1}};
-        if (panel) {
+        if (panel && !menu && wristShown) {
+            // the HUD in front without what is on the wrist (the bottom middle): the strip above it, and beside it
+            float u0 = (float) wristPart[0] / windowWidth, u1 = (float) wristPart[2] / windowWidth, v1 = 1 - (float) wristPart[1] / windowHeight;
+            panelPart(center, right, up, width, height, 0, v1, 1, 1, 0, v1, 1, 1);
+            panelPart(center, right, up, width, height, 0, 0, u0, v1, 0, 0, u0, v1);
+            panelPart(center, right, up, width, height, u1, 0, 1, v1, u1, 0, 1, v1);
+            // and on the wrist
+            float wristHeight = WRIST_WIDTH * (wristPart[3] - wristPart[1]) / (wristPart[2] - wristPart[0]);
+            panelPart(wristCenter, wristRight, wristUp, WRIST_WIDTH, wristHeight, 0, 0, 1, 1,
+                    u0, 1 - (float) wristPart[3] / windowHeight, u1, v1);
+        } else if (panel) {
             GL11.glBegin(GL11.GL_QUADS);
             for (int i = 0; i < 4; i++) {
                 GL11.glTexCoord2f(uv[i][0], uv[i][1]);
@@ -320,6 +360,63 @@ public final class VR {
         GL11.glPopMatrix();
         GL11.glMatrixMode(GL11.GL_MODELVIEW);
         GL11.glPopAttrib();
+    }
+
+    /**
+     * A part of a panel (centre, right and up vectors, size; in the room): from pu0, pv0 to pu1, pv1 of it (0..1 from its
+     * bottom left), showing u0, v0 to u1, v1 of the bound texture.
+     */
+    private static void panelPart(float[] center, float[] right, float[] up, float width, float height,
+                                  float pu0, float pv0, float pu1, float pv1, float u0, float v0, float u1, float v1) {
+        float[][] p = {{pu0, pv0}, {pu1, pv0}, {pu1, pv1}, {pu0, pv1}};
+        float[][] t = {{u0, v0}, {u1, v0}, {u1, v1}, {u0, v1}};
+        GL11.glBegin(GL11.GL_QUADS);
+        for (int i = 0; i < 4; i++) {
+            float[] point = new float[3];
+            for (int k = 0; k < 3; k++) point[k] = center[k] + right[k] * (p[i][0] - 0.5f) * width + up[k] * (p[i][1] - 0.5f) * height;
+            float[] w = toWorld(point);
+            GL11.glTexCoord2f(t[i][0], t[i][1]);
+            GL11.glVertex3f(w[0], w[1], w[2]);
+        }
+        GL11.glEnd();
+    }
+
+    /**
+     * The wrist HUD's place, from the left controller's pose: above the wrist, lying on the forearm and leaning towards
+     * the eyes, its left to right across the arm (it reads as a watch does). Shown while the HUD is (no menu, HUD on)
+     * and the left controller is tracked.
+     */
+    private static void placeWrist() {
+        wristShown = wristPart != null && !menuOpen && !showGame && guiShown && !guiWasMenu && frame.handTracked[0];
+        touchedSlot = -1;
+        if (!wristShown) return;
+        float[] q = frame.gripOrientation[0];
+        float[] m = VRMath.quatToMatrix(q[0], q[1], q[2], q[3]);
+        float c = (float) Math.cos(WRIST_TILT), s = (float) Math.sin(WRIST_TILT);
+        // in the controller's frame: right +x, up (the HUD's top) forward and a little up, the face up and towards the eyes
+        float[] right = VRMath.mul3(m, 1, 0, 0), up = VRMath.mul3(m, 0, s, -c), normal = VRMath.mul3(m, 0, c, s);
+        float[] offset = VRMath.mul3(m, WRIST_OFFSET[0], WRIST_OFFSET[1], WRIST_OFFSET[2]);
+        for (int k = 0; k < 3; k++) {
+            wristCenter[k] = frame.gripPosition[0][k] + offset[k];
+            wristRight[k] = right[k];
+            wristUp[k] = up[k];
+            wristNormal[k] = normal[k];
+        }
+        // the right controller's tip on a hotbar slot: that slot (as Vivecraft's wrist HUD)
+        if (!frame.handTracked[1] || hotbarSlots == null) return;
+        float wristHeight = WRIST_WIDTH * (wristPart[3] - wristPart[1]) / (wristPart[2] - wristPart[0]);
+        float[] d = new float[3];
+        for (int k = 0; k < 3; k++) d[k] = frame.aimPosition[1][k] - wristCenter[k];
+        float u = dot(d, wristRight) / WRIST_WIDTH + 0.5f, v = dot(d, wristUp) / wristHeight + 0.5f;
+        if (Math.abs(dot(d, wristNormal)) > WRIST_TOUCH || u < 0 || u > 1 || v < 0 || v > 1) return;
+        float x = wristPart[0] + u * (wristPart[2] - wristPart[0]), y = wristPart[3] - v * (wristPart[3] - wristPart[1]);
+        if (y < hotbarSlots[2]) return;
+        int slot = (int) Math.floor((x - hotbarSlots[0]) / hotbarSlots[1]);
+        if (slot >= 0 && slot < 9) touchedSlot = slot;
+    }
+
+    private static float dot(float[] a, float[] b) {
+        return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
     }
 
     /** A textured quad (centre, right and up vectors, size; in the room), the texture bound. */
@@ -391,6 +488,7 @@ public final class VR {
         guiCleared = false;
         frameBegun = provider.beginFrame(frame);
         updatePointer();
+        placeWrist();
         // a loading screen (no menu this frame) types nothing
         if (showGame) keyboard.updatePointers(null);
         else keyboard.updatePointers(frame);

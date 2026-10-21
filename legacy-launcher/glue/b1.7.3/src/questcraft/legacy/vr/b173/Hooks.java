@@ -20,6 +20,7 @@ import net.minecraft.client.gui.screen.options.OptionsScreen;
 import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.client.options.GameOptions;
 import net.minecraft.client.render.GameRenderer;
+import net.minecraft.client.render.Window;
 import net.minecraft.client.render.entity.EntityRenderDispatcher;
 import net.minecraft.client.render.entity.PlayerRenderer;
 import net.minecraft.client.render.model.ModelPart;
@@ -77,10 +78,31 @@ public final class Hooks {
             if (minecraft.worldRenderer != null) minecraft.worldRenderer.reload();
         }
         radial(minecraft);
+        wristHud(minecraft);
         VR.setMenuOpen(minecraft.screen != null);
         VR.setKeyboardWanted(wantsText(minecraft.screen));
         // the camera is the headset's: there is no third person
         minecraft.options.perspective = false;
+    }
+
+    /** The hotbar slot the right hand touched on the wrist last frame (selected once, when the touch starts) */
+    private static int lastTouched = -1;
+
+    /**
+     * The HUD on the wrist (VR): where GameGui draws the hearts, armor, air and the hotbar (in scaled pixels: the
+     * hotbar 182 wide, 22 high at the bottom middle, the rows of icons over it up to 42 from the bottom), in the HUD
+     * panel's pixels; and the slot the right hand touches there selected.
+     */
+    private static void wristHud(Minecraft minecraft) {
+        Window window = new Window(minecraft.options, minecraft.width, minecraft.height);
+        int w = window.getWidth(), h = window.getHeight(), scale = window.scale;
+        VR.setWristHud((w / 2 - 92) * scale, (h - 42) * scale, (w / 2 + 92) * scale, Math.min(h * scale, minecraft.height),
+                (w / 2 - 90) * scale, 20 * scale, (h - 22) * scale);
+        int touched = VR.touchedSlot();
+        if (touched >= 0 && touched != lastTouched && minecraft.player != null && minecraft.screen == null) {
+            minecraft.player.inventory.selectedSlot = touched;
+        }
+        lastTouched = touched;
     }
 
     /** The screens b1.7.3 types text in: the VR keyboard shows with them. */

@@ -13,7 +13,8 @@ import questcraft.legacy.xr.Framebuffers;
 /**
  * The headset on a desktop, to check VR without one (-Dquestcraft.legacy.vrsim=true): a head standing at
  * questcraft.legacy.vrsim.x, .height, .z in the room (0, the game's eye height, 0), turned by .yaw and .pitch
- * (degrees), the controllers held in front pointing where the head looks (.aimYaw and .aimPitch turn them), the
+ * (degrees), the controllers held in front pointing where the head looks (.aimYaw and .aimPitch turn them, .leftHandX/Y/Z
+ * and .rightHandX/Y/Z move them), the
  * sticks at .leftX, .leftY, .rightX, .rightY, the triggers and grips at .leftTrigger, .rightTrigger, .leftGrip,
  * .rightGrip, the buttons at .a, .b, .xButton, .yButton, .menu, .rightStickClick (1 pressed), and both eyes shown side by side in
  * the game's window. On a desktop the buttons reach only VR's own parts (the keyboard), not the game. With
@@ -85,7 +86,9 @@ final class VRSim implements VRProvider {
             frame.eyeFov[eye][3] = -0.8f;
         }
         float[] aim = yawPitchQuat(aimYaw, aimPitch);
-        float[][] offset = {{-0.2f, -0.45f, -0.4f}, {0.2f, -0.45f, -0.4f}};
+        // .leftHandX/Y/Z and .rightHandX/Y/Z move a hand from there (metres, in the body's frame)
+        float[][] offset = {{-0.2f + get("leftHandX", 0), -0.45f + get("leftHandY", 0), -0.4f + get("leftHandZ", 0)},
+                {0.2f + get("rightHandX", 0), -0.45f + get("rightHandY", 0), -0.4f + get("rightHandZ", 0)}};
         // the hands where a person holds them: in front of the body, turned with the head but not tilted with it
         float[] turn = yawPitchQuat(yaw, 0);
         float[] m = VRMath.quatToMatrix(turn[0], turn[1], turn[2], turn[3]);
