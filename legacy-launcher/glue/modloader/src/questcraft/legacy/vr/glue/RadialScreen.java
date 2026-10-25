@@ -1,4 +1,4 @@
-package questcraft.legacy.vr.b173;
+package questcraft.legacy.vr.glue;
 
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.widget.ButtonWidget;

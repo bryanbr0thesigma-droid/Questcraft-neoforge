@@ -1,7 +1,7 @@
 #!/bin/bash
 # Builds the launcher for old Minecraft versions (see src/questcraft/legacy/LegacyLauncher.java) into the app:
 # pojlib/src/main/assets/legacy/questcraft-legacy-launcher.jar. Java 8 bytecode, with ASM inside (BSD licence),
-# LWJGL's OpenXR binding (BSD licence, QuestCraft's build) for VR, and the VR glue of each version in glue/ (vr/VERSION.jar).
+# LWJGL's OpenXR binding (BSD licence, QuestCraft's build) for VR, and the VR glue of each version (vr/VERSION.jar).
 # Needs a JDK 11 or newer (JAVA_HOME) and the ASM 9.5 jars (ASM, ASM_COMMONS: downloaded when not given).
 # The glue is written with OrnitheMC's Feather names and translated into the game's with Fabric's tiny-remapper
 # (downloaded, with the game's client and the mappings, into work/).
@@ -20,39 +20,55 @@ OPENXR=$REPO/visor-builder/lib/questcraft-lwjgl-openxr-3.3.3.jar
 rm -rf work/classes && mkdir -p work/classes
 "$JAVA_HOME/bin/javac" --release 8 -nowarn -d work/classes -cp "$ASM:$ASM_COMMONS:$LWJGL:$OPENXR" $(find src -name "*.java")
 
-# each version's VR glue: its hooks and classes in the game's names, checked against the game, into vr/VERSION.jar
+# each version's VR glue (glue/modloader, for each version in glue/versions.txt): its #if lines worked out for the
+# version, its hooks and classes in the game's names, checked against the game, into vr/VERSION.jar. A version whose
+# glue, launcher sources and tools did not change keeps the glue it has (work/glue/VERSION/stamp); GLUE_VERSIONS="b1.7.3
+# 1.2.5" builds only those (the others keep the glue last built for them).
 TINY_REMAPPER=work/tiny-remapper-0.11.1-fat.jar
 [ -f "$TINY_REMAPPER" ] || curl -sSfL -o "$TINY_REMAPPER" https://maven.fabricmc.net/net/fabricmc/tiny-remapper/0.11.1/tiny-remapper-0.11.1-fat.jar
 rm -rf work/tool-classes && mkdir -p work/tool-classes
 "$JAVA_HOME/bin/javac" --release 8 -nowarn -d work/tool-classes -cp "work/classes:$ASM" $(find tools -name "*.java")
 TOOL="$JAVA_HOME/bin/java -cp work/tool-classes:work/classes:$ASM questcraft.legacy.GlueTool"
-for GLUE in glue/*/; do
-  VERSION=$(basename "$GLUE")
+GLUE=glue/modloader
+STAMP=$( (find "$GLUE" glue/versions.txt src tools -type f | sort | xargs sha1sum) | sha1sum | cut -d' ' -f1)
+mkdir -p work/classes/vr
+while read -r VERSION SHA1 URL FEATHER; do
+  case "$VERSION" in ""|"#"*) continue ;; esac
   W=work/glue/$VERSION
+  if [ -n "$GLUE_VERSIONS" ] && ! echo " $GLUE_VERSIONS " | grep -q " $VERSION "; then
+    [ -f "$W/glue.jar" ] && cp "$W/glue.jar" "work/classes/vr/$VERSION.jar"
+    continue
+  fi
   mkdir -p "$W"
-  prop() { grep "^$1=" "$GLUE/glue.properties" | cut -d= -f2-; }
-  if [ ! -f "$W/client.jar" ] || [ "$(sha1sum "$W/client.jar" | cut -d' ' -f1)" != "$(prop client.sha1)" ]; then
-    curl -sSfL -o "$W/client.jar" "$(prop client)"
-    [ "$(sha1sum "$W/client.jar" | cut -d' ' -f1)" = "$(prop client.sha1)" ] || { echo "$VERSION: not the expected client"; exit 1; }
+  if [ -f "$W/glue.jar" ] && [ "$(cat "$W/stamp" 2>/dev/null)" = "$STAMP" ]; then
+    cp "$W/glue.jar" "work/classes/vr/$VERSION.jar"
+    continue
+  fi
+  if [ ! -f "$W/client.jar" ] || [ "$(sha1sum "$W/client.jar" | cut -d' ' -f1)" != "$SHA1" ]; then
+    curl -sSfL -o "$W/client.jar" "$URL"
+    [ "$(sha1sum "$W/client.jar" | cut -d' ' -f1)" = "$SHA1" ] || { echo "$VERSION: not the expected client"; exit 1; }
   fi
   if [ ! -f "$W/mappings.tiny" ]; then
-    curl -sSfL -o "$W/mappings.jar" "$(prop mappings)"
+    MAVEN=$(echo "$FEATHER" | sed 's/+/%2B/')
+    curl -sSfL -o "$W/mappings.jar" "https://maven.ornithemc.net/releases/net/ornithemc/feather/$MAVEN/feather-$MAVEN-mergedv2.jar"
     unzip -q -o -p "$W/mappings.jar" mappings/mappings.tiny > "$W/mappings.tiny"
   fi
   [ -f "$W/named.jar" ] || "$JAVA_HOME/bin/java" -jar "$TINY_REMAPPER" "$W/client.jar" "$W/named.jar" "$W/mappings.tiny" official named > "$W/remap.log"
-  $TOOL map "$W/mappings.tiny" named official "$GLUE/hooks.txt" "$W/hooks.txt"
+  rm -rf "$W/glue" && mkdir -p "$W/glue"
+  $TOOL pp "$VERSION" glue/versions.txt "$GLUE" "$W/glue"
+  $TOOL map "$W/mappings.tiny" named official "$W/glue/hooks.txt" "$W/hooks.txt"
   $TOOL check "$W/hooks.txt" "$W/client.jar"
-  $TOOL widen "$GLUE/hooks.txt" "$W/named.jar" "$W/named-open.jar"
+  $TOOL widen "$W/glue/hooks.txt" "$W/named.jar" "$W/named-open.jar"
   rm -rf "$W/classes" && mkdir -p "$W/classes"
-  "$JAVA_HOME/bin/javac" --release 8 -nowarn -d "$W/classes" -cp "$W/named-open.jar:work/classes:$LWJGL" $(find "$GLUE/src" -name "*.java")
+  "$JAVA_HOME/bin/javac" --release 8 -nowarn -d "$W/classes" -cp "$W/named-open.jar:work/classes:$LWJGL" $(find "$W/glue/src" -name "*.java")
   rm -f "$W/glue-named.jar" "$W/glue.jar"
   (cd "$W/classes" && "$JAVA_HOME/bin/jar" --create --file ../glue-named.jar .)
   "$JAVA_HOME/bin/java" -jar "$TINY_REMAPPER" "$W/glue-named.jar" "$W/glue.jar" "$W/mappings.tiny" named official "$W/named-open.jar" >> "$W/remap.log"
   (cd "$W" && "$JAVA_HOME/bin/jar" --update --file glue.jar hooks.txt)
-  mkdir -p work/classes/vr
   cp "$W/glue.jar" "work/classes/vr/$VERSION.jar"
+  echo "$STAMP" > "$W/stamp"
   echo "VR glue for $VERSION: $(unzip -l "$W/glue.jar" | tail -1 | awk '{print $2}') files"
-done
+done < glue/versions.txt
 
 # what can be checked without a headset: the controllers as keys and mouse, the pointer on the screen
 rm -rf work/test-classes && mkdir -p work/test-classes

@@ -1,6 +1,6 @@
-# Beta 1.7.3 in VR: where the game calls its glue (src/questcraft/legacy/vr/b173/Hooks.java). Written with Feather's
+# The old versions in VR: where the game calls its glue (src/questcraft/legacy/vr/glue/Hooks.java). Written with Feather's
 # names; build.sh translates them into the game's own. The format is in HookSpec (src/questcraft/legacy/HookSpec.java).
-hooks questcraft/legacy/vr/b173/Hooks
+hooks questcraft/legacy/vr/glue/Hooks
 
 # for the glue: the game's own camera and hand, around which it puts the headset's
 public net/minecraft/client/render/GameRenderer minecraft

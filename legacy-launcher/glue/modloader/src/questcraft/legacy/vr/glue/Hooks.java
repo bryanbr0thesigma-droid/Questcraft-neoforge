@@ -1,4 +1,4 @@
-package questcraft.legacy.vr.b173;
+package questcraft.legacy.vr.glue;
 
 import java.nio.FloatBuffer;
 import java.util.List;

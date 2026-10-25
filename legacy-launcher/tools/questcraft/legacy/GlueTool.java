@@ -24,7 +24,12 @@ import java.util.zip.ZipOutputStream;
  * map   mappings.tiny from to hooks.txt out.txt   the hooks in the other names (Feather's named to the game's official)
  * widen hooks.txt in.jar out.jar                  the jar with the members the glue uses made public (to compile it)
  * check hooks.txt game.jar                        every hook finds its place in the game (else the build fails)
+ * pp    version versions.txt in out               the glue for one version: its #if lines worked out (below)
  * </pre>
+ * One glue serves many versions: in its sources {@code //#if >=b1.8.1}, {@code //#elif <1.3.1}, {@code //#else},
+ * {@code //#endif} (in hooks.txt {@code #if ...}) keep or leave out the lines up to the next such line, comparing the
+ * version built with others in the order of versions.txt; several comparisons are joined by {@code &&}. Lines left out
+ * stay as empty lines, so the compiler's line numbers are the sources'.
  */
 public final class GlueTool {
     private GlueTool() {
@@ -41,9 +46,116 @@ public final class GlueTool {
             case "check":
                 check(HookSpec.parse(read(new File(args[1]))), new File(args[2]));
                 break;
+            case "pp":
+                preprocess(args[1], versions(new File(args[2])), new File(args[3]), new File(args[4]));
+                break;
             default:
-                throw new IllegalArgumentException("map | widen | check");
+                throw new IllegalArgumentException("map | widen | check | pp");
         }
+    }
+
+    // ---- pp ----
+
+    /** The versions of versions.txt, oldest first. */
+    static java.util.List<String> versions(File file) throws IOException {
+        java.util.List<String> versions = new java.util.ArrayList<>();
+        for (String line : read(file).split("\n")) {
+            line = line.trim();
+            if (!line.isEmpty() && !line.startsWith("#")) versions.add(line.split("\\s+")[0]);
+        }
+        return versions;
+    }
+
+    /** The glue tree for one version: Java sources and hooks.txt with their #if lines worked out, other files as they are. */
+    static void preprocess(String version, java.util.List<String> order, File in, File out) throws IOException {
+        if (!order.contains(version)) throw new IllegalArgumentException(version + " is not in versions.txt");
+        File[] files = in.listFiles();
+        if (files == null) return;
+        for (File file : files) {
+            File target = new File(out, file.getName());
+            if (file.isDirectory()) {
+                target.mkdirs();
+                preprocess(version, order, file, target);
+            } else if (file.getName().endsWith(".java") || file.getName().equals("hooks.txt")) {
+                String prefix = file.getName().endsWith(".java") ? "//#" : "#";
+                write(target, conditional(version, order, read(file), prefix, file.getPath()));
+            } else {
+                Files.copy(file.toPath(), target.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            }
+        }
+    }
+
+    /** The text with the lines its #if / #elif / #else / #endif lines leave out for the version made empty. */
+    static String conditional(String version, java.util.List<String> order, String text, String prefix, String where) {
+        StringBuilder out = new StringBuilder();
+        // each open #if: whether its outside is kept, whether a branch has been kept, whether this branch is
+        java.util.ArrayDeque<boolean[]> stack = new java.util.ArrayDeque<>();
+        boolean keep = true;
+        int number = 0;
+        for (String line : text.split("\n", -1)) {
+            number++;
+            String t = line.trim();
+            String directive = t.startsWith(prefix + "if ") ? "if" : t.startsWith(prefix + "elif ") ? "elif"
+                    : t.equals(prefix + "else") || t.startsWith(prefix + "else ") ? "else" : t.equals(prefix + "endif") || t.startsWith(prefix + "endif ") ? "endif" : null;
+            if (directive == null) {
+                out.append(keep ? line : "").append('\n');
+                continue;
+            }
+            String condition = t.substring(prefix.length() + directive.length()).trim();
+            switch (directive) {
+                case "if": {
+                    boolean taken = keep && holds(condition, version, order, where, number);
+                    stack.push(new boolean[]{keep, taken});
+                    keep = taken;
+                    break;
+                }
+                case "elif": {
+                    if (stack.isEmpty()) throw new IllegalArgumentException(where + ":" + number + ": #elif without #if");
+                    boolean[] frame = stack.peek();
+                    boolean taken = frame[0] && !frame[1] && holds(condition, version, order, where, number);
+                    if (taken) frame[1] = true;
+                    keep = taken;
+                    break;
+                }
+                case "else": {
+                    if (stack.isEmpty()) throw new IllegalArgumentException(where + ":" + number + ": #else without #if");
+                    boolean[] frame = stack.peek();
+                    keep = frame[0] && !frame[1];
+                    frame[1] = true;
+                    break;
+                }
+                default: {
+                    if (stack.isEmpty()) throw new IllegalArgumentException(where + ":" + number + ": #endif without #if");
+                    keep = stack.pop()[0];
+                }
+            }
+            out.append('\n');
+        }
+        if (!stack.isEmpty()) throw new IllegalArgumentException(where + ": #if without #endif");
+        out.setLength(out.length() - 1);
+        return out.toString();
+    }
+
+    /** ">=b1.8.1 && <1.3.1" for the version (all comparisons must hold). */
+    static boolean holds(String condition, String version, java.util.List<String> order, String where, int number) {
+        int index = order.indexOf(version);
+        for (String part : condition.split("&&")) {
+            Matcher m = Pattern.compile("^\\s*(>=|<=|==|!=|>|<)\\s*(\\S+)\\s*$").matcher(part);
+            if (!m.matches()) throw new IllegalArgumentException(where + ":" + number + ": not a condition: " + condition);
+            int other = order.indexOf(m.group(2));
+            if (other < 0) throw new IllegalArgumentException(where + ":" + number + ": " + m.group(2) + " is not in versions.txt");
+            boolean ok;
+            switch (m.group(1)) {
+                case ">=": ok = index >= other; break;
+                case "<=": ok = index <= other; break;
+                case ">": ok = index > other; break;
+                case "<": ok = index < other; break;
+                case "==": ok = index == other; break;
+                default: ok = index != other;
+            }
+            if (!ok) return false;
+        }
+        return true;
     }
 
     // ---- map ----
@@ -130,9 +242,24 @@ public final class GlueTool {
 
     static String map(Mappings m, String text) {
         StringBuilder out = new StringBuilder("# made by build.sh from the hooks.txt in Feather's names: do not edit\n");
+        // every line that does not map is told, not only the first (porting the glue to another version)
+        StringBuilder missing = new StringBuilder();
         for (String raw : text.split("\n")) {
             String line = raw.contains("#") ? raw.substring(0, raw.indexOf('#')).trim() : raw.trim();
             if (line.isEmpty()) continue;
+            try {
+                out.append(mapLine(m, line)).append('\n');
+            } catch (IllegalArgumentException e) {
+                missing.append("\n  ").append(e.getMessage()).append("  (").append(line).append(')');
+            }
+        }
+        if (missing.length() > 0) throw new IllegalArgumentException("lines that do not map:" + missing);
+        return out.toString();
+    }
+
+    private static String mapLine(Mappings m, String line) {
+        StringBuilder out = new StringBuilder();
+        {
             String[] w = line.split("\\s+");
             // Class:Declaring, the method or field being the superclass's
             String declaringClass = w.length > 1 && w[1].contains(":") ? w[1].substring(w[1].indexOf(':') + 1) : w.length > 1 ? w[1] : null;
@@ -167,7 +294,6 @@ public final class GlueTool {
                 default:
                     throw new IllegalArgumentException("unknown hook: " + line);
             }
-            out.append('\n');
         }
         return out.toString();
     }
