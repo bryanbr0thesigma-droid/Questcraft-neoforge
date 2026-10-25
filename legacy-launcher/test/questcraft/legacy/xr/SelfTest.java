@@ -147,8 +147,8 @@ public final class SelfTest {
         failures += questcraft.legacy.vr.ControlsTest.run();
         // skins from Mojang for the old versions
         failures += questcraft.legacy.SkinFixTest.run();
-        // the alpha and beta Tesselator draws quads
-        failures += questcraft.legacy.QuadFixTest.run();
+        // the alpha and beta Tesselator's triangles keep their normals
+        failures += questcraft.legacy.TesselatorFixTest.run();
         System.out.println(failures == 0 ? "screen self test: all passed" : "screen self test: " + failures + " failed");
         System.exit(failures == 0 ? 0 : 1);
     }

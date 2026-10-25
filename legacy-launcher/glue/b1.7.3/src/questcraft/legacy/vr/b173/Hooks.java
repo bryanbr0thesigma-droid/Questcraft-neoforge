@@ -90,13 +90,13 @@ public final class Hooks {
 
     /**
      * The HUD on the wrist (VR): where GameGui draws the hearts, armor, air and the hotbar (in scaled pixels: the
-     * hotbar 182 wide, 22 high at the bottom middle, the rows of icons over it up to 42 from the bottom), in the HUD
-     * panel's pixels; and the slot the right hand touches there selected.
+     * hotbar 182 wide, 22 high at the bottom middle, the rows of icons over it up to 41 from the bottom, where the
+     * chat's lowest line ends), in the HUD panel's pixels; and the slot the right hand touches there selected.
      */
     private static void wristHud(Minecraft minecraft) {
         Window window = new Window(minecraft.options, minecraft.width, minecraft.height);
         int w = window.getWidth(), h = window.getHeight(), scale = window.scale;
-        VR.setWristHud((w / 2 - 92) * scale, (h - 42) * scale, (w / 2 + 92) * scale, Math.min(h * scale, minecraft.height),
+        VR.setWristHud((w / 2 - 92) * scale, (h - 41) * scale, (w / 2 + 92) * scale, Math.min(h * scale, minecraft.height),
                 (w / 2 - 90) * scale, 20 * scale, (h - 22) * scale);
         int touched = VR.touchedSlot();
         if (touched >= 0 && touched != lastTouched && minecraft.player != null && minecraft.screen == null) {
@@ -379,12 +379,20 @@ public final class Hooks {
         GL11.glScalef(ARM_SCALE, ARM_SCALE, ARM_SCALE);
         // its hand end (12 pixels under the shoulder, 6 to the side) at the grip
         GL11.glTranslatef((hand == 1 ? 6 : -6) / 16F, -12 / 16F, 0);
+        // the shoulder where the model has it at rest: the shared model's pivot moves with the last player it posed
+        float pivotX = hand == 1 ? -5 : 5, pivotY = 2;
         if (skin != null) {
-            SkinModel.part(skin, hand == 1 ? SkinModel.RIGHT_ARM : SkinModel.LEFT_ARM, part.x, part.y, part.z, 0, 0, 0, 1 / 16F, true, true);
+            SkinModel.part(skin, hand == 1 ? SkinModel.RIGHT_ARM : SkinModel.LEFT_ARM, pivotX, pivotY, 0, 0, 0, 0, 1 / 16F, true, true);
         } else {
-            float rotationX = part.rotationX, rotationY = part.rotationY, rotationZ = part.rotationZ;
+            float x = part.x, y = part.y, z = part.z, rotationX = part.rotationX, rotationY = part.rotationY, rotationZ = part.rotationZ;
+            part.x = pivotX;
+            part.y = pivotY;
+            part.z = 0;
             part.rotationX = part.rotationY = part.rotationZ = 0;
             part.render(1 / 16F);
+            part.x = x;
+            part.y = y;
+            part.z = z;
             part.rotationX = rotationX;
             part.rotationY = rotationY;
             part.rotationZ = rotationZ;

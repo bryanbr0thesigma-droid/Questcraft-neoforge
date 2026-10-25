@@ -57,7 +57,8 @@ public final class SkinModel {
         if (skins.containsKey(key)) return skins.get(key);
         SkinFix.Textures textures = SkinFix.textures(name);
         if (textures == null) return null;    // not looked up (yet)
-        Skin skin = textures.skin != null ? upload(textures.skin, textures.slim) : null;
+        // an old 64 x 32 skin: the game draws it as it always did
+        Skin skin = textures.skin != null && textures.skin.getHeight() * 64 / textures.skin.getWidth() >= 64 ? upload(textures.skin, textures.slim) : null;
         skins.put(key, skin);
         return skin;
     }
@@ -69,6 +70,8 @@ public final class SkinModel {
         for (int y = 0; y < height; y++) {
             for (int x = 0; x < width; x++) {
                 int p = image.getRGB(x * scale, y * scale);
+                // the parts themselves are solid, as the game (and today's) make them: only the outer layer has holes
+                if (base(x, y)) p |= 0xFF000000;
                 pixels.put((byte) (p >> 16)).put((byte) (p >> 8)).put((byte) p).put((byte) (p >>> 24));
             }
         }
@@ -79,6 +82,11 @@ public final class SkinModel {
         GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
         GL11.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA, width, height, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, pixels);
         return new Skin(texture, height == 64, slim && height == 64);
+    }
+
+    /** Whether a pixel of a 64 x 64 skin is on a part itself (the head, body, arms and legs), not on the outer layer. */
+    static boolean base(int x, int y) {
+        return (y < 16 && x < 32) || (y >= 16 && y < 32) || (y >= 48 && x >= 16 && x < 48);
     }
 
     /**
