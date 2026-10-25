@@ -119,9 +119,10 @@ public final class Hooks {
     private static int lastTouched = -1;
 
     /**
-     * The HUD on the wrist (VR): where GameGui draws the hearts, armor, air and the hotbar (in scaled pixels: the
+     * The HUD on the forearm (VR): where GameGui draws the hearts, armor, air and the hotbar (in scaled pixels: the
      * hotbar 182 wide, 22 high at the bottom middle, the rows of icons over it up to 41 from the bottom, where the
-     * chat's lowest line ends), in the HUD panel's pixels; and the slot the right hand touches there selected.
+     * chat's lowest line ends; from beta 1.8 the hearts and hunger over the experience bar, armor and air over them, up
+     * to 49), in the HUD panel's pixels; and the slot the right hand touches there selected.
      */
     private static void wristHud(Minecraft minecraft) {
         //#if >=b1.4_01
@@ -134,7 +135,12 @@ public final class Hooks {
         //#else
         int w = window.getWidth(), h = window.getHeight(), scale = window.scale;
         //#endif
-        VR.setWristHud((w / 2 - 92) * scale, (h - 41) * scale, (w / 2 + 92) * scale, Math.min(h * scale, minecraft.height),
+        //#if >=b1.8.1
+        int rows = 49;
+        //#else
+        int rows = 41;
+        //#endif
+        VR.setWristHud((w / 2 - 92) * scale, (h - rows) * scale, (w / 2 + 92) * scale, Math.min(h * scale, minecraft.height),
                 (w / 2 - 90) * scale, 20 * scale, (h - 22) * scale);
         int touched = VR.touchedSlot();
         if (touched >= 0 && touched != lastTouched && minecraft.player != null && minecraft.screen == null) {
@@ -398,7 +404,10 @@ public final class Hooks {
         //#endif
     }
 
-    /** How big the arms are drawn: the game's 12 pixel arm, 0.375 m; how far it slopes down from the hand to the elbow */
+    /**
+     * How big the arms are drawn: the game's 12 pixel arm, 0.375 m; how far it slopes down from the hand to the elbow
+     * (the wrist HUD lies on the left one: VR.WRIST_SLOPE, WRIST_ABOVE)
+     */
     static final float ARM_SCALE = 0.5F, ARM_SLOPE = 40;
 
     /** The player's arms at the controllers (skin and model of their own), the selected item in the right hand. */

@@ -59,7 +59,12 @@ public final class RisugamiModLoader {
      * The versions played in VR (QuestCraft's own, in the legacy launcher: vr/VERSION.jar in it); the others are shown
      * on a screen in VR.
      */
-    public static final List<String> VR_VERSIONS = java.util.Collections.singletonList("b1.7.3");
+    public static final List<String> VR_VERSIONS = java.util.Collections.unmodifiableList(java.util.Arrays.asList(
+            "a1.1.2_01", "a1.2.0_02", "a1.2.1_01", "a1.2.3_04", "a1.2.4_01", "a1.2.5", "a1.2.6",
+            "b1.0_01", "b1.1_02", "b1.2", "b1.2_01", "b1.2_02", "b1.3_01", "b1.4_01", "b1.5_01",
+            "b1.6.4", "b1.6.5", "b1.6.6", "b1.7.2", "b1.7.3", "b1.8.1",
+            "1.0", "1.1", "1.2.3", "1.2.4", "1.2.5", "1.3.1", "1.3.2", "1.4.2", "1.4.4", "1.4.5", "1.4.6", "1.4.7",
+            "1.5", "1.5.1", "1.5.2", "1.6.1", "1.6.2"));
     /** The game class whose main() starts versions before 1.6 (Mojang's version file has LaunchWrapper's) */
     static final String OLD_MAIN = "net.minecraft.client.Minecraft";
     static final String MAIN_1_6 = "net.minecraft.client.main.Main";

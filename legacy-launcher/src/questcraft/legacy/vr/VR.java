@@ -27,12 +27,13 @@ public final class VR {
     /** One snap turn, degrees */
     static final float SNAP = 45;
     /**
-     * The HUD on the left wrist (Vivecraft's "wrist" HUD): its width in metres; where its centre is in the left
-     * controller's grip frame (above the wrist, back from the hand); how far it leans towards the eyes from lying flat
-     * on the forearm; how near the right controller has to come to it to touch a hotbar slot.
+     * The HUD on the left forearm (as Vivecraft's): its length along the arm in metres; how the forearm slopes down
+     * from the hand to the elbow in the controller's grip frame (the glue's arms: Hooks.ARM_SLOPE); where its middle is,
+     * along the arm back from the grip and above the arm's middle line (its top, the glue's arm being 0.125 m thick);
+     * how near the right controller has to come to it to touch a hotbar slot.
      */
-    static final float WRIST_WIDTH = 0.24f, WRIST_TILT = (float) Math.toRadians(30), WRIST_TOUCH = 0.06f;
-    static final float[] WRIST_OFFSET = {0, 0.05f, 0.1f};
+    static final float WRIST_WIDTH = 0.24f, WRIST_SLOPE = (float) Math.toRadians(40), WRIST_ALONG = 0.17f, WRIST_ABOVE = 0.075f;
+    static final float WRIST_TOUCH = 0.06f;
 
     private static boolean enabled, headset;
     private static VRProvider provider;
@@ -382,9 +383,10 @@ public final class VR {
     }
 
     /**
-     * The wrist HUD's place, from the left controller's pose: above the wrist, lying on the forearm and leaning towards
-     * the eyes, its left to right across the arm (it reads as a watch does). Shown while the HUD is (no menu, HUD on)
-     * and the left controller is tracked.
+     * The wrist HUD's place, from the left controller's pose: lying on the top of the forearm, its left to right along
+     * the arm towards the hand (the hotbar's first slot by the elbow, the ninth by the wrist) and its top across the arm,
+     * so it reads with the arm held across the body, as Vivecraft's does. Shown while the HUD is (no menu, HUD on) and
+     * the left controller is tracked.
      */
     private static void placeWrist() {
         wristShown = wristPart != null && !menuOpen && !showGame && guiShown && !guiWasMenu && frame.handTracked[0];
@@ -392,10 +394,12 @@ public final class VR {
         if (!wristShown) return;
         float[] q = frame.gripOrientation[0];
         float[] m = VRMath.quatToMatrix(q[0], q[1], q[2], q[3]);
-        float c = (float) Math.cos(WRIST_TILT), s = (float) Math.sin(WRIST_TILT);
-        // in the controller's frame: right +x, up (the HUD's top) forward and a little up, the face up and towards the eyes
-        float[] right = VRMath.mul3(m, 1, 0, 0), up = VRMath.mul3(m, 0, s, -c), normal = VRMath.mul3(m, 0, c, s);
-        float[] offset = VRMath.mul3(m, WRIST_OFFSET[0], WRIST_OFFSET[1], WRIST_OFFSET[2]);
+        float c = (float) Math.cos(WRIST_SLOPE), s = (float) Math.sin(WRIST_SLOPE);
+        // in the controller's frame the forearm runs back from the grip and down, (0, -s, c): the HUD's right along it
+        // towards the hand, its top across it (-x: away from the eyes with the arm across the body, the thumb up), its
+        // face on the arm's top
+        float[] right = VRMath.mul3(m, 0, s, -c), up = VRMath.mul3(m, -1, 0, 0), normal = VRMath.mul3(m, 0, c, s);
+        float[] offset = VRMath.mul3(m, 0, -s * WRIST_ALONG + c * WRIST_ABOVE, c * WRIST_ALONG + s * WRIST_ABOVE);
         for (int k = 0; k < 3; k++) {
             wristCenter[k] = frame.gripPosition[0][k] + offset[k];
             wristRight[k] = right[k];
