@@ -30,10 +30,12 @@ jobs:
         with:
           java-version: '21'
           distribution: 'temurin'
+      # (its default package list has "tools", which the SDK repository no longer has)
       - uses: android-actions/setup-android@v3
-      - name: Android NDK, ninja, gettext
+        with:
+          packages: 'platform-tools ndk;29.0.14206865'
+      - name: ninja, gettext
         run: |
-          sdkmanager "ndk;29.0.14206865"
           sudo apt-get update -qq
           sudo apt-get install -y -qq ninja-build gettext
       # the vcpkg libraries take most of the first build, keep them even when a later step fails
