@@ -28,6 +28,9 @@ import net.minecraft.client.gui.screen.menu.AddServerScreen;
 import net.minecraft.client.gui.screen.JoinMultiplayerScreen;
 //#endif
 import net.minecraft.client.gui.screen.Screen;
+//#if <1.6.1
+import net.minecraft.client.gui.screen.TitleScreen;
+//#endif
 import net.minecraft.client.gui.screen.inventory.menu.SignEditScreen;
 //#if >=b1.3_01
 import net.minecraft.client.gui.screen.world.CreateWorldScreen;
@@ -790,6 +793,51 @@ public final class Hooks {
         VRSettings.save();
         button.message = VRSettings.walkLabel();
     }
+
+    //#if <1.6.1
+    // ---- the title screen's Quit Game ----
+
+    /** The game's own Quit Game button's id (beta 1.0 to 1.5), and QuestCraft's: none of the title screen's own */
+    static final int GAME_QUIT_BUTTON = 4, QUIT_BUTTON = 3002;
+
+    /**
+     * TitleScreen.init, last: when the title screen has no Quit Game (alpha has none; beta 1.0 to 1.5 leave it out as
+     * an applet, which beta 1.0 to 1.2 always believe they are and 1.0 to 1.5 are run as), there is no way out on a
+     * headset, which has no window to close. As the game's own: Options and Quit Game side by side where Options was.
+     */
+    @SuppressWarnings("unchecked")
+    public static void titleInit(TitleScreen screen) {
+        List buttons = screen.buttons;
+        for (Object each : buttons) if (((ButtonWidget) each).id == GAME_QUIT_BUTTON) return;
+        for (int i = 0; i < buttons.size(); i++) {
+            ButtonWidget options = (ButtonWidget) buttons.get(i);
+            if (options.id != 0) continue;
+            buttons.set(i, new ButtonWidget(0, options.x, options.y, 98, 20, options.message));
+            buttons.add(new ButtonWidget(QUIT_BUTTON, options.x + 102, options.y, 98, 20, "Quit Game"));
+            return;
+        }
+    }
+
+    /** TitleScreen.buttonClicked, first: Quit Game stops the game, as beta's does (the title screen leaves it alone). */
+    public static void titleClicked(TitleScreen screen, ButtonWidget button) {
+        if (button.id == QUIT_BUTTON && button.active) screen.minecraft.stop();
+    }
+    //#endif
+
+    //#if <b1.3_01
+    /**
+     * Minecraft.run, last: until beta 1.3 the game's loop just ends (Quit Game, a crash) and the desktop applet's stop
+     * or window close shut the game down and ended Java; a headset has neither, so it would be left with nothing to see
+     * and no way out. As beta 1.3's loop: the game shuts down (sound, display) and Java ends.
+     */
+    public static void gameEnded(Minecraft minecraft) {
+        try {
+            minecraft.shutdown();
+        } finally {
+            System.exit(0);
+        }
+    }
+    //#endif
 
     // ---- walking ----
 
