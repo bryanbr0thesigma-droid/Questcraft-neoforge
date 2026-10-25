@@ -38,4 +38,4 @@ b1.8.1 6b562463ccc2c7ff12ff350a2b04a67b3adcd37b https://launcher.mojang.com/v1/o
 1.5.1 047136381a552f34b1963c43304a1ad4dc0d2d8e https://launcher.mojang.com/v1/objects/047136381a552f34b1963c43304a1ad4dc0d2d8e/client.jar 1.5.1+build.31
 1.5.2 465378c9dc2f779ae1d6e8046ebc46fb53a57968 https://launcher.mojang.com/v1/objects/465378c9dc2f779ae1d6e8046ebc46fb53a57968/client.jar 1.5.2+build.31
 1.6.1 17e2c28fb54666df5640b2c822ea8042250ef592 https://launcher.mojang.com/v1/objects/17e2c28fb54666df5640b2c822ea8042250ef592/client.jar 1.6.1+build.31
-1.6.2 b6cb68afde1d9cf4a20cbf27fa90d0828bf440a4 https://launcher.mojang.com/v1/objects/b6cb68afde1d9cf4a20cbf27fa90d0828bf440a4/client.jar 1.6.2+build.5
+1.6.2 b6cb68afde1d9cf4a20cbf27fa90d0828bf440a4 https://launcher.mojang.com/v1/objects/b6cb68afde1d9cf4a20cbf27fa90d0828bf440a4/client.jar 1.6.2-091847+build.26

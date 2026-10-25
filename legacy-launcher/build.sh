@@ -34,6 +34,8 @@ STAMP=$( (find "$GLUE" glue/versions.txt src tools -type f | sort | xargs sha1su
 mkdir -p work/classes/vr
 while read -r VERSION SHA1 URL FEATHER; do
   case "$VERSION" in ""|"#"*) continue ;; esac
+  # no mappings for it (yet): no VR
+  [ "$FEATHER" = "-" ] && continue
   W=work/glue/$VERSION
   if [ -n "$GLUE_VERSIONS" ] && ! echo " $GLUE_VERSIONS " | grep -q " $VERSION "; then
     [ -f "$W/glue.jar" ] && cp "$W/glue.jar" "work/classes/vr/$VERSION.jar"
@@ -63,7 +65,9 @@ while read -r VERSION SHA1 URL FEATHER; do
   "$JAVA_HOME/bin/javac" --release 8 -nowarn -d "$W/classes" -cp "$W/named-open.jar:work/classes:$LWJGL" $(find "$W/glue/src" -name "*.java")
   rm -f "$W/glue-named.jar" "$W/glue.jar"
   (cd "$W/classes" && "$JAVA_HOME/bin/jar" --create --file ../glue-named.jar .)
-  "$JAVA_HOME/bin/java" -jar "$TINY_REMAPPER" "$W/glue-named.jar" "$W/glue.jar" "$W/mappings.tiny" named official "$W/named-open.jar" >> "$W/remap.log"
+  # conflicts in the game's own names (classes the glue does not use) are left alone; verify checks what the glue uses
+  "$JAVA_HOME/bin/java" -jar "$TINY_REMAPPER" "$W/glue-named.jar" "$W/glue.jar" "$W/mappings.tiny" named official "$W/named-open.jar" --ignoreConflicts >> "$W/remap.log"
+  $TOOL verify "$W/glue-named.jar" "$W/named-open.jar" "$W/glue.jar" "$W/client.jar"
   (cd "$W" && "$JAVA_HOME/bin/jar" --update --file glue.jar hooks.txt)
   cp "$W/glue.jar" "work/classes/vr/$VERSION.jar"
   echo "$STAMP" > "$W/stamp"

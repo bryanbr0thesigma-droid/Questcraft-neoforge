@@ -25,11 +25,15 @@ import java.util.zip.ZipOutputStream;
  * widen hooks.txt in.jar out.jar                  the jar with the members the glue uses made public (to compile it)
  * check hooks.txt game.jar                        every hook finds its place in the game (else the build fails)
  * pp    version versions.txt in out               the glue for one version: its #if lines worked out (below)
+ * verify glue-named.jar named.jar glue.jar game.jar   the glue in the game's names uses only what the game has, and
+ *                                                  overrides what it overrode in Feather's names (a remapping gone wrong)
  * </pre>
  * One glue serves many versions: in its sources {@code //#if >=b1.8.1}, {@code //#elif <1.3.1}, {@code //#else},
  * {@code //#endif} (in hooks.txt {@code #if ...}) keep or leave out the lines up to the next such line, comparing the
  * version built with others in the order of versions.txt; several comparisons are joined by {@code &&}. Lines left out
- * stay as empty lines, so the compiler's line numbers are the sources'.
+ * stay as empty lines, so the compiler's line numbers are the sources'. {@code #set NAME text} (kept like the lines
+ * around it) makes {@code ${NAME}} in the lines after it that text: a member whose name or descriptor differs between
+ * versions, named once.
  */
 public final class GlueTool {
     private GlueTool() {
@@ -49,8 +53,11 @@ public final class GlueTool {
             case "pp":
                 preprocess(args[1], versions(new File(args[2])), new File(args[3]), new File(args[4]));
                 break;
+            case "verify":
+                verify(new File(args[1]), new File(args[2]), new File(args[3]), new File(args[4]));
+                break;
             default:
-                throw new IllegalArgumentException("map | widen | check | pp");
+                throw new IllegalArgumentException("map | widen | check | pp | verify");
         }
     }
 
@@ -90,19 +97,37 @@ public final class GlueTool {
         StringBuilder out = new StringBuilder();
         // each open #if: whether its outside is kept, whether a branch has been kept, whether this branch is
         java.util.ArrayDeque<boolean[]> stack = new java.util.ArrayDeque<>();
+        Map<String, String> names = new HashMap<>();
         boolean keep = true;
         int number = 0;
         for (String line : text.split("\n", -1)) {
             number++;
             String t = line.trim();
             String directive = t.startsWith(prefix + "if ") ? "if" : t.startsWith(prefix + "elif ") ? "elif"
-                    : t.equals(prefix + "else") || t.startsWith(prefix + "else ") ? "else" : t.equals(prefix + "endif") || t.startsWith(prefix + "endif ") ? "endif" : null;
+                    : t.equals(prefix + "else") || t.startsWith(prefix + "else ") ? "else" : t.equals(prefix + "endif") || t.startsWith(prefix + "endif ") ? "endif"
+                    : t.startsWith(prefix + "set ") ? "set" : null;
             if (directive == null) {
-                out.append(keep ? line : "").append('\n');
+                if (keep) {
+                    Matcher m = Pattern.compile("\\$\\{(\\w+)\\}").matcher(line);
+                    StringBuffer substituted = new StringBuffer();
+                    while (m.find()) {
+                        String value = names.get(m.group(1));
+                        if (value == null) throw new IllegalArgumentException(where + ":" + number + ": ${" + m.group(1) + "} is not set");
+                        m.appendReplacement(substituted, Matcher.quoteReplacement(value));
+                    }
+                    m.appendTail(substituted);
+                    out.append(substituted);
+                }
+                out.append('\n');
                 continue;
             }
             String condition = t.substring(prefix.length() + directive.length()).trim();
             switch (directive) {
+                case "set": {
+                    String[] w = condition.split("\\s+", 2);
+                    if (keep) names.put(w[0], w.length > 1 ? w[1] : "");
+                    break;
+                }
                 case "if": {
                     boolean taken = keep && holds(condition, version, order, where, number);
                     stack.push(new boolean[]{keep, taken});
@@ -349,6 +374,119 @@ public final class GlueTool {
             if (!seen.contains(directive.owner)) failures.add(directive.line + " (no such class)");
         }
         if (!failures.isEmpty()) throw new IllegalStateException("hooks without their place: " + failures);
+    }
+
+    // ---- verify ----
+
+    /** A jar's classes: name, superclass and interfaces, members (name + descriptor). */
+    private static final class Classes {
+        final Map<String, String[]> parents = new HashMap<>();
+        final Map<String, Set<String>> members = new HashMap<>();
+        final Map<String, java.util.List<String>> overridable = new HashMap<>();
+
+        Classes(File jar) throws IOException {
+            try (ZipFile zip = new ZipFile(jar)) {
+                Enumeration<? extends ZipEntry> entries = zip.entries();
+                while (entries.hasMoreElements()) {
+                    ZipEntry entry = entries.nextElement();
+                    if (!entry.getName().endsWith(".class")) continue;
+                    org.objectweb.asm.ClassReader reader = new org.objectweb.asm.ClassReader(bytes(zip, entry));
+                    String name = reader.getClassName();
+                    String[] interfaces = reader.getInterfaces();
+                    String[] up = new String[interfaces.length + 1];
+                    up[0] = reader.getSuperName();
+                    System.arraycopy(interfaces, 0, up, 1, interfaces.length);
+                    parents.put(name, up);
+                    Set<String> own = new LinkedHashSet<>();
+                    java.util.List<String> methods = new java.util.ArrayList<>();
+                    reader.accept(new org.objectweb.asm.ClassVisitor(org.objectweb.asm.Opcodes.ASM9) {
+                        @Override
+                        public org.objectweb.asm.FieldVisitor visitField(int access, String field, String descriptor, String signature, Object value) {
+                            own.add(field + ":" + descriptor);
+                            return null;
+                        }
+
+                        @Override
+                        public org.objectweb.asm.MethodVisitor visitMethod(int access, String method, String descriptor, String signature, String[] exceptions) {
+                            own.add(method + descriptor);
+                            boolean plain = (access & (org.objectweb.asm.Opcodes.ACC_STATIC | org.objectweb.asm.Opcodes.ACC_PRIVATE
+                                    | org.objectweb.asm.Opcodes.ACC_SYNTHETIC)) == 0 && !method.startsWith("<");
+                            if (plain) methods.add(method + descriptor);
+                            return null;
+                        }
+                    }, org.objectweb.asm.ClassReader.SKIP_CODE);
+                    members.put(name, own);
+                    overridable.put(name, methods);
+                }
+            }
+        }
+
+        /** Whether the class or one above it in the jar has the member; false when it is not the jar's at all. */
+        boolean has(String owner, String member) {
+            java.util.ArrayDeque<String> todo = new java.util.ArrayDeque<>();
+            todo.add(owner);
+            while (!todo.isEmpty()) {
+                String c = todo.poll();
+                Set<String> own = members.get(c);
+                if (own == null) continue;
+                if (own.contains(member)) return true;
+                if (member.startsWith("<init>")) return false;
+                for (String up : parents.get(c)) if (up != null) todo.add(up);
+            }
+            return false;
+        }
+
+        /** Whether the class is the jar's, or has one of the jar's above it. */
+        boolean ours(String name) {
+            return members.containsKey(name);
+        }
+    }
+
+    static void verify(File glueNamed, File named, File glue, File game) throws IOException {
+        Classes gameClasses = new Classes(game), namedClasses = new Classes(named);
+        Classes glueNamedClasses = new Classes(glueNamed), glueClasses = new Classes(glue);
+        Set<String> problems = new LinkedHashSet<>();
+        // every member of the game the glue uses is there
+        try (ZipFile zip = new ZipFile(glue)) {
+            Enumeration<? extends ZipEntry> entries = zip.entries();
+            while (entries.hasMoreElements()) {
+                ZipEntry entry = entries.nextElement();
+                if (!entry.getName().endsWith(".class")) continue;
+                String where = entry.getName();
+                new org.objectweb.asm.ClassReader(bytes(zip, entry)).accept(new org.objectweb.asm.ClassVisitor(org.objectweb.asm.Opcodes.ASM9) {
+                    @Override
+                    public org.objectweb.asm.MethodVisitor visitMethod(int access, String name, String descriptor, String signature, String[] exceptions) {
+                        return new org.objectweb.asm.MethodVisitor(org.objectweb.asm.Opcodes.ASM9) {
+                            @Override
+                            public void visitMethodInsn(int opcode, String owner, String method, String desc, boolean isInterface) {
+                                look(owner, method + desc);
+                            }
+
+                            @Override
+                            public void visitFieldInsn(int opcode, String owner, String field, String desc) {
+                                look(owner, field + ":" + desc);
+                            }
+
+                            private void look(String owner, String member) {
+                                if (gameClasses.ours(owner) && !gameClasses.has(owner, member)) problems.add(where + ": " + owner + "." + member);
+                            }
+                        };
+                    }
+                }, 0);
+            }
+        }
+        // a glue class on a game class (a screen) overrides in the game's names what it overrode in Feather's
+        for (String name : glueNamedClasses.members.keySet()) {
+            String namedParent = glueNamedClasses.parents.get(name)[0];
+            if (namedParent == null || !namedClasses.ours(namedParent)) continue;
+            int before = 0, after = 0;
+            for (String method : glueNamedClasses.overridable.get(name)) if (namedClasses.has(namedParent, method)) before++;
+            String parent = glueClasses.parents.get(name)[0];
+            for (String method : glueClasses.overridable.get(name)) if (gameClasses.has(parent, method)) after++;
+            if (before != after) problems.add(name + " overrides " + before + " of the game's methods in Feather's names, " + after + " in the game's");
+        }
+        if (!problems.isEmpty()) throw new IllegalStateException("the glue in the game's names does not fit the game: " + problems);
+        System.out.println("the glue uses only what " + game.getName() + " has");
     }
 
     private static byte[] bytes(ZipFile zip, ZipEntry entry) throws IOException {

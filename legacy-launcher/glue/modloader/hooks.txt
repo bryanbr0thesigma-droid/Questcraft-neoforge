@@ -11,13 +11,27 @@ public net/minecraft/client/render/GameRenderer renderItemInHand (FI)V
 public net/minecraft/client/render/entity/PlayerRenderer player
 
 # today's skins on the old model (questcraft/legacy/vr/SkinModel): the player being drawn, and its model's parts
-head   net/minecraft/client/render/entity/PlayerRenderer render (Lnet/minecraft/entity/mob/player/PlayerEntity;DDDFF)V playerStart
-return net/minecraft/client/render/entity/PlayerRenderer render (Lnet/minecraft/entity/mob/player/PlayerEntity;DDDFF)V playerEnd
-head   net/minecraft/client/render/model/entity/HumanoidModel:net/minecraft/client/render/model/Model render (FFFFFF)V modelStart
-return net/minecraft/client/render/model/entity/HumanoidModel:net/minecraft/client/render/model/Model render (FFFFFF)V modelEnd
+#if >=1.6.1
+#set PLAYER_RENDER render (Lnet/minecraft/client/entity/living/player/ClientPlayerEntity;DDDFF)V
+#else
+#set PLAYER_RENDER render (Lnet/minecraft/entity/mob/player/PlayerEntity;DDDFF)V
+#endif
+head   net/minecraft/client/render/entity/PlayerRenderer ${PLAYER_RENDER} playerStart
+return net/minecraft/client/render/entity/PlayerRenderer ${PLAYER_RENDER} playerEnd
+#if >=b1.8.1
+#set MODEL_RENDER render (Lnet/minecraft/entity/Entity;FFFFFF)V
+#else
+#set MODEL_RENDER render (FFFFFF)V
+#endif
+head   net/minecraft/client/render/model/entity/HumanoidModel:net/minecraft/client/render/model/Model ${MODEL_RENDER} modelStart
+return net/minecraft/client/render/model/entity/HumanoidModel:net/minecraft/client/render/model/Model ${MODEL_RENDER} modelEnd
 
 # the radial menu's pick block and quick torch (the middle and the right click)
+#if >=b1.8.1
+public net/minecraft/client/Minecraft doPick ()V
+#else
 public net/minecraft/client/Minecraft handlePickBlock ()V
+#endif
 public net/minecraft/client/Minecraft handleMouseClick (I)V
 
 # a frame: is a menu open; the HUD and the menus are drawn onto the panels in VR
@@ -26,25 +40,39 @@ call   net/minecraft/client/render/GameRenderer render (F)V net/minecraft/client
 call   net/minecraft/client/render/GameRenderer render (F)V net/minecraft/client/gui/screen/Screen render (IIF)V renderScreen
 
 # the world, once an eye: the game's two anaglyph passes become the eyes
-head   net/minecraft/client/render/GameRenderer renderWorld (FJ)V renderWorldStart
-return net/minecraft/client/render/GameRenderer renderWorld (FJ)V renderWorldEnd
-get    net/minecraft/client/render/GameRenderer renderWorld (FJ)V net/minecraft/client/options/GameOptions anaglyph Z stereo
-call   net/minecraft/client/render/GameRenderer renderWorld (FJ)V org/lwjgl/opengl/GL11 glColorMask (ZZZZ)V colorMask
-call   net/minecraft/client/render/GameRenderer renderWorld (FJ)V org/lwjgl/opengl/GL11 glViewport (IIII)V viewport
-call   net/minecraft/client/render/GameRenderer renderWorld (FJ)V org/lwjgl/opengl/GL11 glClear (I)V clear
-call   net/minecraft/client/render/GameRenderer renderWorld (FJ)V net/minecraft/client/render/GameRenderer pick (F)V pick
+#if >=b1.6.4
+#set RENDER_WORLD renderWorld (FJ)V
+#else
+#set RENDER_WORLD renderWorld (F)V
+#endif
+head   net/minecraft/client/render/GameRenderer ${RENDER_WORLD} renderWorldStart
+return net/minecraft/client/render/GameRenderer ${RENDER_WORLD} renderWorldEnd
+get    net/minecraft/client/render/GameRenderer ${RENDER_WORLD} net/minecraft/client/options/GameOptions anaglyph Z stereo
+call   net/minecraft/client/render/GameRenderer ${RENDER_WORLD} org/lwjgl/opengl/GL11 glColorMask (ZZZZ)V colorMask
+call   net/minecraft/client/render/GameRenderer ${RENDER_WORLD} org/lwjgl/opengl/GL11 glViewport (IIII)V viewport
+call   net/minecraft/client/render/GameRenderer ${RENDER_WORLD} org/lwjgl/opengl/GL11 glClear (I)V clear
+call   net/minecraft/client/render/GameRenderer ${RENDER_WORLD} net/minecraft/client/render/GameRenderer pick (F)V pick
 # the game aims again every tick: there too, with the controller
 call   net/minecraft/client/Minecraft tick ()V net/minecraft/client/render/GameRenderer pick (F)V pick
-call   net/minecraft/client/render/GameRenderer renderWorld (FJ)V net/minecraft/client/render/GameRenderer setupCamera (FI)V setupCamera
-call   net/minecraft/client/render/GameRenderer renderWorld (FJ)V net/minecraft/client/render/GameRenderer renderItemInHand (FI)V renderItemInHand
+call   net/minecraft/client/render/GameRenderer ${RENDER_WORLD} net/minecraft/client/render/GameRenderer setupCamera (FI)V setupCamera
+call   net/minecraft/client/render/GameRenderer ${RENDER_WORLD} net/minecraft/client/render/GameRenderer renderItemInHand (FI)V renderItemInHand
 
 # no crosshair on the HUD: the right controller aims
 call   net/minecraft/client/gui/GameGui render (FZII)V net/minecraft/client/gui/GameGui:net/minecraft/client/gui/GuiElement drawTexture (IIIIII)V drawGuiTexture
 
-# VR's options in the game's Options screen
+# VR's options in the game's Options screen (and the radial menu's buttons)
 public net/minecraft/client/gui/screen/Screen buttons
+#if <b1.0_01
+public net/minecraft/client/gui/widget/ButtonWidget <init> (IIIIILjava/lang/String;)V
+#endif
 return net/minecraft/client/gui/screen/options/OptionsScreen:net/minecraft/client/gui/screen/Screen init ()V optionsInit
 head   net/minecraft/client/gui/screen/options/OptionsScreen:net/minecraft/client/gui/screen/Screen buttonClicked (Lnet/minecraft/client/gui/widget/ButtonWidget;)V optionsClicked
 
 # walking with the left stick
+#if >=1.6.1
+return net/minecraft/client/entity/living/player/KeyboardInput:net/minecraft/client/entity/living/player/Input tick ()V input
+#elif >=1.2.5
+return net/minecraft/client/entity/mob/player/KeyboardInput:net/minecraft/client/entity/mob/player/Input tick ()V input
+#else
 return net/minecraft/client/entity/mob/player/KeyboardInput:net/minecraft/client/entity/mob/player/Input tick (Lnet/minecraft/entity/mob/player/PlayerEntity;)V input
+#endif

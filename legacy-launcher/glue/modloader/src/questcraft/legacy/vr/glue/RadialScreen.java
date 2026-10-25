@@ -23,7 +23,7 @@ public final class RadialScreen extends Screen {
     @Override
     public void init() {
         buttons.clear();
-        boolean multiplayer = minecraft.isMultiplayer();
+        boolean multiplayer = Hooks.chat(minecraft);
         int cx = width / 2, cy = height / 2;
         for (int i = 0; i < 8; i++) {
             // Vivecraft's places, clockwise from the top
@@ -50,7 +50,7 @@ public final class RadialScreen extends Screen {
             case WALK:
                 return VRSettings.walkLabel();
             case HUD:
-                return minecraft.options.hideGui ? "Show HUD" : "Hide HUD";
+                return Hooks.hudHidden(minecraft) ? "Show HUD" : "Hide HUD";
             case ROTATE_LEFT:
                 return "Rotate Left";
             default:
@@ -89,7 +89,11 @@ public final class RadialScreen extends Screen {
     }
 
     @Override
+    //#if >=1.3.1
+    public boolean shouldPauseGame() {
+    //#else
     public boolean isPauseScreen() {
+    //#endif
         return false;
     }
 }
