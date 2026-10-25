@@ -5,6 +5,9 @@ import java.util.List;
 
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
+//#if >=b1.8.1 && <1.0
+import org.lwjgl.opengl.GL13;
+//#endif
 
 //#if <b1.8.1
 import net.minecraft.client.CreativeInteractionManager;
@@ -35,6 +38,9 @@ import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.client.options.GameOptions;
 import net.minecraft.client.render.GameRenderer;
 import net.minecraft.client.render.Window;
+//#if >=1.0
+import net.minecraft.client.render.platform.GLX;
+//#endif
 import net.minecraft.client.render.entity.EntityRenderDispatcher;
 import net.minecraft.client.render.entity.PlayerRenderer;
 import net.minecraft.client.render.model.ModelPart;
@@ -413,7 +419,14 @@ public final class Hooks {
     /** The player's arms at the controllers (skin and model of their own), the selected item in the right hand. */
     private static void hands(GameRenderer renderer, Minecraft minecraft, PlayerEntity player, float tickDelta) {
         VRFrame frame = VR.frame();
-        float headLight = minecraft.world.getBrightness(MathHelper.floor(player.x), MathHelper.floor(player.y), MathHelper.floor(player.z));
+        int px = MathHelper.floor(player.x), py = MathHelper.floor(player.y), pz = MathHelper.floor(player.z);
+        //#if >=b1.8.1
+        // lit by the lightmap, as the game's hand is: the item drawing leaves the light to it (blocks at full brightness)
+        int headLight = minecraft.world.getLightColor(px, py, pz, 0);
+        renderer.enableLightMap(tickDelta);
+        //#else
+        float headLight = minecraft.world.getBrightness(px, py, pz);
+        //#endif
         float swing = player.getAttackAnimationProgress(tickDelta);
         ItemStack stack = player.inventory.getSelectedItem();
         // the lights in the world, as the game's world has them (the eye's view is loaded)
@@ -431,8 +444,20 @@ public final class Hooks {
             if (!frame.handTracked[hand]) continue;
             float[] at = VR.toWorld(frame.gripPosition[hand]);
             // lit as the place the hand is (no darker than the head's: a hand in a wall)
-            float light = Math.max(headLight, minecraft.world.getBrightness(MathHelper.floor(cx + at[0]), MathHelper.floor(cy + at[1]),
-                    MathHelper.floor(cz + at[2])));
+            int hx = MathHelper.floor(cx + at[0]), hy = MathHelper.floor(cy + at[1]), hz = MathHelper.floor(cz + at[2]);
+            //#if >=b1.8.1
+            int here = minecraft.world.getLightColor(hx, hy, hz, 0);
+            // the sky's and the blocks' light (4 bits each, at bits 20 and 4), the brighter of each
+            int lightColor = Math.max(headLight >> 20 & 15, here >> 20 & 15) << 20 | Math.max(headLight >> 4 & 15, here >> 4 & 15) << 4;
+            //#if >=1.0
+            GLX.multiTexCoord2f(GLX.GL_TEXTURE1, lightColor % 65536, lightColor / 65536);
+            //#else
+            GL13.glMultiTexCoord2f(GL13.GL_TEXTURE1, lightColor % 65536, lightColor / 65536);
+            //#endif
+            float light = 1;
+            //#else
+            float light = Math.max(headLight, minecraft.world.getBrightness(hx, hy, hz));
+            //#endif
             // the game's item drawing turns normal rescaling off (flat items): on again for each hand
             GL11.glEnable(32826); // GL_RESCALE_NORMAL
             float[] q = frame.gripOrientation[hand];
@@ -447,6 +472,9 @@ public final class Hooks {
         }
         GL11.glDisable(32826);
         Lighting.turnOff();
+        //#if >=b1.8.1
+        renderer.disableLightMap(tickDelta);
+        //#endif
     }
 
     /** One of the player's arms in the controller's frame: the hand at the grip, the arm running back along it. */
