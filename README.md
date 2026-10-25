@@ -279,6 +279,19 @@ Not yet: typing (chat, world names; worlds get the default name), and "jar mods"
 
 **Also fixed for 1.12.2**: Pojlib left out every library with "lwjgl" in its name, which also dropped the sound system's OpenAL plug-in (`com.paulscode:librarylwjglopenal`) that 1.12.2 and 1.6 load at start. An existing 1.12.2 instance gets its class path repaired the next time it is started.
 
+## Minecraft: Wii U Edition (Cemu, experimental)
+
+The goal is Legacy Console Edition in VR, standalone on the Quest: Minecraft: Wii U Edition in the Android port of Cemu, with OpenXR added to Cemu's Vulkan renderer and the game's camera and rendering patched the way [BetterVR](https://github.com/Crementif/BotW-BetterVR) does it for Breath of the Wild on PC (PowerPC patches through Cemu's graphic packs). Nothing of that is worth writing before the emulator is known to run the game on the headset at a usable speed, so the first step is only the emulator.
+
+**Step one: the emulator, flat.** [`cemu-builder/build.sh`](cemu-builder/build.sh) builds SSimco's Android port of Cemu ([SSimco/Cemu](https://github.com/SSimco/Cemu), branch `android-port`, MPL-2.0, pinned to a commit) into an APK, and `patches/*.patch` in that directory are applied on top (none yet; the VR changes will go there). The **Build Cemu APK** workflow (`.github/workflows/cemu.yml`) runs it: Actions tab -> *Build Cemu APK* -> *Run workflow*, then download `Cemu-android-apk` and sideload it. It opens from *Unknown Sources* as a flat window. The first run compiles the vcpkg libraries for arm64-android and is slow; they are cached for later runs. The APK is debug-signed with a new key each run (uninstall before installing another build) unless the `ANDROID_KEYSTORE_*` secrets are set.
+
+The APK has no game in it. To try it you need:
+- your own dump of Minecraft: Wii U Edition, with the last update (v688), in a format Cemu reads;
+- the Mii data files dumped from a Wii U (`FFLResHigh.dat` and the others), or the *Mii Crash Fix* graphic pack; without either the game crashes on start (Cemu wiki);
+- a Bluetooth gamepad, since the Touch controllers only point and click in a flat app.
+
+**Not run on a Quest.** The port calls itself early and experimental, and nobody has reported it on a Quest. What decides whether this goes on: does the game reach a world, the frame rate there, and Cemu's log if it crashes.
+
 ## Minecraft 26.x (not supported, and why)
 
 Minecraft 26.1 and newer (26.1, 26.2, 26.3 and the 26.4 snapshots) cannot run in QuestCraft as it is built, checked against the 26.3 game jar and version file:

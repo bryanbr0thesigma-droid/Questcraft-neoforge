@@ -1,0 +1,60 @@
+name: Build Cemu APK
+
+# Builds the Android port of Cemu (cemu-builder/), to try Minecraft: Wii U Edition on the Quest. The APK is the
+# "Cemu-android-apk" artifact of the run. Signed with the ANDROID_KEYSTORE_* secrets when they are set (see apk.yml),
+# with a throw-away debug key otherwise.
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Commit or branch of SSimco/Cemu (empty: the one pinned in cemu-builder/build.sh)'
+        default: ''
+  push:
+    paths:
+      - 'cemu-builder/**'
+      - '.github/workflows/cemu.yml'
+  pull_request:
+    paths:
+      - 'cemu-builder/**'
+      - '.github/workflows/cemu.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+      - uses: android-actions/setup-android@v3
+      - name: Android NDK, ninja, gettext
+        run: |
+          sdkmanager "ndk;29.0.14206865"
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ninja-build gettext
+      # the vcpkg libraries take most of the first build, keep them even when a later step fails
+      - uses: actions/cache/restore@v4
+        with:
+          path: cemu-builder/vcpkg-cache
+          key: cemu-vcpkg-${{ github.run_id }}
+          restore-keys: cemu-vcpkg-
+      - name: Build
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASS: ${{ secrets.ANDROID_KEYSTORE_PASS }}
+          ANDROID_KEYALIAS_NAME: ${{ secrets.ANDROID_KEYALIAS_NAME }}
+          REF: ${{ inputs.ref }}
+        run: ./cemu-builder/build.sh "$REF"
+      - uses: actions/cache/save@v4
+        if: always()
+        with:
+          path: cemu-builder/vcpkg-cache
+          key: cemu-vcpkg-${{ github.run_id }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Cemu-android-apk
+          path: cemu-builder/dist/Cemu-android.apk
