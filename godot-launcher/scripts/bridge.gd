@@ -66,7 +66,8 @@ func _mock(method: String, args: Array) -> Variant:
 				_: return ["1.21.11", "1.21.10", "1.21.8", "1.21.5", "1.21.4", "1.21.1", "1.20.6", "1.20.4", "1.20.1", "1.19.4", "1.19.2"]
 		"vrMods":
 			if str(args[0]) == "Risugami":
-				return ["VR"] if str(args[1]) == "b1.7.3" else ["Screen"]
+				# VR for every ModLoader version but b1.4 (no mappings for its VR glue)
+				return ["Screen"] if str(args[1]) == "b1.4" else ["VR"]
 			# Visor where the app has a build: not for Forge 1.20.4 here, so that the screen shows both cases
 			if (str(args[0]) == "Forge" and str(args[1]) == "1.20.4") or str(args[0]) == "Vanilla":
 				return ["Vivecraft"]

@@ -186,11 +186,16 @@ class RisugamiModLoaderTest {
     }
 
     @Test
-    void beta173IsPlayedInVrTheOthersOnAScreen() {
-        assertTrue(RisugamiModLoader.hasVR("b1.7.3"));
-        assertFalse(RisugamiModLoader.hasVR("1.5.2"));
+    void everyVersionButB14IsPlayedInVr() {
+        for (String version : new String[]{"a1.1.2_01", "a1.2.6", "b1.4_01", "b1.7.3", "b1.8.1", "1.2.5", "1.5.2", "1.6.2"}) {
+            assertTrue(RisugamiModLoader.hasVR(version), version);
+        }
+        assertEquals(38, RisugamiModLoader.VR_VERSIONS.size());
+        // no Feather mappings for b1.4: a screen
+        assertFalse(RisugamiModLoader.hasVR("b1.4"));
         assertEquals("[\"VR\"]", pojlib.LauncherApi.vrMods("Risugami", "b1.7.3"));
-        assertEquals("[\"Screen\"]", pojlib.LauncherApi.vrMods("Risugami", "a1.2.6"));
+        assertEquals("[\"VR\"]", pojlib.LauncherApi.vrMods("Risugami", "a1.2.6"));
+        assertEquals("[\"Screen\"]", pojlib.LauncherApi.vrMods("Risugami", "b1.4"));
     }
 
     /**
