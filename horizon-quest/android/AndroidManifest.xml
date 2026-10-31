@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Horizon on Meta Quest (QuestCraft): the game is a native library Android's NativeActivity
+     loads (libhorizon_quest.so, crate/), no Java. For now an ordinary app, which the Quest shows
+     on a panel; the VR version adds the OpenXR parts. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="dev.questcraft.horizon"
+    android:versionCode="1"
+    android:versionName="0.1.0">
+
+    <uses-sdk android:minSdkVersion="29" android:targetSdkVersion="32" />
+    <uses-feature android:name="android.hardware.vulkan.version" android:version="0x401000" android:required="true" />
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <application
+        android:label="Horizon"
+        android:hasCode="false"
+        android:extractNativeLibs="true">
+        <activity
+            android:name="android.app.NativeActivity"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:screenOrientation="landscape"
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|screenLayout|smallestScreenSize|density|navigation|uiMode">
+            <meta-data android:name="android.app.lib_name" android:value="horizon_quest" />
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>
