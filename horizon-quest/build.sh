@@ -78,4 +78,5 @@ if [ ! -f "$KEYSTORE" ]; then
 fi
 mkdir -p "$here/dist"
 "$BUILD_TOOLS/apksigner" sign --ks "$KEYSTORE" --ks-pass "pass:$KEYSTORE_PASS" --out "$here/dist/Horizon-quest.apk" "$out/aligned.apk"
+rm -f "$here/dist/Horizon-quest.apk.idsig"
 echo "built $here/dist/Horizon-quest.apk ($(du -h "$here/dist/Horizon-quest.apk" | cut -f1))"
