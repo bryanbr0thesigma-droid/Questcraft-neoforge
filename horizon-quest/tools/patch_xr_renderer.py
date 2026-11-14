@@ -128,13 +128,20 @@ edit(gfx, """    /// The offscreen colour target, sized like `config`.
     offscreen: Option<wgpu::Texture>,
     /// QuestCraft's headset: the eye drawn now, and the view both eyes are culled with.
     xr_eye: Option<View>,
-    xr_cull: Option<View>,""")
+    xr_cull: Option<View>,
+    /// QuestCraft's headset: the eyes' size, which the frames keep whatever the window's is
+    /// (on a Quest an immersive app's window can be none, which suspended the renderer), and
+    /// whether a frame for it was not drawn (said once).
+    xr_size: Option<[u32; 2]>,
+    xr_undrawn: bool,""")
 edit(gfx, """            spare_surface: std::sync::Mutex::new(None),
             offscreen,
             in_flight: std::collections::VecDeque::new(),""", """            spare_surface: std::sync::Mutex::new(None),
             offscreen,
             xr_eye: None,
             xr_cull: None,
+            xr_size: None,
+            xr_undrawn: false,
             in_flight: std::collections::VecDeque::new(),""")
 edit(gfx, """    pub fn views(&self, frame: &Frame) -> ViewSet {
         ViewSet::single(self.screen_view(""", """    pub fn views(&self, frame: &Frame) -> ViewSet {
@@ -149,6 +156,12 @@ edit(gfx, """    fn screen_view(&self, fov_degrees: f32, yaw: f32, pitch: f32, f
             return cull;
         }
 """)
+
+# A headset's frames keep the eyes' size whatever the window's (`resize` is the window's)
+edit(gfx, """    pub fn resize(&mut self, width: u32, height: u32) {
+        let max = self.device.limits().max_texture_dimension_2d;""", """    pub fn resize(&mut self, width: u32, height: u32) {
+        let [width, height] = self.xr_size.unwrap_or([width, height]);
+        let max = self.device.limits().max_texture_dimension_2d;""")
 
 # --- the frame: once per eye, into the headset's images
 edit(gfx, """    pub fn render(&mut self, frame: &Frame) -> Result<bool> {
@@ -185,7 +198,8 @@ edit(gfx, """    /// Whether the device's loss callback has fired. A surface rec
             return Ok(false);
         };
         let [width, height] = headset_frame.size;
-        if [self.config.width, self.config.height] != headset_frame.size {
+        self.xr_size = Some(headset_frame.size);
+        if self.suspended || [self.config.width, self.config.height] != headset_frame.size {
             self.resize(width, height);
         }
         let eyes = &headset_frame.eyes;
@@ -202,6 +216,15 @@ edit(gfx, """    /// Whether the device's loss callback has fired. A surface rec
             self.xr_eye = None;
             self.hud.vr = [1.0, 1.0, 0.0, 0.0];
             drawn &= matches!(result?, true);
+            if !drawn && !self.xr_undrawn {
+                self.xr_undrawn = true;
+                log::warn!(
+                    "XR: the renderer drew no frame for the headset (suspended {}, {}x{})",
+                    self.suspended,
+                    self.config.width,
+                    self.config.height
+                );
+            }
             let target = crate::xr::headset().and_then(|h| h.eye_texture(index));
             if let (Some(source), Some(target)) = (&self.offscreen, target) {
                 let mut encoder = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
