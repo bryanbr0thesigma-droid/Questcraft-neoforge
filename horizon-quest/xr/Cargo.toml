@@ -1,0 +1,20 @@
+[package]
+name = "horizon-xr"
+version = "0.1.0"
+edition.workspace = true
+license = "MIT"
+publish = false
+description = "QuestCraft's OpenXR core for Horizon: the headset's session, its Vulkan device shared with Horizon's wgpu, and its frames"
+
+[dependencies]
+openxr = { version = "0.22", features = ["loaded"] }
+wgpu = { version = "30.0.1", default-features = false, features = ["std", "parking_lot", "vulkan", "wgsl"] }
+ash = "0.38"
+log = "0.4"
+pollster = "0.4"
+
+[target.'cfg(target_os = "android")'.dependencies]
+ndk-context = "0.1"
+
+[lints]
+workspace = true
