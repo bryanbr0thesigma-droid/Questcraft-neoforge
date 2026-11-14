@@ -33,6 +33,20 @@ The patches:
 on the headset is new and untried there; on a desktop the same files, arguments and launcher prepare in 30 seconds.
 Built with `PROFILE=fast`.
 
-Planned: VR. One OpenXR core (a picture per eye through wgpu's Vulkan, tracking, panels for menus and the HUD) with two
-modes, Vivecraft's (LGPL-3.0, ported) and Visor's (MPL-2.0; its library AtumVR is Apache-2.0), each ported file
-keeping its licence.
+**VR** (`xr/`, the crate `horizon-xr`, MIT): QuestCraft's OpenXR core. The headset's runtime and Horizon share one
+Vulkan device: wgpu creates the instance and device with the extensions the runtime asks for (`XR_KHR_vulkan_enable`)
+on the GPU it names. Each eye has an 8-bit sRGB swapchain whose images are wgpu textures. Horizon's side is
+`patches/xr.rs` (its renderer's `xr` module) and `tools/patch_xr_renderer.py` / `tools/patch_xr_game.py`, which build.sh
+runs: with a headset installed the renderer opens its device through it, draws offscreen at the eyes' size and format,
+and each frame waits for the headset, draws once per eye (the head's turn and lean and the eye's place on top of the
+player's eyes, the lens's own angles) and copies the frame byte for byte into the eye's image; the HUD and menus are
+drawn on a panel 1.6 m ahead (the HUD shader's `vr` transform); the player looks where the head does (turning turns the
+body); the Touch controllers are a gamepad merged into the game's. The launcher passes `--vr` (the library takes it out)
+and starts it as an immersive activity.
+
+`cargo run -p horizon-xr --example probe` tries the core against any OpenXR runtime; `--example desktop` runs the game
+with it. On a desktop with Monado's simulated headset (`monado-service` on a virtual display, software Vulkan) both eyes
+show the world and the HUD panel (`vr-desktop-test.png`); not yet tried on a headset.
+
+Still to come: Vivecraft's way (hands, room scale; LGPL-3.0, ported) and Visor's (MPL-2.0; its library AtumVR is
+Apache-2.0), each ported file keeping its licence.
