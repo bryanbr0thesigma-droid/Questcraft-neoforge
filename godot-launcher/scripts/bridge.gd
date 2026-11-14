@@ -69,7 +69,7 @@ func _mock(method: String, args: Array) -> Variant:
 				# VR for every ModLoader version but b1.4 (no mappings for its VR glue)
 				return ["Screen"] if str(args[1]) == "b1.4" else ["VR"]
 			if str(args[0]) == "Horizon":
-				return ["Screen"]   # on a panel until its VR is there
+				return ["VR", "Screen"]   # QuestCraft's own VR, or a panel
 			# Visor where the app has a build: not for Forge 1.20.4 here, so that the screen shows both cases
 			if str(args[0]) == "Forge" and str(args[1]) == "1.20.4":
 				return ["Vivecraft"]

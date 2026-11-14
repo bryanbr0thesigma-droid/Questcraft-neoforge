@@ -178,6 +178,9 @@ public class InstanceHandler {
         instance.gameDir = Constants.USER_HOME + "/instances/" + instanceName.toLowerCase(Locale.ROOT).replaceAll(" ", "_");
         instance.defaultMods = useDefaultMods;
         instance.vrMod = "visor".equalsIgnoreCase(vrMod) ? "visor" : "vivecraft";
+        if (ModLoader.HORIZON == ModLoader.fromName(modLoader)) {
+            instance.vrMod = "screen".equalsIgnoreCase(vrMod) ? "screen" : "vr";
+        }
         ModLoader loader = ModLoader.fromName(modLoader);
         if (loader == null) {
             Logger.getInstance().appendToLog("Unknown mod loader: " + modLoader);

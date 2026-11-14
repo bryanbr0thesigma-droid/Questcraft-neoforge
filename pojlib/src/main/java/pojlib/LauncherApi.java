@@ -136,7 +136,7 @@ public final class LauncherApi {
     /**
      * The VR mods an instance of this loader and Minecraft version can run: Vivecraft, and Visor where QuestCraft has a
      * build of it. ModLoader's versions have no VR mod: "VR", QuestCraft's own for the versions that have it (beta
-     * 1.7.3), else "Screen", the game on a screen in VR. Horizon is on a screen for now.
+     * 1.7.3), else "Screen", the game on a screen in VR. Horizon: "VR" (QuestCraft's) or "Screen".
      */
     public static String vrMods(String loader, String minecraftVersion) {
         JsonArray array = new JsonArray();
@@ -146,7 +146,8 @@ public final class LauncherApi {
             return array.toString();
         }
         if (ml == ModLoader.HORIZON) {
-            // on a panel until its VR (Vivecraft's and Visor's ways, in Rust) is there
+            // QuestCraft's own VR for it (its OpenXR core), or the game on a panel
+            array.add(MinecraftInstances.Instance.VR);
             array.add(MinecraftInstances.Instance.SCREEN);
             return array.toString();
         }

@@ -105,13 +105,13 @@ func _initialize() -> void:
 	await process_frame
 	var horizon_versions: Array = _version_buttons(ui).map(func(b): return (b as Button).text)
 	check(horizon_versions == ["26.3"], "Horizon offers 26.3: " + str(horizon_versions))
-	check(not _label_texts(ui).any(func(t): return t.begins_with("Vivecraft")), "no Vivecraft for Horizon yet")
-	check(_label_texts(ui).any(func(t): return t.begins_with("Screen")), "Horizon runs on a screen in VR")
+	var horizon_modes: Array = ui.find_children("*", "Button", true, false).filter(func(b): return b.text in ["VR", "Screen"]).map(func(b): return b.text)
+	check(horizon_modes == ["VR", "Screen"], "Horizon offers VR or Screen: " + str(horizon_modes))
 	for b in ui.find_children("*", "Button", true, false):
 		if b.text == "Create":
 			b.pressed.emit()
 	await process_frame
-	check(bridge._mock_instances.any(func(i): return i["version"] == "26.3" and i["loader"] == "Horizon" and i["vr"] == "Screen"), "Create makes a Horizon 26.3 instance")
+	check(bridge._mock_instances.any(func(i): return i["version"] == "26.3" and i["loader"] == "Horizon" and i["vr"] == "VR"), "Create makes a Horizon 26.3 instance in VR")
 	# Risugami (ModLoader): alpha to 1.6, its many versions under Release / Beta / Alpha tabs, on a screen in VR
 	ui.show_create()
 	await process_frame

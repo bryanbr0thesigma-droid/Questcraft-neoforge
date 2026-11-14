@@ -1,0 +1,217 @@
+"""Gives Horizon's renderer a headset (horizon-client-render/src/xr.rs, from patches/xr.rs). build.sh runs
+it on the Horizon tree after patches/*.patch:
+
+    python3 -I patch_xr_renderer.py HORIZON_DIR PATCHES_DIR
+
+- the device: with a headset installed, `open_device` takes its instance and GPU, and `open_adapter`
+  opens the device through it (the features and limits Horizon asks for, the runtime's extensions on top);
+- the frame: offscreen at the eyes' size and format (sRGB-free, so a frame is copied byte for byte into
+  the headset's sRGB images), drawn once per eye from that eye's view, then handed to the headset.
+"""
+import shutil
+import sys
+from pathlib import Path
+
+horizon, patches = Path(sys.argv[1]), Path(sys.argv[2])
+render = horizon / "crates/horizon-client-render/src"
+
+
+def edit(path, old, new, count=1):
+    text = path.read_text()
+    found = text.count(old)
+    if found != count:
+        raise SystemExit(f"{path}: expected {count} of {old[:80]!r}, found {found}")
+    path.write_text(text.replace(old, new))
+
+
+shutil.copy(patches / "xr.rs", render / "xr.rs")
+edit(render / "lib.rs", "pub mod gfx;\n", "pub mod gfx;\n/// QuestCraft: a headset to draw for (horizon-quest).\npub mod xr;\n")
+
+gfx = render / "gfx.rs"
+edit(gfx, "const NEAR_PLANE: f32 = 0.05;", "pub(crate) const NEAR_PLANE: f32 = 0.05;")
+
+# --- the device: through the headset
+edit(gfx, """async fn open_device(
+    window: &Arc<Window>,
+    offscreen: bool,
+    api: GraphicsApi,
+    layers: u32,
+) -> Result<Opened> {
+""", """async fn open_device(
+    window: &Arc<Window>,
+    offscreen: bool,
+    api: GraphicsApi,
+    layers: u32,
+) -> Result<Opened> {
+    if crate::xr::active() {
+        return open_headset_device(window, layers).await;
+    }
+""")
+edit(gfx, """/// The tries `open_device` makes, in turn:""", """/// The headset's device (QuestCraft, `xr`): its runtime's instance and GPU, the device opened
+/// through it as `open_adapter` opens any. Drawn offscreen: the headset shows the frames.
+async fn open_headset_device(window: &Arc<Window>, layers: u32) -> Result<Opened> {
+    let (instance, adapter) = {
+        let mut headset = crate::xr::headset().ok_or("no headset")?;
+        let instance = headset.instance(wgpu::InstanceFlags::from_build_config().with_env())?;
+        let adapter = headset.adapter(&instance)?;
+        (instance, adapter)
+    };
+    let adapted = match open_adapter("Vulkan (headset)", window, None, &adapter, layers)
+        .await
+    {
+        Ok(adapted) => adapted,
+        Err(AdapterFailure::Failed(e) | AdapterFailure::CannotPresent(e)) => return Err(e.into()),
+    };
+    Ok(Opened {
+        instance,
+        surface: None,
+        adapter,
+        device: adapted.device,
+        queue: adapted.queue,
+        device_lost: adapted.device_lost,
+        configured: None,
+    })
+}
+/// The tries `open_device` makes, in turn:""")
+
+setup = render / "gfx/surface_setup.rs"
+edit(setup, """    #[cfg(not(target_os = "macos"))]
+    let opened = match info.backend {
+        wgpu::Backend::Vulkan => horizon_hdr::open_vulkan_device(adapter, &desc),
+        _ => None,
+    };""", """    // A headset's device (QuestCraft): opened through its runtime, which adds its extensions.
+    if let Some(mut headset) = crate::xr::headset() {
+        let (device, queue) = headset
+            .device(adapter, &desc)
+            .map_err(|e| AdapterFailure::Failed(format!("{name} device for the headset: {e}")))?;
+        drop(headset);
+        let device_lost = Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let lost = device_lost.clone();
+        device.set_device_lost_callback(move |reason, message| {
+            if reason != wgpu::DeviceLostReason::Destroyed {
+                log::warn!("Horizon renderer: the graphics device was lost ({reason:?}: {message})");
+                lost.store(true, std::sync::atomic::Ordering::Relaxed);
+            }
+        });
+        return Ok(Adapted {
+            device,
+            queue,
+            device_lost,
+            configured: None,
+        });
+    }
+    #[cfg(not(target_os = "macos"))]
+    let opened = match info.backend {
+        wgpu::Backend::Vulkan => horizon_hdr::open_vulkan_device(adapter, &desc),
+        _ => None,
+    };""")
+
+# --- the renderer: offscreen at the eyes' format, the eyes' views
+edit(gfx, """        display: output::DisplayReading,
+    ) -> Result<Self> {
+        let Opened {""", """        display: output::DisplayReading,
+    ) -> Result<Self> {
+        // A headset shows the frames: none on the window.
+        let offscreen = offscreen || crate::xr::active();
+        let Opened {""")
+edit(gfx, """        } else {
+            let format = wgpu::TextureFormat::Bgra8Unorm;
+            let config = wgpu::SurfaceConfiguration {""", """        } else {
+            // A headset's eyes: their format without sRGB, so a frame copies into them byte for
+            // byte (the frame holds sRGB-encoded colour, as a window's does).
+            let format = crate::xr::headset()
+                .and_then(|h| h.format())
+                .map_or(wgpu::TextureFormat::Bgra8Unorm, |f| f.remove_srgb_suffix());
+            let config = wgpu::SurfaceConfiguration {""")
+edit(gfx, """    /// The offscreen colour target, sized like `config`.
+    offscreen: Option<wgpu::Texture>,""", """    /// The offscreen colour target, sized like `config`.
+    offscreen: Option<wgpu::Texture>,
+    /// QuestCraft's headset: the eye drawn now, and the view both eyes are culled with.
+    xr_eye: Option<View>,
+    xr_cull: Option<View>,""")
+edit(gfx, """            spare_surface: std::sync::Mutex::new(None),
+            offscreen,
+            in_flight: std::collections::VecDeque::new(),""", """            spare_surface: std::sync::Mutex::new(None),
+            offscreen,
+            xr_eye: None,
+            xr_cull: None,
+            in_flight: std::collections::VecDeque::new(),""")
+edit(gfx, """    pub fn views(&self, frame: &Frame) -> ViewSet {
+        ViewSet::single(self.screen_view(""", """    pub fn views(&self, frame: &Frame) -> ViewSet {
+        if let Some(eye) = self.xr_eye {
+            return ViewSet::single(eye);
+        }
+        ViewSet::single(self.screen_view(""")
+edit(gfx, """    fn screen_view(&self, fov_degrees: f32, yaw: f32, pitch: f32, far: f32) -> View {
+""", """    fn screen_view(&self, fov_degrees: f32, yaw: f32, pitch: f32, far: f32) -> View {
+        // A headset's frames: what is built before them is culled with both eyes' view.
+        if let Some(cull) = self.xr_cull {
+            return cull;
+        }
+""")
+
+# --- the frame: once per eye, into the headset's images
+edit(gfx, """    pub fn render(&mut self, frame: &Frame) -> Result<bool> {
+        // A lost device cannot accept uploads either. Leave recovery to the
+        // owner instead of submitting atlas patches to the invalid device.
+        if self.device_lost() {
+            return Err("the graphics device was lost".into());
+        }""", """    pub fn render(&mut self, frame: &Frame) -> Result<bool> {
+        // A lost device cannot accept uploads either. Leave recovery to the
+        // owner instead of submitting atlas patches to the invalid device.
+        if self.device_lost() {
+            return Err("the graphics device was lost".into());
+        }
+        if crate::xr::active() {
+            return self.render_headset(frame);
+        }""")
+edit(gfx, """    /// Whether the device's loss callback has fired. A surface reconfigure""", """    /// A frame for the headset (QuestCraft): waits for it, then draws `frame` once per eye from
+    /// that eye's view at the eyes' size and copies it into the eye's image. Nothing is drawn
+    /// while the headset shows none.
+    fn render_headset(&mut self, frame: &Frame) -> Result<bool> {
+        let begun = crate::xr::headset().ok_or("no headset")?.begin_frame()?;
+        let Some(headset_frame) = begun else {
+            if let Some(copies) = self.take_section_copies() {
+                self.queue.submit([copies]);
+            }
+            // hidden: no frames are wanted for now
+            std::thread::sleep(std::time::Duration::from_millis(5));
+            return Ok(false);
+        };
+        let [width, height] = headset_frame.size;
+        if [self.config.width, self.config.height] != headset_frame.size {
+            self.resize(width, height);
+        }
+        let eyes = &headset_frame.eyes;
+        // the game looks where the head does (it reads `xr::head`); the world turns with the body
+        crate::xr::set_head(&eyes[0]);
+        let body = crate::xr::body_yaw();
+        self.xr_cull = Some(crate::xr::cull_view(eyes, body, headset_frame.size, frame.depth_far));
+        let mut drawn = true;
+        for (index, eye) in eyes.iter().enumerate() {
+            self.xr_eye = Some(crate::xr::eye_view(eye, body, headset_frame.size, frame.depth_far));
+            let result = self.draw_frame(frame, None, self.output);
+            self.xr_eye = None;
+            drawn &= matches!(result?, true);
+            let target = crate::xr::headset().and_then(|h| h.eye_texture(index));
+            if let (Some(source), Some(target)) = (&self.offscreen, target) {
+                let mut encoder = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                    label: Some("Horizon headset eye"),
+                });
+                encoder.copy_texture_to_texture(
+                    source.as_image_copy(),
+                    target.as_image_copy(),
+                    wgpu::Extent3d {
+                        width,
+                        height,
+                        depth_or_array_layers: 1,
+                    },
+                );
+                self.queue.submit([encoder.finish()]);
+            }
+        }
+        crate::xr::headset().ok_or("no headset")?.end_frame()?;
+        Ok(drawn)
+    }
+    /// Whether the device's loss callback has fired. A surface reconfigure""")
+print("patched", render)

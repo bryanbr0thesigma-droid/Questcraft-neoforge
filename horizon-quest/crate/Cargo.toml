@@ -20,6 +20,10 @@ audio = ["horizon-client/audio"]
 # Not its controllers (gilrs, the DualSense's HID): the Quest's come through OpenXR.
 horizon-client = { path = "../horizon-client", default-features = false, features = ["horizon-extras"] }
 horizon-threads = { path = "../horizon-threads" }
+# the headset: QuestCraft's OpenXR core, installed as the renderer's (horizon_client_render::xr)
+horizon-xr = { path = "../horizon-xr" }
+horizon-client-render = { path = "../horizon-client-render", default-features = false }
+log = "0.4"
 
 [target.'cfg(target_os = "android")'.dependencies]
 winit = { version = "0.30.13", features = ["android-native-activity"] }

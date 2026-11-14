@@ -687,16 +687,16 @@ func show_create() -> void:
 		var options = Bridge.api("vrMods", [state["loader"], state["version"]])
 		if typeof(options) != TYPE_ARRAY or options.size() < 2:
 			state["vr"] = str(options[0]) if typeof(options) == TYPE_ARRAY and options.size() == 1 else "Vivecraft"
-			if state["vr"] == "Screen" and state["loader"] == "Horizon":
-				vr_row.add_child(_label("Screen   (Horizon's VR is not there yet: the game is on a screen in VR)", 22, TEXT_DIM))
-			elif state["vr"] == "Screen":
+			if state["vr"] == "Screen":
 				vr_row.add_child(_label("Screen   (no VR mod exists for %s: the game is on a screen in VR)" % state["version"], 22, TEXT_DIM))
 			elif state["vr"] == "VR":
 				vr_row.add_child(_label("VR   (QuestCraft's own for %s: no VR mod exists for it)" % state["version"], 22, TEXT_DIM))
 			else:
 				vr_row.add_child(_label("Vivecraft   (no Visor build for %s %s)" % [state["loader"], state["version"]], 22, TEXT_DIM))
 			return
-		var picked: String = state["vr"] if options.has(state["vr"]) else "Vivecraft"
+		# the one picked before if it is offered, else the first (Vivecraft, or Horizon's VR)
+		var picked: String = state["vr"] if options.has(state["vr"]) else str(options[0])
+		state["vr"] = picked
 		vr_row.add_child(_choice_grid(options, picked, func(v: String): state["vr"] = v, options.size(), Vector2(170, 50)))
 
 	var rebuild_versions := func(loader: String):

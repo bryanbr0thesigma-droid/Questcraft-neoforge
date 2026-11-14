@@ -12,6 +12,12 @@ wgpu = { version = "30.0.1", default-features = false, features = ["std", "parki
 ash = "0.38"
 log = "0.4"
 pollster = "0.4"
+# the renderer's headset interface (horizon_client_render::xr), which the core implements
+horizon-client-render = { path = "../horizon-client-render", default-features = false }
+
+[dev-dependencies]
+# examples/desktop.rs: the game itself, drawing for the headset
+horizon-client = { path = "../horizon-client", default-features = false, features = ["horizon-extras"] }
 
 [target.'cfg(target_os = "android")'.dependencies]
 ndk-context = "0.1"

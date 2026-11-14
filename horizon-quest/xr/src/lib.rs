@@ -324,7 +324,8 @@ impl Xr {
                 .create_swapchain(&xr::SwapchainCreateInfo {
                     create_flags: xr::SwapchainCreateFlags::EMPTY,
                     usage_flags: xr::SwapchainUsageFlags::COLOR_ATTACHMENT
-                        | xr::SwapchainUsageFlags::SAMPLED,
+                        | xr::SwapchainUsageFlags::SAMPLED
+                        | xr::SwapchainUsageFlags::TRANSFER_DST,
                     format: vk_format.as_raw() as u32,
                     sample_count: 1,
                     width: size[0],
@@ -526,7 +527,9 @@ fn wrap_image(
                     sample_count: 1,
                     dimension: wgpu::TextureDimension::D2,
                     format,
-                    usage: wgpu::TextureUses::COLOR_TARGET | wgpu::TextureUses::RESOURCE,
+                    usage: wgpu::TextureUses::COLOR_TARGET
+                        | wgpu::TextureUses::RESOURCE
+                        | wgpu::TextureUses::COPY_DST,
                     memory_flags: wgpu::hal::MemoryFlags::empty(),
                     view_formats: Vec::new(),
                 },
@@ -546,11 +549,74 @@ fn wrap_image(
                 sample_count: 1,
                 dimension: wgpu::TextureDimension::D2,
                 format,
-                usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
+                usage: wgpu::TextureUsages::RENDER_ATTACHMENT
+                    | wgpu::TextureUsages::TEXTURE_BINDING
+                    | wgpu::TextureUsages::COPY_DST,
                 view_formats: &[],
             },
             // what an acquired swapchain image holds is not kept: each frame draws all of it
             wgpu::TextureUses::UNINITIALIZED,
         )
     })
+}
+
+/// The core as Horizon's renderer takes a headset (`horizon_client_render::xr`): the session is
+/// made with the device, its eyes at the runtime's recommended size times `HORIZON_XR_SCALE`
+/// (default 1).
+impl horizon_client_render::xr::Headset for Xr {
+    fn instance(&mut self, flags: wgpu::InstanceFlags) -> Result<wgpu::Instance> {
+        self.wgpu_instance(flags)
+    }
+
+    fn adapter(&mut self, instance: &wgpu::Instance) -> Result<wgpu::Adapter> {
+        Xr::adapter(self, instance)
+    }
+
+    fn device(
+        &mut self,
+        adapter: &wgpu::Adapter,
+        desc: &wgpu::DeviceDescriptor<'_>,
+    ) -> Result<(wgpu::Device, wgpu::Queue)> {
+        let (device, queue) = Xr::device(self, adapter, desc)?;
+        let scale = std::env::var("HORIZON_XR_SCALE")
+            .ok()
+            .and_then(|s| s.parse::<f32>().ok())
+            .filter(|s| *s > 0.1 && *s <= 2.0)
+            .unwrap_or(1.0);
+        self.create_session(&device, scale)?;
+        Ok((device, queue))
+    }
+
+    fn format(&self) -> Option<wgpu::TextureFormat> {
+        Xr::format(self)
+    }
+
+    fn begin_frame(&mut self) -> Result<Option<horizon_client_render::xr::Frame>> {
+        use horizon_client_render::xr as h;
+        Ok(Xr::begin_frame(self)?.map(|frame| h::Frame {
+            eyes: frame.eyes.map(|eye| h::Eye {
+                position: eye.position,
+                orientation: eye.orientation,
+                fov: h::Fov {
+                    left: eye.fov.left,
+                    right: eye.fov.right,
+                    up: eye.fov.up,
+                    down: eye.fov.down,
+                },
+            }),
+            size: frame.size,
+        }))
+    }
+
+    fn eye_texture(&self, eye: usize) -> Option<wgpu::Texture> {
+        Xr::eye_texture(self, eye).cloned()
+    }
+
+    fn end_frame(&mut self) -> Result<()> {
+        Xr::end_frame(self)
+    }
+
+    fn exiting(&self) -> bool {
+        self.status == Status::Exit
+    }
 }

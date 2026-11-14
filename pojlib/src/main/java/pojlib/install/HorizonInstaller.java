@@ -339,6 +339,8 @@ public final class HorizonInstaller {
             args.add("--name");
             args.add(account.username);
         }
+        // QuestCraft's own: the library starts its OpenXR core, and leaves the flag out of Horizon's
+        if (instance.horizonInVr()) args.add("--vr");
         return args.toArray(new String[0]);
     }
 }

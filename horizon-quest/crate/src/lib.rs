@@ -26,7 +26,16 @@ fn android_main(app: AndroidApp) {
         .and_then(|files| std::fs::read_to_string(files.join(LAUNCH_ARGS)).ok())
         .map(|text| text.lines().map(str::to_owned).filter(|a| !a.is_empty()).collect())
         .unwrap_or_else(|| standalone_args(&app));
+    let (args, vr) = without_flag(args, "--vr");
     let _ = horizon_client::game::ANDROID.set((app, args));
+    // The headset (QuestCraft's OpenXR core), which the renderer then draws for; started as the
+    // renderer starts. Without one the game is on the window (a panel on the Quest).
+    if vr {
+        horizon_client_render::xr::install_with(|| {
+            horizon_xr::Xr::start("Horizon")
+                .map(|xr| Box::new(xr) as Box<dyn horizon_client_render::xr::Headset>)
+        });
+    }
     // Logging, the crash handler and the game, as the desktop executable starts them
     horizon_client::entry::main();
 }
@@ -34,6 +43,14 @@ fn android_main(app: AndroidApp) {
 /// Started on its own (Horizon-quest.apk): the app's folder on shared storage
 /// (Android/data/<package>/files), where the resources and the game folder can be reached over
 /// USB; the internal one when there is none.
+/// `args` without `flag` (one Horizon does not take), and whether it was there.
+fn without_flag(mut args: Vec<String>, flag: &str) -> (Vec<String>, bool) {
+    let before = args.len();
+    args.retain(|a| a != flag);
+    let found = args.len() != before;
+    (args, found)
+}
+
 fn standalone_args(app: &AndroidApp) -> Vec<String> {
     let Some(base) = app.external_data_path().or_else(|| app.internal_data_path()) else {
         return Vec::new();

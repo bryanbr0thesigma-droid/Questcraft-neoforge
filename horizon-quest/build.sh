@@ -42,12 +42,19 @@ git -C "$src" clean -q -fd -e target
 for patch in "$here"/patches/*.patch; do
   git -C "$src" apply "$patch"
 done
+# the headset: the renderer draws for it (patches/xr.rs), the player looks where the head does
+python3 -I "$here/tools/patch_xr_renderer.py" "$src" "$here/patches"
+python3 -I "$here/tools/patch_xr_game.py" "$src"
 
-# 2. crates/horizon-quest: the library that starts Horizon's game (horizon-client's entry)
+# 2. crates/horizon-quest: the library that starts Horizon's game (horizon-client's entry), and
+#    crates/horizon-xr: QuestCraft's OpenXR core, the headset it draws for
 crate="$src/crates/horizon-quest"
 mkdir -p "$crate/src"
 cp "$here/crate/Cargo.toml" "$crate/Cargo.toml"
 cp "$here/crate/src/lib.rs" "$crate/src/lib.rs"
+rm -rf "$src/crates/horizon-xr" && cp -r "$here/xr" "$src/crates/horizon-xr"
+grep -q '"crates/horizon-xr"' "$src/Cargo.toml" ||
+  sed -i 's#    "crates/horizon-quest",#    "crates/horizon-quest",\n    "crates/horizon-xr",#' "$src/Cargo.toml"
 
 # 3. For the Quest (arm64): the game's library, and horizon-prepare, which prepares its resources on the headset
 #    (a program: named lib*.so so that Android installs it with the libraries, where programs may be started)

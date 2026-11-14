@@ -42,7 +42,9 @@ public class QuestCraftPlugin extends GodotPlugin {
             JSONArray parsed = new JSONArray(horizon);
             String[] args = new String[parsed.length()];
             for (int i = 0; i < args.length; i++) args[i] = parsed.getString(i);
-            intent = new Intent(getActivity(), HorizonActivity.class);
+            // in VR (QuestCraft's OpenXR core) as an immersive app, else on a panel
+            boolean vr = java.util.Arrays.asList(args).contains("--vr");
+            intent = new Intent(getActivity(), vr ? HorizonVrActivity.class : HorizonActivity.class);
             intent.putExtra(HorizonActivity.ARGS, args);
         } else {
             intent = new Intent(getActivity(), GameActivity.class);

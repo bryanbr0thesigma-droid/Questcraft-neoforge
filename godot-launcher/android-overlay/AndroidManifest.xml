@@ -114,6 +114,23 @@
             <meta-data android:name="android.app.lib_name" android:value="horizon_quest" />
         </activity>
 
+        <!-- Horizon in VR: the same, started as an immersive app, where its OpenXR session shows -->
+        <activity
+            android:name=".HorizonVrActivity"
+            android:process=":horizon"
+            android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen"
+            android:screenOrientation="landscape"
+            android:configChanges="locale|fontScale|keyboard|keyboardHidden|mcc|mnc|navigation|orientation|screenLayout|screenSize|smallestScreenSize|touchscreen|uiMode|density"
+            android:excludeFromRecents="true"
+            android:exported="false">
+            <meta-data android:name="android.app.lib_name" android:value="horizon_quest" />
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="com.oculus.intent.category.VR" />
+                <category android:name="org.khronos.openxr.intent.category.IMMERSIVE_HMD" />
+            </intent-filter>
+        </activity>
+
     </application>
 
 </manifest>
