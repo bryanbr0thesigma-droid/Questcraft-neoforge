@@ -490,12 +490,18 @@ public final class LauncherApi {
         try {
             android.content.Context context = Constants.APP_CONTEXT;
             android.app.ActivityManager am = (android.app.ActivityManager) context.getSystemService(android.content.Context.ACTIVITY_SERVICE);
+            // the newest end of the game's process: Java games run in ":game", Horizon in ":horizon"
             for (android.app.ApplicationExitInfo info : am.getHistoricalProcessExitReasons(context.getPackageName(), 0, 10)) {
-                if (info.getProcessName() != null && info.getProcessName().endsWith(":game")) {
-                    out.append("Android says the game process ended: reason ").append(info.getReason())
+                String process = info.getProcessName();
+                if (process != null && (process.endsWith(":game") || process.endsWith(":horizon"))) {
+                    out.append("Android says the ").append(process.endsWith(":horizon") ? "Horizon" : "game")
+                            .append(" process ended: reason ").append(info.getReason())
                             .append(" (").append(exitReasonName(info.getReason())).append("), status ").append(info.getStatus());
                     if (info.getDescription() != null) out.append(", ").append(info.getDescription());
-                    out.append("\n");
+                    out.append(", ").append(new java.util.Date(info.getTimestamp())).append("\n");
+                    if (info.getReason() == android.app.ApplicationExitInfo.REASON_CRASH_NATIVE) {
+                        out.append(tombstoneText(info));
+                    }
                     break;
                 }
             }
@@ -505,6 +511,7 @@ public final class LauncherApi {
         try {
             File newestCrash = null;
             File newestLog = null;
+            File newestReport = null;   // Horizon's crash-reports/crash-<date>-client.txt
             File[] dirs = new File(Constants.USER_HOME, "instances").listFiles();
             if (dirs != null) {
                 for (File dir : dirs) {
@@ -512,6 +519,12 @@ public final class LauncherApi {
                     if (files != null) {
                         for (File f : files) {
                             if (f.getName().startsWith("hs_err_pid") && (newestCrash == null || f.lastModified() > newestCrash.lastModified())) newestCrash = f;
+                        }
+                    }
+                    File[] reports = new File(dir, "crash-reports").listFiles();
+                    if (reports != null) {
+                        for (File f : reports) {
+                            if (f.getName().startsWith("crash-") && (newestReport == null || f.lastModified() > newestReport.lastModified())) newestReport = f;
                         }
                     }
                     File log = new File(dir, "logs/latest.log");
@@ -532,6 +545,10 @@ public final class LauncherApi {
                 out.append("--- ").append(newestCrash.getName()).append(" (Java VM crash report) ---\n")
                         .append(head(newestCrash, 24));
             }
+            if (newestReport != null && newestReport.lastModified() > recent) {
+                out.append("--- ").append(newestReport.getParentFile().getParentFile().getName()).append("/crash-reports/")
+                        .append(newestReport.getName()).append(" ---\n").append(head(newestReport, 40));
+            }
             if (newestLog != null && newestLog.lastModified() > recent) {
                 out.append("--- ").append(newestLog.getParentFile().getParentFile().getName()).append("/logs/latest.log ---\n")
                         .append(tailOf(newestLog, 25));
@@ -540,6 +557,37 @@ public final class LauncherApi {
             out.append("(logs not available: ").append(t).append(")\n");
         }
         return out.toString();
+    }
+
+    /**
+     * The readable part of the record Android keeps of a native crash (a tombstone, protobuf since Android 12): the
+     * signal, the abort message and the names in the stack. Horizon, a native program, has no crash report then.
+     */
+    private static String tombstoneText(android.app.ApplicationExitInfo info) {
+        try (java.io.InputStream in = info.getTraceInputStream()) {
+            if (in == null) return "";
+            byte[] bytes = new byte[256 * 1024];
+            int n = 0, r;
+            while (n < bytes.length && (r = in.read(bytes, n, bytes.length - n)) > 0) n += r;
+            StringBuilder out = new StringBuilder("--- Android's record of the native crash (its text) ---\n");
+            StringBuilder run = new StringBuilder();
+            int kept = 0;
+            for (int i = 0; i <= n && kept < 60; i++) {
+                char c = i < n ? (char) (bytes[i] & 0xff) : 0;
+                if (c >= 0x20 && c < 0x7f) {
+                    run.append(c);
+                } else {
+                    if (run.length() >= 6) {
+                        out.append(run).append('\n');
+                        kept++;
+                    }
+                    run.setLength(0);
+                }
+            }
+            return out.toString();
+        } catch (Throwable t) {
+            return "(no record of the native crash: " + t + ")\n";
+        }
     }
 
     private static String exitReasonName(int reason) {
