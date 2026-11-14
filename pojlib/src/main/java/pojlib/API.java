@@ -247,11 +247,12 @@ public class API {
     public static boolean prelaunch(Activity activity, MinecraftInstances instances, MinecraftInstances.Instance instance) {
         gameReady = false;
         if (instance.isHorizon()) {
-            // no Java: its game files, which it prepares its resources from, and that is all
-            if (!hasConnection(activity)) return true;
+            // no Java for the game: its game files and the resources prepared from them
+            if (!hasConnection(activity)) return HorizonInstaller.resources(activity).isDirectory();
             try {
                 VersionInfo minecraft = HorizonInstaller.install(Constants.USER_HOME);
                 Installer.installAssets(minecraft, Constants.USER_HOME).get();
+                HorizonInstaller.prepare(activity, Constants.USER_HOME, LauncherApi::setTask, DownloadManager::setFraction);
                 return true;
             } catch (Throwable e) {
                 Logger.getInstance().appendToLog("Horizon's game files could not be checked: " + e);

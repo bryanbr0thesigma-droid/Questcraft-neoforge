@@ -2,28 +2,37 @@
 
 [Horizon](https://github.com/horizon-rust/horizon) (MIT) is Minecraft Java Edition 26.3's client and game logic
 rewritten in Rust, checked against the real game, with no Mojang code or files in it: it prepares its resources
-from your own copy of 26.3. This folder builds it for Meta Quest, as a native Android app, and is where its VR goes.
+from your own copy of 26.3. This folder builds it for Meta Quest, as QuestCraft's launcher runs it (the loader
+**Horizon**), and is where its VR goes.
 
-**Status: in progress.** QuestCraft's launcher offers it as the loader **Horizon**: making an instance downloads the
-26.3 files Horizon prepares its resources from, and playing runs this library in the launcher's `HorizonActivity`
-with the instance's folder and the player's name (`horizon-args.txt`, see `crate/src/lib.rs`). The same build is also
-an app of its own: `dist/Horizon-quest.apk` (package `dev.questcraft.horizon`, signed with QuestCraft's key, built
-with `PROFILE=fast`). Not yet tried on a headset. There are no prepared
-resources on the headset yet, so it opens Horizon's own "resources missing" screen: a test that the game starts and
-draws on the Quest (Vulkan through wgpu, winit's Android backend). The same code runs a world on the desktop here
-(software Vulkan, resources prepared from Minecraft 26.3 with Java 25).
+`build.sh` fetches Horizon at a pinned commit into `work/horizon`, applies `patches/`, adds `crate/` as
+`crates/horizon-quest`, and makes `dist/horizon-android.zip`, which godot-launcher/build-apk.sh puts in the
+launcher's APK:
 
-- `build.sh` fetches Horizon at a pinned commit into `work/horizon`, applies `patches/`, adds `crate/` as
-  `crates/horizon-quest` and builds `dist/arm64-v8a/libhorizon_quest.so` (not committed: the launcher's
-  build-apk.sh takes it from there, or from the APK) and `dist/Horizon-quest.apk`.
-- `patches/0001-android-entry.patch`: Horizon's game takes its arguments and event loop from the Android
-  entry point (there is no command line); Android, which has no clipboard arboard reaches, pastes what was copied
-  in the game; and keys are named as typed there (winit has no key without modifiers on Android).
-- `crate/`: `android_main`, the library Android's NativeActivity loads. Its `src/game.rs` and `src/game/` link
-  to horizon-client's, so the game is Horizon's own code; its dependencies are copied from horizon-client's.
-- `android/AndroidManifest.xml`: an ordinary app for now, which the Quest shows on a panel.
+- `arm64-v8a/libhorizon_quest.so`: the game, the library HorizonActivity (a NativeActivity) loads. `crate/` is its
+  `android_main`: it reads the arguments the launcher wrote (`horizon-args.txt`: the instance's folder, the prepared
+  resources, the player's name) and starts Horizon's own entry (horizon-client's `entry::main`).
+- `arm64-v8a/libhorizon_prepare.so`: horizon-prepare, which prepares the resources on the headset (a program, named
+  lib*.so so that Android installs it where programs may be started).
+- `arm64-v8a/libhqjava.so`: `java` for it (`javalauncher/`). The Java 25 runtime the app downloads can't start its own
+  bin/java; this loads its `lib/libjli.so` and hands it the command line, as bin/java does.
+- `root.zip`: Horizon's release files the preparer reads, as Horizon's release folder has them: research-lock.json,
+  the exporters' sources, the preparer's sources, and the exporters compiled (`exporters/`: Horizon's own classes,
+  compiled against 26.3 as Horizon's releases are; the first build needs a JDK 25 in `JAVA25_HOME` and downloads 26.3
+  from Mojang for that, `tools/fetch_minecraft.py`).
 
-Planned: the resources prepared on the headset (Horizon's exporters need Java 25; QuestCraft's Android Java is
-22; and a newer Horizon, since Mojang republished 26.3's version file after the pinned commit), then VR: one OpenXR core (a picture per eye through wgpu's Vulkan, tracking, panels for menus and the HUD)
-with two modes, Vivecraft's (LGPL-3.0, ported) and Visor's (MPL-2.0; its library AtumVR is Apache-2.0), each
-ported file keeping its licence.
+The patches:
+
+- `0001-android-entry.patch`: Horizon's game takes its arguments and event loop from the Android entry point (there is
+  no command line) and returns instead of exiting after an error (the activity then ends and the launcher comes
+  back); Android, which has no clipboard arboard reaches, pastes what was copied in the game; and keys are named as
+  typed there (winit has no key without modifiers on Android).
+- `0002-prepare-java-launcher.patch`: horizon-prepare starts Java through the program `HORIZON_JAVA` names.
+
+**Status**: on the headset Horizon starts and draws (its "resources missing" screen, before preparing existed). Preparing
+on the headset is new and untried there; on a desktop the same files, arguments and launcher prepare in 30 seconds.
+Built with `PROFILE=fast`.
+
+Planned: VR. One OpenXR core (a picture per eye through wgpu's Vulkan, tracking, panels for menus and the HUD) with two
+modes, Vivecraft's (LGPL-3.0, ported) and Visor's (MPL-2.0; its library AtumVR is Apache-2.0), each ported file
+keeping its licence.

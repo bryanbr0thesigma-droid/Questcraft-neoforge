@@ -60,6 +60,9 @@ dependencies {
     implementation("com.github.Mathias-Boulay:android_gamepad_remapper:2.0.3")
     // reads the RAR archives ModLoader for alpha and early beta comes in (RisugamiModLoader)
     implementation("com.github.junrar:junrar:8.1.2")
+    // unpacks the Java 25 runtime Horizon's preparer runs in (a .tar.xz, HorizonInstaller)
+    implementation("org.apache.commons:commons-compress:1.27.1")
+    implementation("org.tukaani:xz:1.10")
     implementation("blank:unity-classes")
 
     testImplementation("org.junit.jupiter:junit-jupiter:5.10.2")

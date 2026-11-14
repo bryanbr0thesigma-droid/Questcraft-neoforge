@@ -265,6 +265,8 @@ public class InstanceHandler {
                     // a native program, no Java: the game files it prepares its resources from, see HorizonInstaller
                     HorizonInstaller.install(gameDir);
                     instance.assetsDir = Installer.installAssets(minecraftVersionInfo, gameDir).get();
+                    // and its resources prepared from them, so that the first Play starts the game
+                    HorizonInstaller.prepare(activity, gameDir, LauncherApi::setTask, DownloadManager::setFraction);
                     instance.assetIndex = minecraftVersionInfo.assetIndex.id;
                     instance.updateMods(instances);
                     GsonUtils.objectToJsonFile(gameDir + "/instances.json", instances);

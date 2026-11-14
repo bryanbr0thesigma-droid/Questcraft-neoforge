@@ -17,6 +17,12 @@ public class DownloadManager {
         totalBytes = 0;
     }
 
+    /** For work that is not a download but reports how far it is (0 to 1), on the same progress bar. */
+    public static void setFraction(double fraction) {
+        totalBytes = 1000;
+        downloadedBytes = Math.max(0, Math.min(1000, Math.round(fraction * 1000)));
+    }
+
     public static boolean downloadsCompleted() {
         return downloadedBytes == totalBytes;
     }

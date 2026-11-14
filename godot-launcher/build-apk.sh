@@ -4,7 +4,7 @@
 # Needs: Godot 4.4.1 (headless) with its Android export templates installed, JDK 17, the Android SDK (platform 34,
 # build-tools 34.0.0, cmdline-tools) and Pojlib's AAR. Without a keystore it makes a throw-away one, which is fine for
 # sideloading. Everything it needs can be overridden:
-#   GODOT, ANDROID_HOME, JAVA_HOME, POJLIB_AAR, HORIZON_LIB, OUT, KEYSTORE, KEYSTORE_PASS
+#   GODOT, ANDROID_HOME, JAVA_HOME, POJLIB_AAR, HORIZON_ZIP, OUT, KEYSTORE, KEYSTORE_PASS
 set -euo pipefail
 
 here="$(cd "$(dirname "$0")" && pwd)"
@@ -62,14 +62,16 @@ cp -r "$here/android-overlay/res/." "$build/res/"
 cp "$here/android-overlay/questcraft.gradle" "$build/questcraft.gradle"
 mkdir -p "$build/pojlib-libs"
 cp "$AAR" "$build/pojlib-libs/Pojlib-release.aar"
-# Horizon, which Horizon instances run (HorizonActivity): horizon-quest/build.sh makes it, else it comes out of the
-# Horizon APK in the repository
-horizon="${HORIZON_LIB:-$repo/horizon-quest/dist/arm64-v8a/libhorizon_quest.so}"
-mkdir -p "$build/libs/release/arm64-v8a"
+# Horizon, which Horizon instances run (HorizonActivity): the game's library, its preparer and the `java` that starts,
+# and Horizon's release files the preparer reads (horizon/root.zip in the APK's assets, from a folder of their own:
+# Godot's export rewrites assets/), from horizon-quest/build.sh's archive
+horizon="${HORIZON_ZIP:-$repo/horizon-quest/dist/horizon-android.zip}"
 if [ -f "$horizon" ]; then
-  cp "$horizon" "$build/libs/release/arm64-v8a/"
-elif ! unzip -q -j "$repo/horizon-quest/dist/Horizon-quest.apk" lib/arm64-v8a/libhorizon_quest.so -d "$build/libs/release/arm64-v8a" 2>/dev/null; then
-  echo "warning: no Horizon library, Horizon instances will not start (build it with horizon-quest/build.sh)"
+  mkdir -p "$build/libs/release/arm64-v8a" "$build/horizon-assets/horizon"
+  unzip -q -o -j "$horizon" 'arm64-v8a/*' -d "$build/libs/release/arm64-v8a"
+  unzip -q -o -p "$horizon" root.zip > "$build/horizon-assets/horizon/root.zip"
+else
+  echo "warning: no $horizon, Horizon instances will not start (build it with horizon-quest/build.sh)"
 fi
 echo "apply from: 'questcraft.gradle'" >> "$build/build.gradle"
 # the template insists on JDK 17 exactly and on an NDK nobody has installed; any JDK 17+ and the installed NDK do

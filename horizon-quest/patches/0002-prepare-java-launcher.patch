@@ -1,0 +1,19 @@
+diff --git a/crates/horizon-prepare/src/java.rs b/crates/horizon-prepare/src/java.rs
+index f2fb087..86fed12 100644
+--- a/crates/horizon-prepare/src/java.rs
++++ b/crates/horizon-prepare/src/java.rs
+@@ -253,6 +253,14 @@ fn find_tools(major: i64, more: &[PathBuf], compiler: bool) -> Result<Jdk, Strin
+          Install it, or set JAVA_HOME to it, and try again."
+     );
+     let mut candidates = Vec::new();
++    // QuestCraft on Android: an app may run programs only from its native library folder, so a
++    // runtime's bin/java can't be started there. The launcher names the program that stands in
++    // for it (which starts JAVA_HOME's runtime).
++    if let Some(java) = std::env::var_os("HORIZON_JAVA").filter(|j| !j.is_empty()) {
++        let java = PathBuf::from(java);
++        let javac = std::env::var_os("HORIZON_JAVAC").map_or_else(|| java.clone(), PathBuf::from);
++        candidates.push((javac, java, "HORIZON_JAVA"));
++    }
+     if let Some(home) = std::env::var_os("JAVA_HOME").filter(|h| !h.is_empty()) {
+         let bin = Path::new(&home).join("bin");
+         candidates.push((

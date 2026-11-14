@@ -1,20 +1,17 @@
 //! Horizon on Meta Quest (QuestCraft): the game, started by Android's NativeActivity.
 //!
-//! Horizon's own game module (horizon-client's `game`, linked here as src/game.rs and src/game/)
-//! runs unchanged but for its arguments and event loop, which on Android come from this entry
-//! point (`game::ANDROID`, the one change horizon-client carries for it).
+//! Horizon's own game (horizon-client's entry) runs unchanged but for its arguments and event
+//! loop, which on Android come from this entry point (`horizon_client::game::ANDROID`, the change
+//! patches/ makes for it).
 #![cfg(target_os = "android")]
-mod game;
 
-use horizon_client::{crash, logging};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use winit::platform::android::activity::AndroidApp;
 
 #[global_allocator]
-static ALLOCATOR: horizon_threads::Allocator = horizon_threads::Allocator;
+static ALLOCATOR: horizon_threads::Allocator = horizon_threads::ALLOCATOR;
 
-/// The prepared resources' version (research-lock.json's): QuestCraft prepares them into
-/// `<app storage>/resources/<version>`.
+/// The prepared resources' version (research-lock.json's).
 const VERSION: &str = "26.3";
 
 /// The game's arguments from QuestCraft's launcher, one per line, in the app's internal files
@@ -24,27 +21,14 @@ const LAUNCH_ARGS: &str = "horizon-args.txt";
 
 #[unsafe(no_mangle)]
 fn android_main(app: AndroidApp) {
-    horizon_threads::configure_allocator();
     let args = app
         .internal_data_path()
         .and_then(|files| std::fs::read_to_string(files.join(LAUNCH_ARGS)).ok())
         .map(|text| text.lines().map(str::to_owned).filter(|a| !a.is_empty()).collect())
         .unwrap_or_else(|| standalone_args(&app));
-    let Some(home) = value(&args, "--home").or_else(|| value(&args, "--game-dir")) else {
-        return;
-    };
-    let _ = std::fs::create_dir_all(&home);
-    logging::set_game_home(home.clone());
-    logging::init(&home, "Render thread");
-    log::info!("Horizon {} on Meta Quest (QuestCraft)", crash::version());
-    crash::install(home.clone(), "client");
-    let _ = game::ANDROID.set((app, args));
-    if let Err(error) = game::run() {
-        log::error!("Horizon: {error}");
-        logging::flush();
-        crash::report_error(&home, "client", &*error);
-    }
-    logging::flush();
+    let _ = horizon_client::game::ANDROID.set((app, args));
+    // Logging, the crash handler and the game, as the desktop executable starts them
+    horizon_client::entry::main();
 }
 
 /// Started on its own (Horizon-quest.apk): the app's folder on shared storage
@@ -58,12 +42,9 @@ fn standalone_args(app: &AndroidApp) -> Vec<String> {
     vec![
         "--game-dir".to_owned(),
         path(&base.join("horizon")),
+        "--home".to_owned(),
+        path(&base.join("horizon")),
         "--resources".to_owned(),
         path(&base.join("resources").join(VERSION)),
     ]
-}
-
-fn value(args: &[String], name: &str) -> Option<PathBuf> {
-    let at = args.iter().position(|a| a == name)?;
-    args.get(at + 1).map(PathBuf::from)
 }

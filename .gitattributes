@@ -1,2 +1,2 @@
 dist/*.apk filter=lfs diff=lfs merge=lfs -text
-horizon-quest/dist/*.apk filter=lfs diff=lfs merge=lfs -text
+horizon-quest/dist/*.zip filter=lfs diff=lfs merge=lfs -text

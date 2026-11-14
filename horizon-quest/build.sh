@@ -1,30 +1,26 @@
 #!/usr/bin/env bash
 # Builds Horizon (https://github.com/horizon-rust/horizon, MIT: Minecraft Java Edition 26.3 rewritten in
-# Rust) for Meta Quest: dist/arm64-v8a/libhorizon_quest.so, which QuestCraft's launcher runs, and
-# dist/Horizon-quest.apk, the same on its own.
+# Rust) for Meta Quest, as QuestCraft's launcher runs it: dist/horizon-android.zip, with the game's library,
+# horizon-prepare and the `java` it starts (dist/arm64-v8a, not committed) and Horizon's release files
+# the preparer reads (root.zip). godot-launcher/build-apk.sh puts them in the launcher's APK.
 #
 # Horizon is fetched at the pinned commit into work/horizon, patches/ is applied (an Android entry
 # for its game: arguments and event loop, and no system clipboard), and crate/ becomes its
-# crates/horizon-quest: the library Android's NativeActivity loads. Its src/game.rs and src/game/
-# link to horizon-client's, so the game is Horizon's own code; its dependencies are horizon-client's,
-# copied from its Cargo.toml here so they stay in step.
+# crates/horizon-quest: the library Android's NativeActivity loads, which starts Horizon's own
+# game (horizon-client's entry).
 #
-# Needs: Rust with the aarch64-linux-android target, cargo-ndk, the Android NDK and SDK
-# (build-tools 34, platform 34). Override: ANDROID_HOME, ANDROID_NDK_HOME, WORK, PROFILE (fast or
-# release), KEYSTORE, KEYSTORE_PASS.
+# Needs: Rust with the aarch64-linux-android target, cargo-ndk, the Android NDK, and the first time a
+# JDK 25 (JAVA25_HOME) to compile Horizon's exporters. Override: ANDROID_HOME, ANDROID_NDK_HOME, WORK,
+# PROFILE (fast or release).
 set -euo pipefail
 
 here="$(cd "$(dirname "$0")" && pwd)"
 HORIZON_REPO="https://github.com/horizon-rust/horizon.git"
-HORIZON_COMMIT="2fc88ea632aa0675b421b8a81ca66dfdc38ebfa9"
+HORIZON_COMMIT="f4d8d62c31ec2b08046faded7bef1b476783f319"
 WORK="${WORK:-$here/work}"
 PROFILE="${PROFILE:-release}"
 ANDROID_HOME="${ANDROID_HOME:-/tmp/claude-0/android-sdk}"
 ANDROID_NDK_HOME="${ANDROID_NDK_HOME:-$(ls -d "$ANDROID_HOME"/ndk/* | sort -V | tail -1)}"
-BUILD_TOOLS="$ANDROID_HOME/build-tools/34.0.0"
-PLATFORM="$ANDROID_HOME/platforms/android-34/android.jar"
-KEYSTORE="${KEYSTORE:-$here/../godot-launcher/build/questcraft.keystore}"
-KEYSTORE_PASS="${KEYSTORE_PASS:-questcraft}"
 export ANDROID_HOME ANDROID_NDK_HOME
 
 src="$WORK/horizon"
@@ -44,43 +40,52 @@ for patch in "$here"/patches/*.patch; do
   git -C "$src" apply "$patch"
 done
 
-# 2. crates/horizon-quest: lib.rs, the links to horizon-client's game module, and Cargo.toml with
-#    horizon-client's dependencies
+# 2. crates/horizon-quest: the library that starts Horizon's game (horizon-client's entry)
 crate="$src/crates/horizon-quest"
 mkdir -p "$crate/src"
+cp "$here/crate/Cargo.toml" "$crate/Cargo.toml"
 cp "$here/crate/src/lib.rs" "$crate/src/lib.rs"
-ln -sfn ../../horizon-client/src/game.rs "$crate/src/game.rs"
-ln -sfn ../../horizon-client/src/game "$crate/src/game"
-python3 - "$src/crates/horizon-client/Cargo.toml" "$here/crate/Cargo.toml.in" "$crate/Cargo.toml" <<'EOF'
-import re, sys
-client, template, out = sys.argv[1:]
-text = open(client).read()
-deps = text.split('[dependencies]\n', 1)[1].split('\n[', 1)[0].strip()
-unix = re.search(r"\[target\.'cfg\(unix\)'\.dependencies\]\n(.*?)(?:\n\n|\n\[|\Z)", text, re.S).group(1).strip()
-open(out, 'w').write(open(template).read().replace('@DEPENDENCIES@', deps).replace('@UNIX_DEPENDENCIES@', unix))
-EOF
 
-# 3. The library for the Quest (arm64)
-(cd "$src" && cargo ndk -t arm64-v8a --platform 29 build --profile "$PROFILE" -p horizon-quest)
-lib="$src/target/aarch64-linux-android/$PROFILE/libhorizon_quest.so"
+# 3. For the Quest (arm64): the game's library, and horizon-prepare, which prepares its resources on the headset
+#    (a program: named lib*.so so that Android installs it with the libraries, where programs may be started)
+(cd "$src" && cargo ndk -t arm64-v8a --platform 29 build --profile "$PROFILE" -p horizon-quest -p horizon-prepare --bin horizon-prepare)
+ndkbin="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin"
+out="$here/dist/arm64-v8a"
+rm -rf "$out" && mkdir -p "$out"
+cp "$src/target/aarch64-linux-android/$PROFILE/libhorizon_quest.so" "$out/"
+cp "$src/target/aarch64-linux-android/$PROFILE/horizon-prepare" "$out/libhorizon_prepare.so"
+"$ndkbin/llvm-strip" --strip-debug "$out/libhorizon_quest.so" "$out/libhorizon_prepare.so"
+# and `java` for it: Java runtimes the app downloads can't start their own bin/java (javalauncher/)
+"$ndkbin/aarch64-linux-android29-clang" -O2 -Wall -fPIE -pie -o "$out/libhqjava.so" "$here/javalauncher/javalauncher.c" -ldl
 
-# 4. The library for QuestCraft's launcher, which runs it for Horizon instances (godot-launcher/build-apk.sh
-#    puts it in the launcher's APK), and Horizon's own APK: the manifest, the library, aligned and signed
-out="$WORK/apk"
-rm -rf "$out" && mkdir -p "$out/lib/arm64-v8a"
-"$BUILD_TOOLS/aapt2" link -o "$out/unsigned.apk" --manifest "$here/android/AndroidManifest.xml" -I "$PLATFORM"
-cp "$lib" "$out/lib/arm64-v8a/"
-"$ANDROID_NDK_HOME"/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-strip --strip-debug "$out/lib/arm64-v8a/libhorizon_quest.so"
-mkdir -p "$here/dist/arm64-v8a"
-cp "$out/lib/arm64-v8a/libhorizon_quest.so" "$here/dist/arm64-v8a/"
-(cd "$out" && zip -q -r unsigned.apk lib)
-"$BUILD_TOOLS/zipalign" -f -p 4 "$out/unsigned.apk" "$out/aligned.apk"
-if [ ! -f "$KEYSTORE" ]; then
-  KEYSTORE="$WORK/debug.keystore"
-  [ -f "$KEYSTORE" ] || keytool -genkeypair -keystore "$KEYSTORE" -alias questcraft -keyalg RSA -keysize 2048 \
-    -validity 10000 -storepass "$KEYSTORE_PASS" -keypass "$KEYSTORE_PASS" -dname "CN=QuestCraft" >/dev/null
+# 4. Horizon's release files the preparer reads, as Horizon's release folder has them (xtask package): research-lock.json,
+#    the exporters' sources and their compiled bundle (Horizon's own classes, compiled against your 26.3 like its
+#    release's are), and the preparer's sources. The bundle needs Java 25 (JAVA25_HOME) and 26.3 from Mojang, once.
+root="$WORK/root"
+exporters="$WORK/exporters-$HORIZON_COMMIT"
+if [ ! -f "$exporters/manifest.json" ]; then
+  : "${JAVA25_HOME:?set JAVA25_HOME to a JDK 25 to compile the exporters}"
+  python3 -I "$here/tools/fetch_minecraft.py" "$WORK/mc"
+  (cd "$src" && CARGO_TARGET_DIR="$WORK/target-host" cargo build --release -p horizon-prepare --bin horizon-prepare)
+  host="$WORK/target-host/release/horizon-prepare"
+  scratch="$WORK/exporters-root"
+  rm -rf "$scratch" && mkdir -p "$scratch"
+  git -C "$src" archive HEAD research-lock.json mods/horizon/src/test/java crates/horizon-prepare | tar x -C "$scratch"
+  env -u JAVA_TOOL_OPTIONS JAVA_HOME="$JAVA25_HOME" "$host" --prepare --root "$scratch" --minecraft-dir "$WORK/mc" \
+    --server-jar "$WORK/mc/server.jar" --output "$scratch/.local/resources"
+  bundle=$(env -u JAVA_TOOL_OPTIONS JAVA_HOME="$JAVA25_HOME" "$host" compile-exporters --root "$scratch" | tail -1)
+  rm -rf "$exporters" && mkdir -p "$exporters"
+  cp -R "$bundle/server" "$bundle/client" "$bundle/manifest.json" "$exporters/"
 fi
-mkdir -p "$here/dist"
-"$BUILD_TOOLS/apksigner" sign --ks "$KEYSTORE" --ks-pass "pass:$KEYSTORE_PASS" --out "$here/dist/Horizon-quest.apk" "$out/aligned.apk"
-rm -f "$here/dist/Horizon-quest.apk.idsig"
-echo "built $here/dist/Horizon-quest.apk ($(du -h "$here/dist/Horizon-quest.apk" | cut -f1))"
+rm -rf "$root" && mkdir -p "$root"
+(cd "$src" && tar c research-lock.json LICENSE mods/horizon/src/test/java crates/horizon-prepare/Cargo.toml \
+  crates/horizon-prepare/build.rs crates/horizon-prepare/src) | tar x -C "$root"
+cp -R "$exporters" "$root/exporters"
+rm -f "$here/dist/root.zip"
+(cd "$root" && zip -q -r -X "$here/dist/root.zip" .)
+
+# 5. One archive of it all, which godot-launcher/build-apk.sh puts in the launcher's APK
+rm -f "$here/dist/horizon-android.zip"
+(cd "$here/dist" && zip -q -r -X horizon-android.zip arm64-v8a root.zip)
+rm -f "$here/dist/root.zip"
+echo "built $here/dist/horizon-android.zip ($(du -h "$here/dist/horizon-android.zip" | cut -f1))"

@@ -400,7 +400,7 @@ public final class LauncherApi {
     public static String horizonArgs(String instanceName) {
         MinecraftInstances.Instance instance = find(instanceName);
         if (instance == null || !instance.isHorizon()) return "";
-        return GSON.toJson(pojlib.install.HorizonInstaller.launchArgs(instance, API.currentAcc));
+        return GSON.toJson(pojlib.install.HorizonInstaller.launchArgs(activity, instance, API.currentAcc));
     }
 
     /** Step 2: runs the game in this process. Does not return until the game ends, so it has a thread of its own. */
@@ -449,6 +449,11 @@ public final class LauncherApi {
         o.addProperty("error", error);
         o.addProperty("gameReady", API.gameReady);
         return o.toString();
+    }
+
+    /** What the progress screen says is being done, from work that runs inside a step (Horizon's preparing). */
+    static void setTask(String what) {
+        task = what;
     }
 
     /** Clears an error so the launcher is idle again. */
