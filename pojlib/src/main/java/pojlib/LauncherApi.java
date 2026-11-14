@@ -594,25 +594,48 @@ public final class LauncherApi {
     /**
      * What Android's log has of a process that ended (an app may read its own lines): for Horizon, which logs to its
      * own file, the lines of the system around it, the graphics driver's and the audio system's, and of a native crash
-     * (tags libc and DEBUG).
+     * (tags libc and DEBUG: the signal, the thread, the abort message, the stack). All of it goes to horizon-crash.txt
+     * beside the launcher's log; the screen shows the crash lines first.
      */
     private static String logcatOf(int pid) {
         try {
-            Process logcat = new ProcessBuilder("logcat", "-d", "-v", "brief", "-t", "4000").redirectErrorStream(true).start();
-            java.util.regex.Pattern ofPid = java.util.regex.Pattern.compile("\\(\\s*" + pid + "\\):");
-            java.util.ArrayDeque<String> kept = new java.util.ArrayDeque<>();
+            Process logcat = new ProcessBuilder("logcat", "-d", "-v", "threadtime", "-t", "8000").redirectErrorStream(true).start();
+            java.util.regex.Pattern ofPid = java.util.regex.Pattern.compile("^\\S+ \\S+\\s+" + pid + "\\s");
+            java.util.List<String> all = new java.util.ArrayList<>();
             try (java.io.BufferedReader in = new java.io.BufferedReader(new java.io.InputStreamReader(logcat.getInputStream(), StandardCharsets.UTF_8))) {
                 String line;
                 while ((line = in.readLine()) != null) {
-                    if (ofPid.matcher(line).find() || line.startsWith("F/DEBUG") || line.startsWith("F/libc")) {
-                        kept.addLast(line);
-                        if (kept.size() > 60) kept.removeFirst();
+                    if (ofPid.matcher(line).find() || line.contains(" F DEBUG ") || line.contains(" F libc ")
+                            || line.contains("crash_dump") || line.contains("tombstone")) {
+                        all.add(line);
                     }
                 }
             }
             logcat.waitFor();
-            if (kept.isEmpty()) return "";
-            return "--- Android's log of the Horizon process (the last lines) ---\n" + String.join("\n", kept) + "\n";
+            if (all.isEmpty()) return "";
+            java.nio.file.Files.write(new File(Constants.USER_HOME, "horizon-crash.txt").toPath(), all, StandardCharsets.UTF_8);
+            java.util.regex.Pattern crash = java.util.regex.Pattern.compile(
+                    "Fatal signal|Cause:|Abort message|backtrace:|#\\d\\d pc |pid: \\d+, tid:|signal \\d+ \\(|fault addr|>>> ");
+            StringBuilder out = new StringBuilder("--- Android's log of the Horizon process: the crash (all of it in horizon-crash.txt) ---\n");
+            int shown = 0;
+            for (String line : all) {
+                if (shown < 80 && crash.matcher(line).find()) {
+                    out.append(line).append('\n');
+                    shown++;
+                }
+            }
+            out.append("--- the last lines of the Horizon process ---\n");
+            int from = 0, count = 0;
+            for (int i = all.size() - 1; i >= 0 && count < 40; i--) {
+                if (!all.get(i).contains(" F DEBUG ")) {
+                    from = i;
+                    count++;
+                }
+            }
+            for (int i = from; i < all.size(); i++) {
+                if (!all.get(i).contains(" F DEBUG ")) out.append(all.get(i)).append('\n');
+            }
+            return out.toString();
         } catch (Throwable t) {
             return "(Android's log not available: " + t + ")\n";
         }
