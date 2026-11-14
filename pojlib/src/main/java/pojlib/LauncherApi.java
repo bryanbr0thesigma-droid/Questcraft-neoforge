@@ -502,6 +502,7 @@ public final class LauncherApi {
                     if (info.getReason() == android.app.ApplicationExitInfo.REASON_CRASH_NATIVE) {
                         out.append(tombstoneText(info));
                     }
+                    if (process.endsWith(":horizon")) out.append(logcatOf(info.getPid()));
                     break;
                 }
             }
@@ -587,6 +588,33 @@ public final class LauncherApi {
             return out.toString();
         } catch (Throwable t) {
             return "(no record of the native crash: " + t + ")\n";
+        }
+    }
+
+    /**
+     * What Android's log has of a process that ended (an app may read its own lines): for Horizon, which logs to its
+     * own file, the lines of the system around it, the graphics driver's and the audio system's, and of a native crash
+     * (tags libc and DEBUG).
+     */
+    private static String logcatOf(int pid) {
+        try {
+            Process logcat = new ProcessBuilder("logcat", "-d", "-v", "brief", "-t", "4000").redirectErrorStream(true).start();
+            java.util.regex.Pattern ofPid = java.util.regex.Pattern.compile("\\(\\s*" + pid + "\\):");
+            java.util.ArrayDeque<String> kept = new java.util.ArrayDeque<>();
+            try (java.io.BufferedReader in = new java.io.BufferedReader(new java.io.InputStreamReader(logcat.getInputStream(), StandardCharsets.UTF_8))) {
+                String line;
+                while ((line = in.readLine()) != null) {
+                    if (ofPid.matcher(line).find() || line.startsWith("F/DEBUG") || line.startsWith("F/libc")) {
+                        kept.addLast(line);
+                        if (kept.size() > 60) kept.removeFirst();
+                    }
+                }
+            }
+            logcat.waitFor();
+            if (kept.isEmpty()) return "";
+            return "--- Android's log of the Horizon process (the last lines) ---\n" + String.join("\n", kept) + "\n";
+        } catch (Throwable t) {
+            return "(Android's log not available: " + t + ")\n";
         }
     }
 
