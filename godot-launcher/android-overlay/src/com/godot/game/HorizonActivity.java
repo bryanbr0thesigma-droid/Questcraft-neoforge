@@ -23,8 +23,22 @@ public class HorizonActivity extends NativeActivity {
     private static final String TAG = "QuestCraftHorizon";
     static final String ARGS = "args";
 
+    /**
+     * Stack for the threads Rust starts without a size of their own, android_main among them: the thread the game
+     * runs on, which the glue (android-activity) starts with Rust's default of 2 MB. The game needs the 8 MB a main
+     * thread has on a desktop (Horizon asks for 8 MB on Windows too); with 2 MB it overflowed its stack as soon as it
+     * got going (SIGSEGV, "likely due to stack overflow" in android_main). Twice that, to be safe.
+     */
+    private static final int STACK = 16 << 20;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        // before the library loads: Rust reads it when it starts its first thread
+        try {
+            android.system.Os.setenv("RUST_MIN_STACK", String.valueOf(STACK), true);
+        } catch (Exception e) {
+            Log.e(TAG, "Could not set Horizon's stack size", e);
+        }
         String[] args = getIntent().getStringArrayExtra(ARGS);
         if (args != null) {
             try (FileOutputStream out = new FileOutputStream(new File(getFilesDir(), "horizon-args.txt"))) {
