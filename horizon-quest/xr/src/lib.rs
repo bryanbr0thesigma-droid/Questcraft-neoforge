@@ -205,6 +205,8 @@ struct Session {
     actions: Actions,
     /// Input reaches the game (the session has focus: not under the system's menu).
     focused: bool,
+    /// A frame reached the headset.
+    shown: bool,
     pad: Pad,
 }
 
@@ -494,6 +496,7 @@ impl Xr {
             open: None,
             actions,
             focused: false,
+            shown: false,
             pad: Pad::default(),
         });
         Ok(())
@@ -652,7 +655,12 @@ impl Xr {
             .views(&projected);
         s.stream
             .end(time, blend, &[&layer])
-            .map_err(err("end frame"))
+            .map_err(err("end frame"))?;
+        if !s.shown {
+            s.shown = true;
+            log::info!("XR: the first frame is in the headset");
+        }
+        Ok(())
     }
 }
 

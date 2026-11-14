@@ -216,6 +216,23 @@ edit(gfx, """    /// Whether the device's loss callback has fired. A surface rec
                         depth_or_array_layers: 1,
                     },
                 );
+                // OpenXR takes the image back as a colour attachment (Vulkan's
+                // COLOR_ATTACHMENT_OPTIMAL), not as the copy left it: a pass that keeps it as it is
+                // leaves it so (a headset's compositor shows nothing otherwise)
+                let view = target.create_view(&wgpu::TextureViewDescriptor::default());
+                drop(encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                    label: Some("Horizon headset eye layout"),
+                    color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                        view: &view,
+                        depth_slice: None,
+                        resolve_target: None,
+                        ops: wgpu::Operations {
+                            load: wgpu::LoadOp::Load,
+                            store: wgpu::StoreOp::Store,
+                        },
+                    })],
+                    ..Default::default()
+                }));
                 self.queue.submit([encoder.finish()]);
             }
         }
