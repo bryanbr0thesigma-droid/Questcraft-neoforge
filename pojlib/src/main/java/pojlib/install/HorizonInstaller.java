@@ -308,8 +308,9 @@ public final class HorizonInstaller {
         if (java != null) {
             env.put("JAVA_HOME", java.getPath());
             env.put("HORIZON_JAVA", new File(nativeDir, "libhqjava.so").getPath());
-            // the runtime's libraries need the app's libc++_shared.so
-            env.put("LD_LIBRARY_PATH", java + "/lib:" + java + "/lib/server:" + nativeDir);
+            // the runtime's libraries need the app's libc++_shared.so. lib/server (libjvm.so's) first: otherwise libjli
+            // starts Java again through the runtime's bin/java to put it there, which Android does not allow
+            env.put("LD_LIBRARY_PATH", java + "/lib/server:" + java + "/lib:" + nativeDir);
         }
         Process process = builder.start();
         try (BufferedReader out = new BufferedReader(new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
