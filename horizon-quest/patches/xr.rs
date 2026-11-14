@@ -227,7 +227,7 @@ pub(crate) fn middle_pixel(
     });
     device.poll(wgpu::PollType::wait_indefinitely()).ok()?;
     received.recv().ok()?.ok()?;
-    let data = slice.get_mapped_range();
+    let data = slice.get_mapped_range().ok()?;
     Some([data[0], data[1], data[2], data[3]])
 }
 
