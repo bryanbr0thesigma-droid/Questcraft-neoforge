@@ -135,7 +135,11 @@ edit(gfx, """    /// The offscreen colour target, sized like `config`.
     xr_size: Option<[u32; 2]>,
     xr_undrawn: bool,
     /// Frames drawn for the headset, for the pixels logged while its picture is checked.
-    xr_frames: u64,""")
+    xr_frames: u64,
+    /// QuestCraft's headset: the title's panorama around the eye drawn now, and what is drawn
+    /// over the eyes' pictures (the controllers, the laser in a menu).
+    xr_panorama: Option<glam::Mat4>,
+    xr_overlay: Option<crate::xr::Overlay>,""")
 edit(gfx, """            spare_surface: std::sync::Mutex::new(None),
             offscreen,
             in_flight: std::collections::VecDeque::new(),""", """            spare_surface: std::sync::Mutex::new(None),
@@ -145,6 +149,8 @@ edit(gfx, """            spare_surface: std::sync::Mutex::new(None),
             xr_size: None,
             xr_undrawn: false,
             xr_frames: 0,
+            xr_panorama: None,
+            xr_overlay: None,
             in_flight: std::collections::VecDeque::new(),""")
 edit(gfx, """    pub fn views(&self, frame: &Frame) -> ViewSet {
         ViewSet::single(self.screen_view(""", """    pub fn views(&self, frame: &Frame) -> ViewSet {
@@ -188,8 +194,8 @@ edit(gfx, """    /// Whether the device's loss callback has fired. A surface rec
         let begun = {
             let mut headset = crate::xr::headset().ok_or("no headset")?;
             let begun = headset.begin_frame()?;
-            // the controllers, for the game's pad (`xr::pad`)
-            crate::xr::set_pad(headset.pad());
+            // the controllers: the game's pad (`xr::pad`), and the laser in a menu
+            crate::xr::frame_input(headset.pad(), headset.hands(), headset.focused(), begun.as_ref());
             begun
         };
         let Some(headset_frame) = begun else {
@@ -211,13 +217,16 @@ edit(gfx, """    /// Whether the device's loss callback has fired. A surface rec
         let body = crate::xr::body_yaw();
         self.xr_cull = Some(crate::xr::cull_view(eyes, body, headset_frame.size, frame.depth_far));
         let mut drawn = true;
+        // the HUD on a panel ahead of the head, a menu on one put in the world
+        let panel = crate::xr::hud_panel(eyes, headset_frame.size);
         for (index, eye) in eyes.iter().enumerate() {
             self.xr_eye = Some(crate::xr::eye_view(eye, body, headset_frame.size, frame.depth_far));
-            // the HUD and menus on a panel 1.6 m ahead, a little low, 25 degrees to either side
-            self.hud.vr = crate::xr::hud_transform(eyes, index, headset_frame.size, 1.6, 0.15, 25f32.to_radians());
+            self.xr_panorama = Some(crate::xr::panorama_view(eye));
+            self.hud.vr = panel.transform(eye).to_cols_array_2d();
             let result = self.draw_frame(frame, None, self.output);
             self.xr_eye = None;
-            self.hud.vr = [1.0, 1.0, 0.0, 0.0];
+            self.xr_panorama = None;
+            self.hud.vr = glam::Mat4::IDENTITY.to_cols_array_2d();
             drawn &= matches!(result?, true);
             if !drawn && !self.xr_undrawn {
                 self.xr_undrawn = true;
@@ -257,11 +266,16 @@ edit(gfx, """    /// Whether the device's loss callback has fired. A surface rec
                         label: Some("Horizon headset eye"),
                     });
                 }
-                // OpenXR takes the image back as a colour attachment (Vulkan's
-                // COLOR_ATTACHMENT_OPTIMAL), not as the copy left it: a pass that keeps it as it is
-                // leaves it so (a headset's compositor shows nothing otherwise)
+                // The controllers and the laser over the picture, in a pass that also leaves the
+                // image as OpenXR takes it back: a colour attachment (Vulkan's
+                // COLOR_ATTACHMENT_OPTIMAL), not as the copy left it (a headset's compositor shows
+                // nothing otherwise)
+                if self.xr_overlay.as_ref().is_none_or(|o| o.format() != target.format()) {
+                    self.xr_overlay = Some(crate::xr::Overlay::new(&self.device, target.format()));
+                }
+                let vertices = crate::xr::overlay(eye);
                 let view = target.create_view(&wgpu::TextureViewDescriptor::default());
-                drop(encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                     label: Some("Horizon headset eye layout"),
                     color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                         view: &view,
@@ -273,7 +287,11 @@ edit(gfx, """    /// Whether the device's loss callback has fired. A surface rec
                         },
                     })],
                     ..Default::default()
-                }));
+                });
+                if let Some(overlay) = &self.xr_overlay {
+                    overlay.draw(&self.queue, &mut pass, &vertices);
+                }
+                drop(pass);
                 self.queue.submit([encoder.finish()]);
             }
         }
@@ -287,14 +305,15 @@ hud_wgsl = render / "hud.wgsl"
 edit(hud_wgsl, """    end_portal: array<vec4<f32>, 3>,
 }
 @group(0) @binding(0) var<uniform> hud: Hud;""", """    end_portal: array<vec4<f32>, 3>,
-    // QuestCraft's headset: the screen coordinates scaled by xy and moved by zw, a panel ahead
-    // (xr::hud_transform); (1, 1, 0, 0) on a screen
-    vr: vec4<f32>,
+    // QuestCraft's headset: the screen coordinates (z 0, w 1) to the eye's clip space, the panel
+    // the HUD is on seen in perspective (xr::Panel::transform); the identity on a screen
+    vr: mat4x4<f32>,
 }
 @group(0) @binding(0) var<uniform> hud: Hud;""")
 edit(hud_wgsl, """    out.clip = vec4(pixels.x / hud.size.x * 2.0 - 1.0, 1.0 - pixels.y / hud.size.y * 2.0, depth, 1.0);""",
      """    let screen = vec2(pixels.x / hud.size.x * 2.0 - 1.0, 1.0 - pixels.y / hud.size.y * 2.0);
-    out.clip = vec4(screen * hud.vr.xy + hud.vr.zw, depth, 1.0);""")
+    let panel = hud.vr * vec4(screen, 0.0, 1.0);
+    out.clip = vec4(panel.xy, depth * panel.w, panel.w);""")
 hud = render / "hud.rs"
 def edit_bytes(path, old, new, count=1):
     text = path.read_bytes().decode("utf-8", "surrogateescape")
@@ -309,7 +328,7 @@ impl HudUniform {
     fn new(size: [f32; 4], fill: EndPortalFill, glint_colour: u32) -> Self {""", """    /// `EndPortalFill`: the two sprites, then the game time in x.
     end_portal: [[f32; 4]; 3],
     /// QuestCraft's headset: the panel the HUD is on (`HudRenderer::vr`).
-    vr: [f32; 4],
+    vr: [[f32; 4]; 4],
 }
 impl HudUniform {
     fn new(size: [f32; 4], fill: EndPortalFill, glint_colour: u32) -> Self {""")
@@ -319,10 +338,17 @@ edit_bytes(hud, """                [fill.game_time, tint[0], tint[1], tint[2]],
     }
 }""", """                [fill.game_time, tint[0], tint[1], tint[2]],
             ],
-            vr: [1.0, 1.0, 0.0, 0.0],
+            vr: IDENTITY,
         }
     }
-}""")
+}
+/// QuestCraft: the HUD's `vr` on a screen.
+const IDENTITY: [[f32; 4]; 4] = [
+    [1.0, 0.0, 0.0, 0.0],
+    [0.0, 1.0, 0.0, 0.0],
+    [0.0, 0.0, 1.0, 0.0],
+    [0.0, 0.0, 0.0, 1.0],
+];""")
 edit_bytes(hud, """            bytemuck::bytes_of(&HudUniform::new(
                 [
                     size[0] as f32,
@@ -348,11 +374,53 @@ edit_bytes(hud, """            bytemuck::bytes_of(&HudUniform::new(
 edit_bytes(hud, """    pub zoom: f32,
 """, """    pub zoom: f32,
     /// QuestCraft's headset: the panel the HUD and menus are drawn on in the eye drawn now, as
-    /// `xr::hud_transform` gives it; (1, 1, 0, 0) on a screen.
-    pub vr: [f32; 4],
+    /// `xr::Panel::transform` gives it; the identity on a screen.
+    pub vr: [[f32; 4]; 4],
 """)
 edit_bytes(hud, """            zoom: 1.0,
 """, """            zoom: 1.0,
-            vr: [1.0, 1.0, 0.0, 0.0],
+            vr: IDENTITY,
 """)
+# a model's clip rectangle is the screen's: on a headset's panel it is not, so it goes
+edit_bytes(hud, """                pass.set_scissor_rect(x, y, w, h);""", """                if self.vr == IDENTITY {
+                    pass.set_scissor_rect(x, y, w, h);
+                }""")
+# --- the title's panorama: around the player in a headset, turned as the head is
+edit(gfx, """        if frame.title {
+            self.panorama.prepare(
+                &self.device,
+                &self.queue,
+                self.config.width,
+                self.config.height,
+                frame.yaw,
+                frame.pitch,
+            );
+        } else {""", """        if let (true, Some(view_proj)) = (frame.title, self.xr_panorama) {
+            self.panorama.prepare_view(&self.device, &self.queue, view_proj);
+        } else if frame.title {
+            self.panorama.prepare(
+                &self.device,
+                &self.queue,
+                self.config.width,
+                self.config.height,
+                frame.yaw,
+                frame.pitch,
+            );
+        } else {""")
+panorama = render / "gfx/panorama.rs"
+edit(panorama, """    /// Give the cube's video memory back: no frame draws it until the title""", """    /// Ready a title screen frame seen through `view_proj` (QuestCraft's headset: the panorama
+    /// around the player, `xr::panorama_view`).
+    pub(super) fn prepare_view(
+        &mut self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        view_proj: Mat4,
+    ) {
+        queue.write_buffer(&self.uniform, 0, bytemuck::cast_slice(&view_proj.to_cols_array()));
+        if self.cube.is_none() {
+            self.cube = Some(self.cube(device, queue));
+        }
+    }
+
+    /// Give the cube's video memory back: no frame draws it until the title""")
 print("patched", render)

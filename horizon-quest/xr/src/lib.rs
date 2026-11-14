@@ -27,6 +27,13 @@ pub struct Fov {
     pub down: f32,
 }
 
+/// Where something is and which way it points (x, y, z, w), in the tracking space.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Pose {
+    pub position: [f32; 3],
+    pub orientation: [f32; 4],
+}
+
 /// One eye this frame: where it is and which way it looks (x, y, z, w), and its lens.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Eye {
@@ -70,6 +77,8 @@ struct Actions {
     right_grip: xr::Action<f32>,
     /// A, B, X, Y, the menu button, the sticks pressed
     buttons: [xr::Action<bool>; 7],
+    /// Where each controller points (left, right): its aim pose.
+    aims: [xr::Action<xr::Posef>; 2],
 }
 
 /// The controllers' state this frame, as a gamepad's: buttons (Horizon's `gamepad::Button` order of
@@ -106,6 +115,12 @@ impl Actions {
             right_trigger: value("attack", "Attack").map_err(err("action"))?,
             left_grip: value("left_grip", "Left grip").map_err(err("action"))?,
             right_grip: value("right_grip", "Right grip").map_err(err("action"))?,
+            aims: [
+                set.create_action::<xr::Posef>("left_aim", "Left hand", &[])
+                    .map_err(err("action"))?,
+                set.create_action::<xr::Posef>("right_aim", "Right hand", &[])
+                    .map_err(err("action"))?,
+            ],
             buttons: [
                 button("a", "A").map_err(err("action"))?,
                 button("b", "B").map_err(err("action"))?,
@@ -133,6 +148,8 @@ impl Actions {
             xr::Binding::new(&a.buttons[4], path("/user/hand/left/input/menu/click")?),
             xr::Binding::new(&a.buttons[5], path("/user/hand/left/input/thumbstick/click")?),
             xr::Binding::new(&a.buttons[6], path("/user/hand/right/input/thumbstick/click")?),
+            xr::Binding::new(&a.aims[0], path("/user/hand/left/input/aim/pose")?),
+            xr::Binding::new(&a.aims[1], path("/user/hand/right/input/aim/pose")?),
         ];
         instance
             .suggest_interaction_profile_bindings(
@@ -145,6 +162,8 @@ impl Actions {
             xr::Binding::new(&a.left_trigger, path("/user/hand/left/input/select/click")?),
             xr::Binding::new(&a.right_trigger, path("/user/hand/right/input/select/click")?),
             xr::Binding::new(&a.buttons[4], path("/user/hand/left/input/menu/click")?),
+            xr::Binding::new(&a.aims[0], path("/user/hand/left/input/aim/pose")?),
+            xr::Binding::new(&a.aims[1], path("/user/hand/right/input/aim/pose")?),
         ];
         if let Err(e) = instance.suggest_interaction_profile_bindings(
             path("/interaction_profiles/khr/simple_controller")?,
@@ -203,6 +222,9 @@ struct Session {
     /// The frame begun and not ended yet: its display time and views.
     open: Option<(xr::Time, Vec<xr::View>)>,
     actions: Actions,
+    /// The controllers' aim poses as spaces, and where they were this frame.
+    aim_spaces: [xr::Space; 2],
+    hands: [Option<Pose>; 2],
     /// Input reaches the game (the session has focus: not under the system's menu).
     focused: bool,
     /// A frame reached the headset.
@@ -443,6 +465,12 @@ impl Xr {
         session
             .attach_action_sets(&[&actions.set])
             .map_err(err("attach actions"))?;
+        let aim_space = |i: usize| {
+            actions.aims[i]
+                .create_space(&session, xr::Path::NULL, xr::Posef::IDENTITY)
+                .map_err(err("hand space"))
+        };
+        let aim_spaces = [aim_space(0)?, aim_space(1)?];
         let views = self
             .instance
             .enumerate_view_configuration_views(self.system, VIEWS)
@@ -501,6 +529,8 @@ impl Xr {
             running: false,
             open: None,
             actions,
+            aim_spaces,
+            hands: [None; 2],
             focused: false,
             shown: false,
             pad: Pad::default(),
@@ -580,6 +610,36 @@ impl Xr {
                 .map_err(err("controllers"))?;
             s.pad = s.actions.read(&s.session);
         }
+        // where the controllers point, when they are tracked
+        let was = s.hands.map(|hand| hand.is_some());
+        for (hand, space) in s.hands.iter_mut().zip(&s.aim_spaces) {
+            *hand = space
+                .locate(&s.space, state.predicted_display_time)
+                .ok()
+                .filter(|l| {
+                    l.location_flags.contains(
+                        xr::SpaceLocationFlags::POSITION_VALID
+                            | xr::SpaceLocationFlags::ORIENTATION_VALID,
+                    )
+                })
+                .map(|l| Pose {
+                    position: [l.pose.position.x, l.pose.position.y, l.pose.position.z],
+                    orientation: [
+                        l.pose.orientation.x,
+                        l.pose.orientation.y,
+                        l.pose.orientation.z,
+                        l.pose.orientation.w,
+                    ],
+                });
+        }
+        for (side, (was, hand)) in ["left", "right"].into_iter().zip(was.into_iter().zip(s.hands)) {
+            if was != hand.is_some() {
+                match hand {
+                    Some(pose) => log::info!("XR: the {side} controller is tracked, at {:?}", pose.position),
+                    None => log::info!("XR: the {side} controller is not tracked"),
+                }
+            }
+        }
         for chain in &mut s.swapchains {
             let index = chain.handle.acquire_image().map_err(err("acquire"))?;
             chain
@@ -614,6 +674,16 @@ impl Xr {
     /// The controllers as of the last `begin_frame` (at rest while the session has no focus).
     pub fn pad(&self) -> Pad {
         self.session.as_ref().map(|s| s.pad).unwrap_or_default()
+    }
+
+    /// Where the controllers (left, right) pointed as of the last `begin_frame`, when tracked.
+    pub fn hands(&self) -> [Option<Pose>; 2] {
+        self.session.as_ref().map(|s| s.hands).unwrap_or([None; 2])
+    }
+
+    /// Whether the session has the input (focused: not under the system's menu).
+    pub fn focused(&self) -> bool {
+        self.session.as_ref().is_some_and(|s| s.focused)
     }
 
     /// The image of `eye` (0 left, 1 right) to draw this frame into.
@@ -792,6 +862,19 @@ impl horizon_client_render::xr::Headset for Xr {
 
     fn exiting(&self) -> bool {
         self.status == Status::Exit
+    }
+
+    fn hands(&self) -> [Option<horizon_client_render::xr::Pose>; 2] {
+        Xr::hands(self).map(|hand| {
+            hand.map(|pose| horizon_client_render::xr::Pose {
+                position: pose.position,
+                orientation: pose.orientation,
+            })
+        })
+    }
+
+    fn focused(&self) -> bool {
+        Xr::focused(self)
     }
 
     fn pad(&self) -> horizon_client_render::gamepad::PadState {

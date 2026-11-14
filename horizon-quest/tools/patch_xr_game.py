@@ -6,6 +6,9 @@ after patch_xr_renderer.py:
 In a headset turning (the mouse, a stick, the arrow keys) turns the body (`xr::turn_body`), and every
 frame the player's yaw is the body's plus the head's turn and their pitch the head's (`follow_headset`),
 through the game's own turn (`Entity.turn`'s), so aiming, the held lead and a boat's limit follow.
+
+The controllers are a gamepad merged into the game's; the window has the focus while the headset's
+session does; in a menu the laser is the mouse (`headset_input`).
 """
 import sys
 from pathlib import Path
@@ -63,4 +66,52 @@ edit(game / "game/pad.rs", """            Some(state) => state,
                 horizon_client_render::xr::pad().map_or(hardware, |pad| hardware.merge(&pad))
             }
         };""")
+# The headset's focus is the window's, and in a menu its laser is the mouse (Vivecraft's way)
+edit(game / "game/pad.rs", """    /// Once per loop iteration: read the pads and act on button changes.
+    pub(super) fn poll_pads(&mut self, event_loop: &dyn EventLoopCtl) {
+""", """    /// A headset (QuestCraft): the window has the focus while the headset's session does (an
+    /// immersive app's window never gets it, and the pad counts only with it), and in a menu
+    /// the controller's laser is the mouse over the menu's panel, its trigger the left button.
+    fn headset_input(&mut self, event_loop: &dyn EventLoopCtl) {
+        use horizon_client_render::xr;
+        use winit::{
+            dpi::PhysicalPosition,
+            event::{DeviceId, ElementState, WindowEvent},
+        };
+        let Some(id) = self.window.as_ref().map(|w| w.id()) else {
+            return;
+        };
+        let origin = super::input_trace::InputOrigin::Game;
+        let focused = xr::focused();
+        if focused != self.focused {
+            self.handle_window_event(event_loop, id, WindowEvent::Focused(focused), origin);
+        }
+        // a screen, or a prompt over the world (a dialog, the pack prompt...): the pad's menus
+        xr::set_menu(self.pad_in_menu());
+        for event in xr::pointer_events() {
+            let event = match event {
+                xr::PointerEvent::Moved([x, y]) => WindowEvent::CursorMoved {
+                    device_id: DeviceId::dummy(),
+                    position: PhysicalPosition::new(x, y),
+                },
+                xr::PointerEvent::Button(pressed) => WindowEvent::MouseInput {
+                    device_id: DeviceId::dummy(),
+                    state: if pressed {
+                        ElementState::Pressed
+                    } else {
+                        ElementState::Released
+                    },
+                    button: MouseButton::Left,
+                },
+            };
+            self.handle_window_event(event_loop, id, event, origin);
+        }
+    }
+
+    /// Once per loop iteration: read the pads and act on button changes.
+    pub(super) fn poll_pads(&mut self, event_loop: &dyn EventLoopCtl) {
+        if horizon_client_render::xr::active() {
+            self.headset_input(event_loop);
+        }
+""")
 print("patched", game)

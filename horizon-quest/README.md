@@ -29,9 +29,8 @@ The patches:
   typed there (winit has no key without modifiers on Android).
 - `0002-prepare-java-launcher.patch`: horizon-prepare starts Java through the program `HORIZON_JAVA` names.
 
-**Status**: on the headset Horizon starts and draws (its "resources missing" screen, before preparing existed). Preparing
-on the headset is new and untried there; on a desktop the same files, arguments and launcher prepare in 30 seconds.
-Built with `PROFILE=fast`.
+**Status**: on a Quest 3S Horizon prepares its resources, starts, and shows its title in the headset (VR) or on a
+panel (Screen). Built with `PROFILE=fast`.
 
 **VR** (`xr/`, the crate `horizon-xr`, MIT): QuestCraft's OpenXR core. The headset's runtime and Horizon share one
 Vulkan device: wgpu creates the instance and device with the extensions the runtime asks for (`XR_KHR_vulkan_enable`)
@@ -39,14 +38,22 @@ on the GPU it names. Each eye has an 8-bit sRGB swapchain whose images are wgpu 
 `patches/xr.rs` (its renderer's `xr` module) and `tools/patch_xr_renderer.py` / `tools/patch_xr_game.py`, which build.sh
 runs: with a headset installed the renderer opens its device through it, draws offscreen at the eyes' size and format,
 and each frame waits for the headset, draws once per eye (the head's turn and lean and the eye's place on top of the
-player's eyes, the lens's own angles) and copies the frame byte for byte into the eye's image; the HUD and menus are
-drawn on a panel 1.6 m ahead (the HUD shader's `vr` transform); the player looks where the head does (turning turns the
-body); the Touch controllers are a gamepad merged into the game's. The launcher passes `--vr` (the library takes it out)
-and starts it as an immersive activity.
+player's eyes, the lens's own angles) and copies the frame byte for byte into the eye's image; the player looks where
+the head does (turning turns the body); the Touch controllers are a gamepad merged into the game's, and the window has
+the focus while the headset's session does (the pad counts only then). The HUD shader's `vr` transform puts the HUD on
+a panel in the tracking space, seen in perspective (`xr::Panel`): while playing it is 1.6 m ahead of the head and turns
+with it; a menu (the title, pause, inventory, a dialog...) goes on a panel put level 1.5 m ahead where the player looks
+as it opens, which stays there, as Vivecraft's and Visor's menus do (looked away from for 1.5 s, it comes round). In a
+menu the controller's laser (its aim pose) is the mouse: where it meets the panel the game gets the pointer, and the
+trigger is the left button (the hand whose trigger was pulled last points). The controllers are drawn as small boxes
+(left blue, right orange at the front), with the laser and its dot in a menu, over each eye's picture. The title's
+panorama is around the player, turned as the head is. The launcher passes `--vr` (the library takes it out) and
+starts it as an immersive activity.
 
 `cargo run -p horizon-xr --example probe` tries the core against any OpenXR runtime; `--example desktop` runs the game
-with it. On a desktop with Monado's simulated headset (`monado-service` on a virtual display, software Vulkan) both eyes
-show the world and the HUD panel (`vr-desktop-test.png`); not yet tried on a headset.
+with it. On a desktop with Monado's simulated headset (`monado-service` on a virtual display, software Vulkan;
+`SIMULATED_ENABLE=1 SIMULATED_LEFT=simple SIMULATED_RIGHT=simple` for two controllers) both eyes show the world and the
+HUD (`vr-desktop-test.png`), and a menu on its panel with the controllers and the laser (`vr-menu-test.png`).
 
 Still to come: Vivecraft's way (hands, room scale; LGPL-3.0, ported) and Visor's (MPL-2.0; its library AtumVR is
 Apache-2.0), each ported file keeping its licence.
