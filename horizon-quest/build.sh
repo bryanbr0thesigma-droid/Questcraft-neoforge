@@ -9,7 +9,7 @@
 # crates/horizon-quest: the library Android's NativeActivity loads, which starts Horizon's own
 # game (horizon-client's entry).
 #
-# Needs: Rust with the aarch64-linux-android target, cargo-ndk, the Android NDK, and the first time a
+# Needs: Rust 1.100 (rustup, with the aarch64-linux-android target; RUST_TOOLCHAIN for another), cargo-ndk, the Android NDK, and the first time a
 # JDK 25 (JAVA25_HOME) to compile Horizon's exporters. Override: ANDROID_HOME, ANDROID_NDK_HOME, WORK,
 # PROFILE (fast or release).
 set -euo pipefail
@@ -19,6 +19,9 @@ HORIZON_REPO="https://github.com/horizon-rust/horizon.git"
 HORIZON_COMMIT="f4d8d62c31ec2b08046faded7bef1b476783f319"
 WORK="${WORK:-$here/work}"
 PROFILE="${PROFILE:-release}"
+# Rust 1.98 or newer: older standard libraries have no file locks on Android ("try_lock() not supported"), which the
+# preparer and the game's worlds use
+RUST="+${RUST_TOOLCHAIN:-1.100.0}"
 ANDROID_HOME="${ANDROID_HOME:-/tmp/claude-0/android-sdk}"
 ANDROID_NDK_HOME="${ANDROID_NDK_HOME:-$(ls -d "$ANDROID_HOME"/ndk/* | sort -V | tail -1)}"
 export ANDROID_HOME ANDROID_NDK_HOME
@@ -48,7 +51,7 @@ cp "$here/crate/src/lib.rs" "$crate/src/lib.rs"
 
 # 3. For the Quest (arm64): the game's library, and horizon-prepare, which prepares its resources on the headset
 #    (a program: named lib*.so so that Android installs it with the libraries, where programs may be started)
-(cd "$src" && cargo ndk -t arm64-v8a --platform 29 build --profile "$PROFILE" -p horizon-quest -p horizon-prepare --bin horizon-prepare)
+(cd "$src" && cargo "$RUST" ndk -t arm64-v8a --platform 29 build --profile "$PROFILE" -p horizon-quest -p horizon-prepare --bin horizon-prepare)
 ndkbin="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin"
 out="$here/dist/arm64-v8a"
 rm -rf "$out" && mkdir -p "$out"
