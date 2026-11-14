@@ -177,6 +177,60 @@ pub(crate) fn set_head(eye: &Eye) {
     look().head = Some(head_look(eye.orientation));
 }
 
+/// The pixel at the middle of `texture` (8-bit RGBA or BGRA, as stored), read back and waited for:
+/// what the headset is handed, for the log while its picture is checked.
+pub(crate) fn middle_pixel(
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+    texture: &wgpu::Texture,
+) -> Option<[u8; 4]> {
+    let size = texture.size();
+    let buffer = device.create_buffer(&wgpu::BufferDescriptor {
+        label: Some("XR pixel"),
+        size: 256,
+        usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
+        mapped_at_creation: false,
+    });
+    let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+        label: Some("XR pixel"),
+    });
+    encoder.copy_texture_to_buffer(
+        wgpu::TexelCopyTextureInfo {
+            texture,
+            mip_level: 0,
+            origin: wgpu::Origin3d {
+                x: size.width / 2,
+                y: size.height / 2,
+                z: 0,
+            },
+            aspect: wgpu::TextureAspect::All,
+        },
+        wgpu::TexelCopyBufferInfo {
+            buffer: &buffer,
+            layout: wgpu::TexelCopyBufferLayout {
+                offset: 0,
+                bytes_per_row: Some(256),
+                rows_per_image: Some(1),
+            },
+        },
+        wgpu::Extent3d {
+            width: 1,
+            height: 1,
+            depth_or_array_layers: 1,
+        },
+    );
+    queue.submit([encoder.finish()]);
+    let slice = buffer.slice(..);
+    let (sent, received) = std::sync::mpsc::channel();
+    slice.map_async(wgpu::MapMode::Read, move |result| {
+        let _ = sent.send(result);
+    });
+    device.poll(wgpu::PollType::wait_indefinitely()).ok()?;
+    received.recv().ok()?.ok()?;
+    let data = slice.get_mapped_range();
+    Some([data[0], data[1], data[2], data[3]])
+}
+
 /// The tracking space turned to face where the player faces (`yaw` in degrees, vanilla's): the
 /// headset's forward (-z) becomes the player's facing, as the screen camera's rotation does at
 /// pitch 0 (`camera::view_matrix`).

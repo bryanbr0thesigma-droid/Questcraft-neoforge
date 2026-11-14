@@ -275,12 +275,17 @@ impl Xr {
         let system = instance
             .system(xr::FormFactor::HEAD_MOUNTED_DISPLAY)
             .map_err(err("headset"))?;
-        let blend = instance
+        let blends = instance
             .enumerate_environment_blend_modes(system, VIEWS)
-            .map_err(err("blend modes"))?
-            .first()
-            .copied()
-            .unwrap_or(xr::EnvironmentBlendMode::OPAQUE);
+            .map_err(err("blend modes"))?;
+        // Opaque: the frames are the whole view, their alpha unused (the first mode a runtime
+        // lists can be a see-through one, where an alpha of 0 shows nothing of them)
+        let blend = if blends.contains(&xr::EnvironmentBlendMode::OPAQUE) {
+            xr::EnvironmentBlendMode::OPAQUE
+        } else {
+            blends.first().copied().unwrap_or(xr::EnvironmentBlendMode::OPAQUE)
+        };
+        log::info!("XR: blend modes {blends:?}, using {blend:?}");
         log::info!(
             "XR: {} {}, headset {}",
             properties.runtime_name,
@@ -465,7 +470,8 @@ impl Xr {
                     create_flags: xr::SwapchainCreateFlags::EMPTY,
                     usage_flags: xr::SwapchainUsageFlags::COLOR_ATTACHMENT
                         | xr::SwapchainUsageFlags::SAMPLED
-                        | xr::SwapchainUsageFlags::TRANSFER_DST,
+                        | xr::SwapchainUsageFlags::TRANSFER_DST
+                        | xr::SwapchainUsageFlags::TRANSFER_SRC,
                     format: vk_format.as_raw() as u32,
                     sample_count: 1,
                     width: size[0],
@@ -695,7 +701,8 @@ fn wrap_image(
                     format,
                     usage: wgpu::TextureUses::COLOR_TARGET
                         | wgpu::TextureUses::RESOURCE
-                        | wgpu::TextureUses::COPY_DST,
+                        | wgpu::TextureUses::COPY_DST
+                        | wgpu::TextureUses::COPY_SRC,
                     memory_flags: wgpu::hal::MemoryFlags::empty(),
                     view_formats: Vec::new(),
                 },
@@ -717,7 +724,8 @@ fn wrap_image(
                 format,
                 usage: wgpu::TextureUsages::RENDER_ATTACHMENT
                     | wgpu::TextureUsages::TEXTURE_BINDING
-                    | wgpu::TextureUsages::COPY_DST,
+                    | wgpu::TextureUsages::COPY_DST
+                    | wgpu::TextureUsages::COPY_SRC,
                 view_formats: &[],
             },
             // what an acquired swapchain image holds is not kept: each frame draws all of it

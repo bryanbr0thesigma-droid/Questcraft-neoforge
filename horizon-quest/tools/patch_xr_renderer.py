@@ -133,7 +133,9 @@ edit(gfx, """    /// The offscreen colour target, sized like `config`.
     /// (on a Quest an immersive app's window can be none, which suspended the renderer), and
     /// whether a frame for it was not drawn (said once).
     xr_size: Option<[u32; 2]>,
-    xr_undrawn: bool,""")
+    xr_undrawn: bool,
+    /// Frames drawn for the headset, for the pixels logged while its picture is checked.
+    xr_frames: u64,""")
 edit(gfx, """            spare_surface: std::sync::Mutex::new(None),
             offscreen,
             in_flight: std::collections::VecDeque::new(),""", """            spare_surface: std::sync::Mutex::new(None),
@@ -142,6 +144,7 @@ edit(gfx, """            spare_surface: std::sync::Mutex::new(None),
             xr_cull: None,
             xr_size: None,
             xr_undrawn: false,
+            xr_frames: 0,
             in_flight: std::collections::VecDeque::new(),""")
 edit(gfx, """    pub fn views(&self, frame: &Frame) -> ViewSet {
         ViewSet::single(self.screen_view(""", """    pub fn views(&self, frame: &Frame) -> ViewSet {
@@ -239,6 +242,21 @@ edit(gfx, """    /// Whether the device's loss callback has fired. A surface rec
                         depth_or_array_layers: 1,
                     },
                 );
+                // What the left eye was drawn and handed, twice early on, for the log
+                if index == 0 && matches!(self.xr_frames, 60 | 600) {
+                    self.queue.submit([encoder.finish()]);
+                    let drawn = crate::xr::middle_pixel(&self.device, &self.queue, source);
+                    let handed = crate::xr::middle_pixel(&self.device, &self.queue, &target);
+                    log::info!(
+                        "XR: frame {}: the middle pixel drawn {drawn:?} ({:?}), in the eye's image {handed:?} ({:?})",
+                        self.xr_frames,
+                        source.format(),
+                        target.format()
+                    );
+                    encoder = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                        label: Some("Horizon headset eye"),
+                    });
+                }
                 // OpenXR takes the image back as a colour attachment (Vulkan's
                 // COLOR_ATTACHMENT_OPTIMAL), not as the copy left it: a pass that keeps it as it is
                 // leaves it so (a headset's compositor shows nothing otherwise)
@@ -260,6 +278,7 @@ edit(gfx, """    /// Whether the device's loss callback has fired. A surface rec
             }
         }
         crate::xr::headset().ok_or("no headset")?.end_frame()?;
+        self.xr_frames += 1;
         Ok(drawn)
     }
     /// Whether the device's loss callback has fired. A surface reconfigure""")
