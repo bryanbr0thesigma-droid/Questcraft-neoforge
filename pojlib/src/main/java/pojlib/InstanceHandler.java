@@ -32,6 +32,7 @@ import pojlib.install.Installer;
 import pojlib.install.LegacyVivecraft;
 import pojlib.install.LaunchArguments;
 import pojlib.install.MinecraftMeta;
+import pojlib.install.HorizonInstaller;
 import pojlib.install.ModLoader;
 import pojlib.install.ForgeInstaller;
 import pojlib.install.ForgeMeta;
@@ -201,6 +202,12 @@ public class InstanceHandler {
             return null;
         }
 
+        if (loader == ModLoader.HORIZON && !HorizonInstaller.isAvailable(minecraftVersion)) {
+            lastCreateError = "Horizon is Minecraft " + HorizonInstaller.VERSION + ", not " + minecraftVersion;
+            Logger.getInstance().appendToLog(lastCreateError);
+            return null;
+        }
+
         if (loader == ModLoader.NEOFORGE && !NeoForgeMeta.isSupported(minecraftVersion)) {
             Logger.getInstance().appendToLog("NeoForge does not exist for Minecraft " + minecraftVersion + " (it starts at 1.20.2)");
             return null;
@@ -254,6 +261,18 @@ public class InstanceHandler {
         creation = CompletableFuture.supplyAsync(() ->
         {
             try {
+                if (loader == ModLoader.HORIZON) {
+                    // a native program, no Java: the game files it prepares its resources from, see HorizonInstaller
+                    HorizonInstaller.install(gameDir);
+                    instance.assetsDir = Installer.installAssets(minecraftVersionInfo, gameDir).get();
+                    instance.assetIndex = minecraftVersionInfo.assetIndex.id;
+                    instance.updateMods(instances);
+                    GsonUtils.objectToJsonFile(gameDir + "/instances.json", instances);
+                    if (postInstall != null) postInstall.accept(instance);
+                    DownloadManager.reset();
+                    Logger.getInstance().appendToLog("Finished Creating Instance!");
+                    return null;
+                }
                 CompletableFuture<String> clientClasspath = Installer.installClient(minecraftVersionInfo, gameDir);
                 CompletableFuture<String> assetsFuture = Installer.installAssets(minecraftVersionInfo, gameDir);
                 String lwjgl = pojlib.util.LwjglInstaller.installLWJGL(activity);
@@ -314,7 +333,8 @@ public class InstanceHandler {
                 Installer.moveLocalAssets(activity, instance);
             } catch (Exception e) {
                 e.printStackTrace();
-                if (loader == ModLoader.NEOFORGE || loader == ModLoader.FORGE || loader == ModLoader.VANILLA || loader == ModLoader.RISUGAMI) {
+                if (loader == ModLoader.NEOFORGE || loader == ModLoader.FORGE || loader == ModLoader.VANILLA || loader == ModLoader.RISUGAMI
+                        || loader == ModLoader.HORIZON) {
                     // an instance without a classpath can not be launched, so do not keep it around
                     Logger.getInstance().appendToLog("Could not create the instance: " + e.getMessage());
                     lastCreateError = String.valueOf(e.getMessage());
@@ -481,6 +501,11 @@ public class InstanceHandler {
     }
 
     public static void launchInstance(Activity activity, MinecraftAccount account, MinecraftInstances.Instance instance) {
+        if (instance.isHorizon()) {
+            // not Java: the launcher starts it in its own activity (LauncherApi.horizonArgs)
+            Logger.getInstance().appendToLog("Horizon is started by the Godot launcher, not in Java");
+            return;
+        }
         try {
             API.currentInstance = instance;
             JREUtils.redirectAndPrintJRELog();

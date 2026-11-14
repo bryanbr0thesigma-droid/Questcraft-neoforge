@@ -56,20 +56,22 @@ func api_bool(method: String, args: Array = []) -> bool:
 func _mock(method: String, args: Array) -> Variant:
 	match method:
 		"init": return ""
-		"modLoaders": return ["Fabric", "NeoForge", "Quilt", "Forge", "Vanilla", "Risugami"]
+		"modLoaders": return ["Fabric", "NeoForge", "Quilt", "Forge", "Risugami", "Horizon"]
 		"supportedVersions":
 			# the lists the app carries (pojlib/src/main/assets/loaders/supportedVersions-*.json)
 			match str(args[0]):
 				"NeoForge", "Forge": return ["1.21.11", "1.21.8", "1.21.5", "1.21.4", "1.21.1", "1.20.6", "1.20.4"]
-				"Vanilla": return ["1.12.2"]
+				"Horizon": return ["26.3"]
 				"Risugami": return MOCK_MODLOADER_VERSIONS
 				_: return ["1.21.11", "1.21.10", "1.21.8", "1.21.5", "1.21.4", "1.21.1", "1.20.6", "1.20.4", "1.20.1", "1.19.4", "1.19.2"]
 		"vrMods":
 			if str(args[0]) == "Risugami":
 				# VR for every ModLoader version but b1.4 (no mappings for its VR glue)
 				return ["Screen"] if str(args[1]) == "b1.4" else ["VR"]
+			if str(args[0]) == "Horizon":
+				return ["Screen"]   # on a panel until its VR is there
 			# Visor where the app has a build: not for Forge 1.20.4 here, so that the screen shows both cases
-			if (str(args[0]) == "Forge" and str(args[1]) == "1.20.4") or str(args[0]) == "Vanilla":
+			if str(args[0]) == "Forge" and str(args[1]) == "1.20.4":
 				return ["Vivecraft"]
 			return ["Vivecraft", "Visor"]
 		"listInstances": return _mock_instances

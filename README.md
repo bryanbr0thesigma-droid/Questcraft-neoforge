@@ -1,6 +1,6 @@
 # QuestCraft for NeoForge
 
-A port of [QuestCraft](https://github.com/QuestCraftPlusPlus/QuestCraft) (Minecraft: Java Edition in VR on Meta Quest and other standalone headsets) from the **Fabric** mod loader to **NeoForge**. The launcher has a **loader toggle** between **Fabric**, **NeoForge**, **Quilt**, **Forge**, **Vanilla** (1.12.2 in VR) and **Risugami** (Risugami's ModLoader, alpha to 1.6.2), and NeoForge is the default.
+A port of [QuestCraft](https://github.com/QuestCraftPlusPlus/QuestCraft) (Minecraft: Java Edition in VR on Meta Quest and other standalone headsets) from the **Fabric** mod loader to **NeoForge**. The launcher has a **loader toggle** between **Fabric**, **NeoForge**, **Quilt**, **Forge**, **Risugami** (Risugami's ModLoader, alpha to 1.6.2) and **Horizon** (Minecraft 26.3 rewritten in Rust, see [Horizon](#horizon-minecraft-263-in-rust)), and NeoForge is the default.
 
 ![QC](/QCSimple3.jpg)
 
@@ -20,20 +20,20 @@ QuestCraft itself is not a mod. It is a launcher app (a Unity project that calls
 
 **Quilt: every version QuestCraft's Fabric list has** (1.19.2, 1.19.4, 1.20.1, 1.20.4, 1.20.6, 1.21.1, 1.21.4, 1.21.5, 1.21.8, 1.21.10, 1.21.11), see [Quilt](#quilt).
 
-**Vanilla: 1.12.2**, with OptiFine and Vivecraft 1.12.2 on OpenXR, see [Minecraft 1.12.2 in VR](#minecraft-1122-in-vr-vanilla).
-
 **Risugami (ModLoader): 39 versions from alpha 1.1.2_01 to 1.6.2**: beta 1.7.3 in VR (QuestCraft's own), the others on a screen in VR, see [Risugami's ModLoader](#risugamis-modloader-alpha-beta-10-to-162).
+
+**Horizon: 26.3**, on a screen in VR for now, see [Horizon](#horizon-minecraft-263-in-rust).
 
 Left out of NeoForge: **1.21.10**. Upstream QuestCraft ships it, but the fork's `OpenXR-1.21.10` branch does not compile its shared module in this setup even when built exactly as shipped (Fabric only; the Minecraft classes never reach the compiler), so there is no working source to start from. (1.21.11 is newer and does not depend on it, see below.)
 
-## Loader toggle (Fabric / NeoForge / Quilt / Forge / Vanilla / Risugami)
+## Loader toggle (Fabric / NeoForge / Quilt / Forge / Risugami / Horizon)
 
 The instance creator has a loader dropdown with **Fabric**, **NeoForge**, **Quilt** and **Forge**. It decides which Minecraft versions the creator offers (each loader has its own list), what the new instance is installed with, and which mod list its default mods come from. The choice is remembered (`lastSelectedLoader` in `launcher.conf`); a config from before the toggle counts as NeoForge.
 
 - Each instance keeps the loader it was made with (shown next to the version in the instance list). Mod Manager searches Modrinth for, and checks mods and dependencies against, the loader of the selected instance; a modpack becomes an instance of that loader, and a modpack for the other loader is refused.
 - **Quick play** (picking a version in the main dropdown and pressing Play when there is no instance of that name yet) creates the instance with the selected loader, or with the other one if the selected loader does not support that version.
 - Fabric instances use upstream QuestCraft's Fabric mod list and version list as before; NeoForge uses the ones in this repository; Quilt uses Fabric's mod list with its own version list. A Fabric instance made before the port keeps working unchanged.
-- The loaders live in one place, [`ModLoader`](pojlib/src/main/java/pojlib/install/ModLoader.java): id, display name, Modrinth category, where its mod list and version list are hosted. A further loader (this is how Quilt was added) needs an entry there, an install branch in `InstanceHandler.create` and its launch arguments; the dropdown, the version lists and Mod Manager follow from the registry.
+- The loaders live in one place, [`ModLoader`](pojlib/src/main/java/pojlib/install/ModLoader.java): id, display name, whether the toggle offers it, Modrinth category, where its mod list and version list are hosted. A further loader (this is how Quilt was added) needs an entry there, an install branch in `InstanceHandler.create` and its launch arguments; the dropdown, the version lists and Mod Manager follow from the registry.
 
 Limits: a default instance is named after its version (`1.21.1`), so once one exists the main dropdown launches that instance whichever loader is selected now. For the same version on the other loader, create it in the instance creator under another name.
 
@@ -196,9 +196,11 @@ In menus: right trigger clicks, A right-clicks, right grip middle-clicks, left g
 
 **Not tried on a headset.** The jars build and the launcher side is tested (instance choice, mod lists), but nothing here ran Visor on a Quest: whether its renderer works through the headset's OpenGL layer, and whether the controllers map well, are unknown. Visor itself is an early-stage mod. If the game starts and VR does not, the log screen shows the Visor/OpenXR lines (crash info) to send.
 
-## Minecraft 1.12.2 in VR ("Vanilla")
+## Minecraft 1.12.2 in VR ("Vanilla", no longer offered)
 
-The New instance screen has a fifth loader, **Vanilla**, with **1.12.2**: Minecraft 1.12.2 with OptiFine and **Vivecraft 1.12.2**, the last Vivecraft before 1.13 (jrbudda's `jrbudda-11-r6`). Vivecraft for 1.12.2 was SteamVR only; here its VR provider is rewritten on **OpenXR**, after QuestCraft's own OpenXR Vivecraft (the 1.19 port: instance, session, spaces, actions, and the Quest controller bindings as they are there). Everything else is Vivecraft 1.12.2's own: its in-game menus (VR Settings, radial menu, keyboard), locomotion, climbing, the hotbar on the wrist. The source is in [`vivecraft112-builder/`](vivecraft112-builder).
+**Vanilla is not offered any more**: it cannot run on the headset. Instances made with it are still listed, and the code is kept. What it was:
+
+The New instance screen had a loader, **Vanilla**, with **1.12.2**: Minecraft 1.12.2 with OptiFine and **Vivecraft 1.12.2**, the last Vivecraft before 1.13 (jrbudda's `jrbudda-11-r6`). Vivecraft for 1.12.2 was SteamVR only; here its VR provider is rewritten on **OpenXR**, after QuestCraft's own OpenXR Vivecraft (the 1.19 port: instance, session, spaces, actions, and the Quest controller bindings as they are there). Everything else is Vivecraft 1.12.2's own: its in-game menus (VR Settings, radial menu, keyboard), locomotion, climbing, the hotbar on the wrist. The source is in [`vivecraft112-builder/`](vivecraft112-builder).
 
 What it takes, and how it is done:
 
@@ -220,7 +222,7 @@ Forge 1.12.2 starts through LaunchWrapper, which needs the system class loader t
 
 ## Risugami's ModLoader (alpha, beta, 1.0 to 1.6.2)
 
-The New instance screen has a sixth loader, **Risugami**: Risugami's ModLoader on **39 Minecraft versions**, from alpha 1.1.2_01 through every beta with a ModLoader build up to 1.6.2, under **Release / Beta / Alpha** tabs. ModLoader is not a mod but classes put into the game's client, which is how its readme says to install it, and it then loads mods from the instance's `mods/` folder itself. Mods come from Modrinth's *ModLoader* category, as the Mod Manager searches the instance's loader.
+The New instance screen has a loader **Risugami**: Risugami's ModLoader on **39 Minecraft versions**, from alpha 1.1.2_01 through every beta with a ModLoader build up to 1.6.2, under **Release / Beta / Alpha** tabs. ModLoader is not a mod but classes put into the game's client, which is how its readme says to install it, and it then loads mods from the instance's `mods/` folder itself. Mods come from Modrinth's *ModLoader* category, as the Mod Manager searches the instance's loader.
 
 How it is done:
 
@@ -288,4 +290,16 @@ Minecraft 26.1 and newer (26.1, 26.2, 26.3 and the 26.4 snapshots) cannot run in
 - **LWJGL 3.4.x** instead of 3.3.3, with Android natives for it (and for SDL3), and a Vulkan-capable client (620 Vulkan references, the OpenGL backend is still there).
 - **Vivecraft for 26.x** exists upstream, QuestCraft's OpenXR changes would have to be ported onto it again, and onto SDL.
 
-None of that can be tried without a headset, so it was left out instead of shipping something that cannot be checked.
+None of that can be tried without a headset, so it was left out instead of shipping something that cannot be checked. Horizon, below, is 26.3 another way.
+
+## Horizon (Minecraft 26.3 in Rust)
+
+The loader toggle's **Horizon** is not a mod loader but a different program: [Horizon](https://github.com/horizon-rust/horizon) (MIT), Minecraft Java Edition 26.3's client and game logic rewritten in Rust, with no Mojang code in it. It runs natively (Vulkan), so none of the Java walls above apply. The library comes from [`horizon-quest/`](horizon-quest), which also builds it as an app of its own.
+
+- **Making an instance** (26.3 is its only version) downloads your copy of 26.3 from Mojang the way the official launcher keeps it, which is where Horizon reads it: `versions/26.3/26.3.json` as Mojang serves it, `versions/26.3/26.3.jar`, the libraries for Linux on arm64, the assets, and the 26.3 server jar (`HorizonInstaller`). Horizon checks each one against the checksums it pins.
+- **Playing** starts it in an activity of its own (`HorizonActivity`, a NativeActivity in the process `:horizon`, like the game's `GameActivity`), with the instance's folder for worlds, options and logs, and your account's name. When it ends the launcher comes back.
+- **On a screen in VR for now**: its VR (one OpenXR core with Vivecraft's way and Visor's way, ported with their licences) is still to come.
+
+**What is missing: Horizon's resources.** Horizon prepares its textures, sounds and data from your game files with its preparer, and part of that runs Mojang's own code in Java 25 (Horizon's exporters). The app's Java is 22 and no Java 25 for Android can be fetched from here, so the files are downloaded but not prepared yet, and the game opens Horizon's "resources missing" screen. That screen is the test that Horizon starts and draws on the Quest at all. Preparing on the headset (Java 25 for Android, and Horizon's preparer at a version that accepts the 26.3 version file Mojang serves now; the pinned one predates its last republish) is the next step.
+
+**Not tried on a headset**: none of it, the Vulkan drawing, the panel, the input and the sound included.

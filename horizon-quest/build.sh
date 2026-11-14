@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Builds Horizon (https://github.com/horizon-rust/horizon, MIT: Minecraft Java Edition 26.3 rewritten in
-# Rust) for Meta Quest: dist/Horizon-quest.apk.
+# Rust) for Meta Quest: dist/arm64-v8a/libhorizon_quest.so, which QuestCraft's launcher runs, and
+# dist/Horizon-quest.apk, the same on its own.
 #
 # Horizon is fetched at the pinned commit into work/horizon, patches/ is applied (an Android entry
 # for its game: arguments and event loop, and no system clipboard), and crate/ becomes its
@@ -63,12 +64,15 @@ EOF
 (cd "$src" && cargo ndk -t arm64-v8a --platform 29 build --profile "$PROFILE" -p horizon-quest)
 lib="$src/target/aarch64-linux-android/$PROFILE/libhorizon_quest.so"
 
-# 4. The APK: the manifest, the library, aligned and signed
+# 4. The library for QuestCraft's launcher, which runs it for Horizon instances (godot-launcher/build-apk.sh
+#    puts it in the launcher's APK), and Horizon's own APK: the manifest, the library, aligned and signed
 out="$WORK/apk"
 rm -rf "$out" && mkdir -p "$out/lib/arm64-v8a"
 "$BUILD_TOOLS/aapt2" link -o "$out/unsigned.apk" --manifest "$here/android/AndroidManifest.xml" -I "$PLATFORM"
 cp "$lib" "$out/lib/arm64-v8a/"
 "$ANDROID_NDK_HOME"/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-strip --strip-debug "$out/lib/arm64-v8a/libhorizon_quest.so"
+mkdir -p "$here/dist/arm64-v8a"
+cp "$out/lib/arm64-v8a/libhorizon_quest.so" "$here/dist/arm64-v8a/"
 (cd "$out" && zip -q -r unsigned.apk lib)
 "$BUILD_TOOLS/zipalign" -f -p 4 "$out/unsigned.apk" "$out/aligned.apk"
 if [ ! -f "$KEYSTORE" ]; then

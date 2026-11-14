@@ -12,7 +12,10 @@ import com.google.gson.JsonObject;
 import org.lwjgl.glfw.CallbackBridge;
 
 import pojlib.account.MinecraftAccount;
+import pojlib.install.HorizonInstaller;
+import pojlib.install.Installer;
 import pojlib.install.ModLoader;
+import pojlib.install.VersionInfo;
 import pojlib.util.FileUtil;
 import pojlib.util.GsonUtils;
 import pojlib.util.JREUtils;
@@ -243,6 +246,20 @@ public class API {
      */
     public static boolean prelaunch(Activity activity, MinecraftInstances instances, MinecraftInstances.Instance instance) {
         gameReady = false;
+        if (instance.isHorizon()) {
+            // no Java: its game files, which it prepares its resources from, and that is all
+            if (!hasConnection(activity)) return true;
+            try {
+                VersionInfo minecraft = HorizonInstaller.install(Constants.USER_HOME);
+                Installer.installAssets(minecraft, Constants.USER_HOME).get();
+                return true;
+            } catch (Throwable e) {
+                Logger.getInstance().appendToLog("Horizon's game files could not be checked: " + e);
+                return false;
+            } finally {
+                DownloadManager.reset();
+            }
+        }
         if (hasConnection(activity)) {
             instance.updateMods(instances);
             try {
@@ -272,6 +289,7 @@ public class API {
     /** {@link #prelaunch} without the downloads and file checks, see {@link JREUtils#prelaunchLight}. */
     public static boolean prelaunchLight(Activity activity, MinecraftInstances.Instance instance) {
         gameReady = false;
+        if (instance.isHorizon()) return true;
         try {
             if (!JREUtils.prelaunchLight(activity, instance)) {
                 Logger.getInstance().appendToLog("JVM is not properly installed!");

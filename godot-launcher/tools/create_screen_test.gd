@@ -95,28 +95,23 @@ func _initialize() -> void:
 		if b.text == "Visor":
 			no_visor = false
 	check(no_visor, "no Visor button where there is no Visor build (Forge 1.20.4)")
-	# Vanilla: the old versions with Vivecraft built into the game (1.12.2)
+	# Vanilla is not offered (it cannot run on the headset); Horizon is: 26.3 only, on a screen in VR
 	ui.show_create()
 	await process_frame
+	check(not ui.find_children("*", "Button", true, false).any(func(b): return b.text == "Vanilla"), "no Vanilla button")
 	for b in ui.find_children("*", "Button", true, false):
-		if b.text == "Vanilla":
+		if b.text == "Horizon":
 			b.pressed.emit()
 	await process_frame
-	var vanilla_versions: Array = _version_buttons(ui).map(func(b): return (b as Button).text)
-	check(vanilla_versions == ["1.12.2"], "Vanilla offers 1.12.2: " + str(vanilla_versions))
-	var vanilla_visor := false
-	for b in ui.find_children("*", "Button", true, false):
-		if b.text == "Visor":
-			vanilla_visor = true
-	check(not vanilla_visor, "Vanilla 1.12.2 runs Vivecraft only")
-	for b in _version_buttons(ui):
-		b.pressed.emit()
-	await process_frame
+	var horizon_versions: Array = _version_buttons(ui).map(func(b): return (b as Button).text)
+	check(horizon_versions == ["26.3"], "Horizon offers 26.3: " + str(horizon_versions))
+	check(not _label_texts(ui).any(func(t): return t.begins_with("Vivecraft")), "no Vivecraft for Horizon yet")
+	check(_label_texts(ui).any(func(t): return t.begins_with("Screen")), "Horizon runs on a screen in VR")
 	for b in ui.find_children("*", "Button", true, false):
 		if b.text == "Create":
 			b.pressed.emit()
 	await process_frame
-	check(bridge._mock_instances.any(func(i): return i["version"] == "1.12.2" and i["loader"] == "Vanilla" and i["vr"] == "Vivecraft"), "Create makes a Vanilla 1.12.2 Vivecraft instance")
+	check(bridge._mock_instances.any(func(i): return i["version"] == "26.3" and i["loader"] == "Horizon" and i["vr"] == "Screen"), "Create makes a Horizon 26.3 instance")
 	# Risugami (ModLoader): alpha to 1.6, its many versions under Release / Beta / Alpha tabs, on a screen in VR
 	ui.show_create()
 	await process_frame
@@ -132,7 +127,7 @@ func _initialize() -> void:
 	var release_versions: Array = _version_buttons(ui).map(func(b): return (b as Button).text)
 	check(release_versions.size() > 0 and release_versions.all(func(v): return v.begins_with("1.")), "Release tab: " + str(release_versions))
 	check(not _label_texts(ui).any(func(t): return t.begins_with("Vivecraft")), "no Vivecraft for ModLoader")
-	check(_label_texts(ui).any(func(t): return t.begins_with("Screen")), "ModLoader runs on a screen in VR")
+	check(_label_texts(ui).any(func(t): return t.begins_with("VR")), "ModLoader 1.6.2 runs in QuestCraft's own VR")
 	for b in ui.find_children("*", "Button", true, false):
 		if b.text == "Beta":
 			b.pressed.emit()
@@ -147,18 +142,18 @@ func _initialize() -> void:
 		if b.text == "Create":
 			b.pressed.emit()
 	await process_frame
-	check(bridge._mock_instances.any(func(i): return i["version"] == "b1.7.3" and i["loader"] == "Risugami" and i["vr"] == "Screen"), "Create makes a Risugami b1.7.3 instance on a screen")
+	check(bridge._mock_instances.any(func(i): return i["version"] == "b1.7.3" and i["loader"] == "Risugami" and i["vr"] == "VR"), "Create makes a Risugami b1.7.3 instance in VR")
 	print("CREATE SCREEN OK" if ok else "CREATE SCREEN FAILED")
 	quit()
 
 
-## the buttons of the version grid: the ones named like a Minecraft version (1.x, or b1.x and a1.x for beta and alpha)
+## the buttons of the version grid: the ones named like a Minecraft version (1.x and 26.x, or b1.x and a1.x for beta and alpha)
 func _version_buttons(ui: Control) -> Array:
+	var version := RegEx.create_from_string("^[ab]?\\d+\\.\\d")
 	var out: Array = []
 	for g in ui.find_children("*", "GridContainer", true, false):
 		for b in g.get_children():
-			var t: String = (b as Button).text
-			if t.begins_with("1.") or t.begins_with("b1.") or t.begins_with("a1."):
+			if version.search((b as Button).text) != null:
 				out.append(b)
 	return out
 

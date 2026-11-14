@@ -101,6 +101,19 @@
             </intent-filter>
         </activity>
 
+        <!-- Horizon (Minecraft 26.3 in Rust): NativeActivity runs libhorizon_quest.so, in a process of its own like the
+             game's. No VR category: it is on a panel until its VR is there -->
+        <activity
+            android:name=".HorizonActivity"
+            android:process=":horizon"
+            android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen"
+            android:screenOrientation="landscape"
+            android:configChanges="locale|fontScale|keyboard|keyboardHidden|mcc|mnc|navigation|orientation|screenLayout|screenSize|smallestScreenSize|touchscreen|uiMode|density"
+            android:excludeFromRecents="true"
+            android:exported="false">
+            <meta-data android:name="android.app.lib_name" android:value="horizon_quest" />
+        </activity>
+
     </application>
 
 </manifest>

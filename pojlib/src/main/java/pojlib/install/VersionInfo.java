@@ -79,6 +79,9 @@ public class VersionInfo {
     public static class Downloads {
         @SerializedName("client")
         public Client client;
+        // the server jar: Horizon prepares its resources from it too
+        @SerializedName("server")
+        public Client server;
 
         public static class Client {
             @SerializedName("sha1")

@@ -7,6 +7,7 @@
 mod game;
 
 use horizon_client::{crash, logging};
+use std::path::{Path, PathBuf};
 use winit::platform::android::activity::AndroidApp;
 
 #[global_allocator]
@@ -16,27 +17,27 @@ static ALLOCATOR: horizon_threads::Allocator = horizon_threads::Allocator;
 /// `<app storage>/resources/<version>`.
 const VERSION: &str = "26.3";
 
+/// The game's arguments from QuestCraft's launcher, one per line, in the app's internal files
+/// (HorizonActivity writes it before the library starts): the instance's game folder, the
+/// prepared resources and the player's name.
+const LAUNCH_ARGS: &str = "horizon-args.txt";
+
 #[unsafe(no_mangle)]
 fn android_main(app: AndroidApp) {
     horizon_threads::configure_allocator();
-    // The app's folder on shared storage (Android/data/<package>/files), where the resources and
-    // the game folder can be reached over USB; the internal one when there is none.
-    let Some(base) = app.external_data_path().or_else(|| app.internal_data_path()) else {
+    let args = app
+        .internal_data_path()
+        .and_then(|files| std::fs::read_to_string(files.join(LAUNCH_ARGS)).ok())
+        .map(|text| text.lines().map(str::to_owned).filter(|a| !a.is_empty()).collect())
+        .unwrap_or_else(|| standalone_args(&app));
+    let Some(home) = value(&args, "--home").or_else(|| value(&args, "--game-dir")) else {
         return;
     };
-    let home = base.join("horizon");
     let _ = std::fs::create_dir_all(&home);
     logging::set_game_home(home.clone());
     logging::init(&home, "Render thread");
     log::info!("Horizon {} on Meta Quest (QuestCraft)", crash::version());
     crash::install(home.clone(), "client");
-    let resources = base.join("resources").join(VERSION);
-    let args = vec![
-        "--game-dir".to_owned(),
-        home.display().to_string(),
-        "--resources".to_owned(),
-        resources.display().to_string(),
-    ];
     let _ = game::ANDROID.set((app, args));
     if let Err(error) = game::run() {
         log::error!("Horizon: {error}");
@@ -44,4 +45,25 @@ fn android_main(app: AndroidApp) {
         crash::report_error(&home, "client", &*error);
     }
     logging::flush();
+}
+
+/// Started on its own (Horizon-quest.apk): the app's folder on shared storage
+/// (Android/data/<package>/files), where the resources and the game folder can be reached over
+/// USB; the internal one when there is none.
+fn standalone_args(app: &AndroidApp) -> Vec<String> {
+    let Some(base) = app.external_data_path().or_else(|| app.internal_data_path()) else {
+        return Vec::new();
+    };
+    let path = |p: &Path| p.display().to_string();
+    vec![
+        "--game-dir".to_owned(),
+        path(&base.join("horizon")),
+        "--resources".to_owned(),
+        path(&base.join("resources").join(VERSION)),
+    ]
+}
+
+fn value(args: &[String], name: &str) -> Option<PathBuf> {
+    let at = args.iter().position(|a| a == name)?;
+    args.get(at + 1).map(PathBuf::from)
 }

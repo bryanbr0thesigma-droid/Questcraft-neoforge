@@ -136,13 +136,18 @@ public final class LauncherApi {
     /**
      * The VR mods an instance of this loader and Minecraft version can run: Vivecraft, and Visor where QuestCraft has a
      * build of it. ModLoader's versions have no VR mod: "VR", QuestCraft's own for the versions that have it (beta
-     * 1.7.3), else "Screen", the game on a screen in VR.
+     * 1.7.3), else "Screen", the game on a screen in VR. Horizon is on a screen for now.
      */
     public static String vrMods(String loader, String minecraftVersion) {
         JsonArray array = new JsonArray();
         ModLoader ml = ModLoader.fromName(loader);
         if (ml == ModLoader.RISUGAMI) {
             array.add(pojlib.install.RisugamiModLoader.hasVR(minecraftVersion) ? MinecraftInstances.Instance.VR : MinecraftInstances.Instance.SCREEN);
+            return array.toString();
+        }
+        if (ml == ModLoader.HORIZON) {
+            // on a panel until its VR (Vivecraft's and Visor's ways, in Rust) is there
+            array.add(MinecraftInstances.Instance.SCREEN);
             return array.toString();
         }
         array.add("Vivecraft");
@@ -385,6 +390,17 @@ public final class LauncherApi {
                 prepare(instanceName);
             }
         }, "qc-prepare-light").start();
+    }
+
+    /**
+     * The command line of a Horizon instance, a JSON array of strings, or "" for an instance that is not Horizon (that
+     * runs in Java). Horizon is not started by {@link #startGame} but by the host, which loads its library (the Godot
+     * launcher's HorizonActivity); {@link #prepare} first, for its files and the account.
+     */
+    public static String horizonArgs(String instanceName) {
+        MinecraftInstances.Instance instance = find(instanceName);
+        if (instance == null || !instance.isHorizon()) return "";
+        return GSON.toJson(pojlib.install.HorizonInstaller.launchArgs(instance, API.currentAcc));
     }
 
     /** Step 2: runs the game in this process. Does not return until the game ends, so it has a thread of its own. */

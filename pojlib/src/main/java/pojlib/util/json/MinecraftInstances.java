@@ -124,18 +124,27 @@ public class MinecraftInstances {
             return "visor".equals(vrMod);
         }
 
-        /** Vivecraft runs in it: not Visor, and not a ModLoader instance (no VR mod exists for those versions). */
+        /**
+         * Vivecraft runs in it: not Visor, not a ModLoader instance (no VR mod exists for those versions) and not
+         * Horizon (no Java).
+         */
         public boolean usesVivecraft() {
-            return !usesVisor() && loader() != ModLoader.RISUGAMI;
+            return !usesVisor() && loader() != ModLoader.RISUGAMI && loader() != ModLoader.HORIZON;
+        }
+
+        /** Horizon, a native program instead of Java: started by the launcher's HorizonActivity, see HorizonInstaller. */
+        public boolean isHorizon() {
+            return loader() == ModLoader.HORIZON;
         }
 
         /** Shown in the launcher next to the loader. */
         public String vrModName() {
             if (loader() == ModLoader.RISUGAMI) return pojlib.install.RisugamiModLoader.hasVR(versionName) ? VR : SCREEN;
+            if (loader() == ModLoader.HORIZON) return SCREEN;
             return usesVisor() ? "Visor" : "Vivecraft";
         }
 
-        /** What an instance without a VR mod shows the game on: a screen in VR (ModLoader's versions) */
+        /** What an instance without a VR mod shows the game on: a screen in VR (ModLoader's versions, Horizon for now) */
         public static final String SCREEN = "Screen";
         /** QuestCraft's own VR, for an old version no VR mod exists for (the legacy launcher's, beta 1.7.3) */
         public static final String VR = "VR";

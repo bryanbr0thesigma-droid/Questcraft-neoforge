@@ -1,5 +1,6 @@
 package pojlib.install;
 
+import java.util.Arrays;
 import java.util.Locale;
 
 import pojlib.util.Constants;
@@ -15,6 +16,9 @@ import pojlib.util.Constants;
  * <p>
  * Quilt loads Fabric mods, so it shares Fabric's mod list and accepts mods from the Fabric category on Modrinth,
  * but is its own loader everywhere else (install, instances, version list, mod list snapshot).
+ * <p>
+ * A loader that is not {@code offered} is not in the launcher's toggle, so no new instances are made with it, but the
+ * ones there are still load.
  */
 public enum ModLoader {
     FABRIC("fabric", "Fabric",
@@ -40,8 +44,8 @@ public enum ModLoader {
             Constants.PORT_RAW_URL + "/pojlib/supportedVersions-forge.json",
             "forge"),
     // No mod loader: old versions whose VR is Vivecraft's changed game classes on top of OptiFine (1.12.2, see
-    // LegacyVivecraft). Mods do not load, resource packs do
-    VANILLA("vanilla", "Vanilla",
+    // LegacyVivecraft). Mods do not load, resource packs do. Not offered any more: it cannot run on the headset
+    VANILLA("vanilla", "Vanilla", false,
             Constants.PORT_RAW_URL + "/pojlib/mods-vanilla.json",
             Constants.PORT_RAW_URL + "/pojlib/devmods-vanilla.json",
             Constants.PORT_RAW_URL + "/pojlib/supportedVersions-vanilla.json",
@@ -52,12 +56,21 @@ public enum ModLoader {
             Constants.PORT_RAW_URL + "/pojlib/mods-modloader.json",
             Constants.PORT_RAW_URL + "/pojlib/devmods-modloader.json",
             Constants.PORT_RAW_URL + "/pojlib/supportedVersions-modloader.json",
-            "modloader");
+            "modloader"),
+    // Not a loader but a game: Horizon, Minecraft 26.3 rewritten in Rust, which runs as a native program instead of in
+    // Java (see HorizonInstaller). No mods from Modrinth
+    HORIZON("horizon", "Horizon",
+            Constants.PORT_RAW_URL + "/pojlib/mods-horizon.json",
+            Constants.PORT_RAW_URL + "/pojlib/devmods-horizon.json",
+            Constants.PORT_RAW_URL + "/pojlib/supportedVersions-horizon.json",
+            "horizon");
 
     /** Stored in instances.json and the Modrinth category of the loader itself: lower case. */
     public final String id;
     /** Shown in the launcher, and what the launcher passes to {@code createNewInstance}. */
     public final String displayName;
+    /** In the launcher's loader toggle. */
+    public final boolean offered;
     private final String modsUrl;
     private final String devModsUrl;
     private final String supportedVersionsUrl;
@@ -65,8 +78,14 @@ public enum ModLoader {
 
     ModLoader(String id, String displayName, String modsUrl, String devModsUrl, String supportedVersionsUrl,
               String... modrinthCategories) {
+        this(id, displayName, true, modsUrl, devModsUrl, supportedVersionsUrl, modrinthCategories);
+    }
+
+    ModLoader(String id, String displayName, boolean offered, String modsUrl, String devModsUrl,
+              String supportedVersionsUrl, String... modrinthCategories) {
         this.id = id;
         this.displayName = displayName;
+        this.offered = offered;
         this.modsUrl = modsUrl;
         this.devModsUrl = devModsUrl;
         this.supportedVersionsUrl = supportedVersionsUrl;
@@ -124,12 +143,9 @@ public enum ModLoader {
         return loader != null ? loader : FABRIC;
     }
 
+    /** The loaders the launcher offers for new instances. */
     public static String[] displayNames() {
-        ModLoader[] all = values();
-        String[] names = new String[all.length];
-        for (int i = 0; i < all.length; i++) {
-            names[i] = all[i].displayName;
-        }
-        return names;
+        return Arrays.stream(values()).filter(loader -> loader.offered).map(loader -> loader.displayName)
+                .toArray(String[]::new);
     }
 }

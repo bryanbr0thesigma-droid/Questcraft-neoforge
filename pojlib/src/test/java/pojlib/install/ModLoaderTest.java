@@ -2,6 +2,7 @@ package pojlib.install;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -36,12 +37,19 @@ class ModLoaderTest {
     }
 
     @Test
-    void theLauncherListsFabricNeoForgeQuiltForgeVanillaAndRisugami() {
-        assertArrayEquals(new String[]{"Fabric", "NeoForge", "Quilt", "Forge", "Vanilla", "Risugami"}, ModLoader.displayNames());
+    void theLauncherListsFabricNeoForgeQuiltForgeRisugamiAndHorizon() {
+        assertArrayEquals(new String[]{"Fabric", "NeoForge", "Quilt", "Forge", "Risugami", "Horizon"}, ModLoader.displayNames());
         // what the launcher shows is accepted again when it passes it back
         for (String name : ModLoader.displayNames()) {
             assertEquals(name, ModLoader.fromName(name).displayName);
         }
+    }
+
+    @Test
+    void vanillaIsNotOfferedButItsInstancesStillLoad() {
+        assertFalse(ModLoader.VANILLA.offered);
+        assertEquals(ModLoader.VANILLA, ModLoader.fromStored("vanilla"));
+        assertEquals(ModLoader.HORIZON, ModLoader.fromStored("horizon"));
     }
 
     @Test

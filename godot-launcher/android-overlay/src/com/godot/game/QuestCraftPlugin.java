@@ -34,10 +34,21 @@ public class QuestCraftPlugin extends GodotPlugin {
     }
 
     /** Starts the game in its own activity and process; this one (the VR menu) pauses until the game ends. */
-    private String startGameProcess(String instance, String account) {
-        Intent intent = new Intent(getActivity(), GameActivity.class);
-        intent.putExtra("instance", instance);
-        intent.putExtra("account", account);
+    private String startGameProcess(String instance, String account) throws org.json.JSONException {
+        Intent intent;
+        String horizon = LauncherApi.horizonArgs(instance);
+        if (!horizon.isEmpty()) {
+            // Horizon is a native program, not Java: its own activity, with the command line worked out here
+            JSONArray parsed = new JSONArray(horizon);
+            String[] args = new String[parsed.length()];
+            for (int i = 0; i < args.length; i++) args[i] = parsed.getString(i);
+            intent = new Intent(getActivity(), HorizonActivity.class);
+            intent.putExtra(HorizonActivity.ARGS, args);
+        } else {
+            intent = new Intent(getActivity(), GameActivity.class);
+            intent.putExtra("instance", instance);
+            intent.putExtra("account", account);
+        }
         getActivity().startActivity(intent);
         // This process holds an OpenXR session (Godot only ends it with the process) and a lot of memory, and the game
         // needs both: end it. The game's activity starts the launcher again when the game ends.

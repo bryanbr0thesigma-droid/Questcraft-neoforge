@@ -687,7 +687,9 @@ func show_create() -> void:
 		var options = Bridge.api("vrMods", [state["loader"], state["version"]])
 		if typeof(options) != TYPE_ARRAY or options.size() < 2:
 			state["vr"] = str(options[0]) if typeof(options) == TYPE_ARRAY and options.size() == 1 else "Vivecraft"
-			if state["vr"] == "Screen":
+			if state["vr"] == "Screen" and state["loader"] == "Horizon":
+				vr_row.add_child(_label("Screen   (Horizon's VR is not there yet: the game is on a screen in VR)", 22, TEXT_DIM))
+			elif state["vr"] == "Screen":
 				vr_row.add_child(_label("Screen   (no VR mod exists for %s: the game is on a screen in VR)" % state["version"], 22, TEXT_DIM))
 			elif state["vr"] == "VR":
 				vr_row.add_child(_label("VR   (QuestCraft's own for %s: no VR mod exists for it)" % state["version"], 22, TEXT_DIM))
