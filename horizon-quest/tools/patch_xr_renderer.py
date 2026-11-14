@@ -196,8 +196,11 @@ edit(gfx, """    /// Whether the device's loss callback has fired. A surface rec
         let mut drawn = true;
         for (index, eye) in eyes.iter().enumerate() {
             self.xr_eye = Some(crate::xr::eye_view(eye, body, headset_frame.size, frame.depth_far));
+            // the HUD and menus on a panel 1.6 m ahead, a little low, 25 degrees to either side
+            self.hud.vr = crate::xr::hud_transform(eyes, index, headset_frame.size, 1.6, 0.15, 25f32.to_radians());
             let result = self.draw_frame(frame, None, self.output);
             self.xr_eye = None;
+            self.hud.vr = [1.0, 1.0, 0.0, 0.0];
             drawn &= matches!(result?, true);
             let target = crate::xr::headset().and_then(|h| h.eye_texture(index));
             if let (Some(source), Some(target)) = (&self.offscreen, target) {
@@ -220,4 +223,77 @@ edit(gfx, """    /// Whether the device's loss callback has fired. A surface rec
         Ok(drawn)
     }
     /// Whether the device's loss callback has fired. A surface reconfigure""")
+# --- the HUD and menus: a panel ahead in a headset (the HUD shader's `vr`: scale, then offset)
+hud_wgsl = render / "hud.wgsl"
+edit(hud_wgsl, """    end_portal: array<vec4<f32>, 3>,
+}
+@group(0) @binding(0) var<uniform> hud: Hud;""", """    end_portal: array<vec4<f32>, 3>,
+    // QuestCraft's headset: the screen coordinates scaled by xy and moved by zw, a panel ahead
+    // (xr::hud_transform); (1, 1, 0, 0) on a screen
+    vr: vec4<f32>,
+}
+@group(0) @binding(0) var<uniform> hud: Hud;""")
+edit(hud_wgsl, """    out.clip = vec4(pixels.x / hud.size.x * 2.0 - 1.0, 1.0 - pixels.y / hud.size.y * 2.0, depth, 1.0);""",
+     """    let screen = vec2(pixels.x / hud.size.x * 2.0 - 1.0, 1.0 - pixels.y / hud.size.y * 2.0);
+    out.clip = vec4(screen * hud.vr.xy + hud.vr.zw, depth, 1.0);""")
+hud = render / "hud.rs"
+def edit_bytes(path, old, new, count=1):
+    text = path.read_bytes().decode("utf-8", "surrogateescape")
+    found = text.count(old)
+    if found != count:
+        raise SystemExit(f"{path}: expected {count} of {old[:80]!r}, found {found}")
+    path.write_bytes(text.replace(old, new).encode("utf-8", "surrogateescape"))
+edit_bytes(hud, """    /// `EndPortalFill`: the two sprites, then the game time in x.
+    end_portal: [[f32; 4]; 3],
+}
+impl HudUniform {
+    fn new(size: [f32; 4], fill: EndPortalFill, glint_colour: u32) -> Self {""", """    /// `EndPortalFill`: the two sprites, then the game time in x.
+    end_portal: [[f32; 4]; 3],
+    /// QuestCraft's headset: the panel the HUD is on (`HudRenderer::vr`).
+    vr: [f32; 4],
+}
+impl HudUniform {
+    fn new(size: [f32; 4], fill: EndPortalFill, glint_colour: u32) -> Self {""")
+edit_bytes(hud, """                [fill.game_time, tint[0], tint[1], tint[2]],
+            ],
+        }
+    }
+}""", """                [fill.game_time, tint[0], tint[1], tint[2]],
+            ],
+            vr: [1.0, 1.0, 0.0, 0.0],
+        }
+    }
+}""")
+edit_bytes(hud, """            bytemuck::bytes_of(&HudUniform::new(
+                [
+                    size[0] as f32,
+                    size[1] as f32,
+                    batch.scale * self.zoom,
+                    batch.glint_alpha,
+                ],
+                batch.end_portal,
+                batch.glint_colour,
+            )),""", """            bytemuck::bytes_of(&HudUniform {
+                vr: self.vr,
+                ..HudUniform::new(
+                    [
+                        size[0] as f32,
+                        size[1] as f32,
+                        batch.scale * self.zoom,
+                        batch.glint_alpha,
+                    ],
+                    batch.end_portal,
+                    batch.glint_colour,
+                )
+            }),""")
+edit_bytes(hud, """    pub zoom: f32,
+""", """    pub zoom: f32,
+    /// QuestCraft's headset: the panel the HUD and menus are drawn on in the eye drawn now, as
+    /// `xr::hud_transform` gives it; (1, 1, 0, 0) on a screen.
+    pub vr: [f32; 4],
+""")
+edit_bytes(hud, """            zoom: 1.0,
+""", """            zoom: 1.0,
+            vr: [1.0, 1.0, 0.0, 0.0],
+""")
 print("patched", render)

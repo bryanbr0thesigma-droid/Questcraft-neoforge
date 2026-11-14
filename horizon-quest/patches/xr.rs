@@ -201,6 +201,33 @@ pub fn eye_view(eye: &Eye, yaw: f32, size: [u32; 2], far: f32) -> View {
     }
 }
 
+/// Where the HUD and menus are in `eye`'s image: a panel `distance` metres ahead of the head and
+/// `below` metres under eye level, `half_angle` radians to either side, the same for both eyes so
+/// it is seen at that depth. As the HUD shader's `vr`: its screen coordinates scaled by x and y,
+/// moved by z and w. `size` is the eye image's (the HUD is laid out for it).
+pub fn hud_transform(
+    eyes: &[Eye; 2],
+    index: usize,
+    size: [u32; 2],
+    distance: f32,
+    below: f32,
+    half_angle: f32,
+) -> [f32; 4] {
+    let eye = &eyes[index];
+    let [x, y, z, w] = eye.orientation;
+    let turn = Quat::from_xyzw(x, y, z, w).normalize();
+    let center = (Vec3::from(eyes[0].position) + Vec3::from(eyes[1].position)) / 2.0;
+    // the panel's middle, in the eye's own space
+    let middle = turn.inverse() * (center - Vec3::from(eye.position)) + Vec3::new(0.0, -below, -distance);
+    let clip = projection(&eye.fov, 1000.0) * middle.extend(1.0);
+    let across = eye.fov.right.tan() - eye.fov.left.tan();
+    let up = eye.fov.up.tan() - eye.fov.down.tan();
+    let scale_x = 2.0 * half_angle.tan() / across;
+    // the HUD's pixels stay square: an image pixel is across / width wide and up / height high
+    let scale_y = scale_x * (across / size[0].max(1) as f32) / (up / size[1].max(1) as f32);
+    [scale_x, scale_y, clip.x / clip.w, clip.y / clip.w]
+}
+
 /// The view the frame's geometry is culled with: both eyes' lenses together, from between them.
 pub fn cull_view(eyes: &[Eye; 2], yaw: f32, size: [u32; 2], far: f32) -> View {
     let [a, b] = eyes;
@@ -314,6 +341,27 @@ mod tests {
         assert!(close(view.view, crate::camera::view_matrix(body + yaw, pitch)), "{yaw} {pitch}");
         // turned left (+y in OpenXR) is negative yaw, as vanilla's left
         assert!(yaw < 0.0 && pitch > 0.0);
+    }
+
+    #[test]
+    fn the_hud_panel_is_ahead_and_seen_at_its_depth() {
+        let lens = Fov { left: -0.8, right: 0.8, up: 0.8, down: -0.8 };
+        let eye = |x: f32| Eye {
+            position: [x, 0.0, 0.0],
+            orientation: [0.0, 0.0, 0.0, 1.0],
+            fov: lens,
+        };
+        let eyes = [eye(-0.032), eye(0.032)];
+        let [sx, sy, left_x, left_y] = hud_transform(&eyes, 0, [1000, 1000], 1.6, 0.0, 0.4);
+        let [_, _, right_x, _] = hud_transform(&eyes, 1, [1000, 1000], 1.6, 0.0, 0.4);
+        // the left eye sees it to its right, the right eye to its left: crossed, so it is nearer
+        // than far away, by the eyes' spacing over the distance
+        assert!(left_x > 0.0 && right_x < 0.0 && (left_x + right_x).abs() < 1e-6);
+        let tan = 0.8f32.tan();
+        assert!((left_x - 0.032 / 1.6 / tan).abs() < 1e-4, "{left_x}");
+        assert!(left_y.abs() < 1e-6);
+        // 0.4 radians to either side of a lens 0.8 radians to either side
+        assert!((sx - 0.4f32.tan() / tan).abs() < 1e-5 && (sx - sy).abs() < 1e-6);
     }
 
     #[test]

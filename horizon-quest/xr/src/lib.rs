@@ -213,7 +213,6 @@ pub struct Xr {
     system: xr::SystemId,
     blend: xr::EnvironmentBlendMode,
     session: Option<Session>,
-    events: xr::EventDataBuffer,
     status: Status,
 }
 
@@ -294,7 +293,6 @@ impl Xr {
             system,
             blend,
             session: None,
-            events: xr::EventDataBuffer::new(),
             status: Status::Idle,
         })
     }
@@ -508,7 +506,9 @@ impl Xr {
 
     /// Handles the runtime's events: begins and ends the session as it is shown and hidden.
     pub fn poll(&mut self) -> Result<Status> {
-        while let Some(event) = self.instance.poll_event(&mut self.events).map_err(err("events"))? {
+        // here, not kept: a buffer holds raw pointers, which can't go to another thread
+        let mut events = xr::EventDataBuffer::new();
+        while let Some(event) = self.instance.poll_event(&mut events).map_err(err("events"))? {
             match event {
                 xr::Event::SessionStateChanged(change) => {
                     let Some(s) = &mut self.session else { continue };
