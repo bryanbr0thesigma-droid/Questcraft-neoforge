@@ -51,7 +51,9 @@ cp "$here/crate/src/lib.rs" "$crate/src/lib.rs"
 
 # 3. For the Quest (arm64): the game's library, and horizon-prepare, which prepares its resources on the headset
 #    (a program: named lib*.so so that Android installs it with the libraries, where programs may be started)
-(cd "$src" && cargo "$RUST" ndk -t arm64-v8a --platform 29 build --profile "$PROFILE" -p horizon-quest -p horizon-prepare --bin horizon-prepare)
+# (two builds: `--bin` would leave the game's library out of a build that names both)
+(cd "$src" && cargo "$RUST" ndk -t arm64-v8a --platform 29 build --profile "$PROFILE" -p horizon-quest --lib)
+(cd "$src" && cargo "$RUST" ndk -t arm64-v8a --platform 29 build --profile "$PROFILE" -p horizon-prepare --bin horizon-prepare)
 ndkbin="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin"
 out="$here/dist/arm64-v8a"
 rm -rf "$out" && mkdir -p "$out"
