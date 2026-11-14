@@ -59,6 +59,138 @@ struct Swapchain {
     current: Option<usize>,
 }
 
+/// The controllers as a gamepad's parts (Horizon's controller support plays with them).
+struct Actions {
+    set: xr::ActionSet,
+    left_stick: xr::Action<xr::Vector2f>,
+    right_stick: xr::Action<xr::Vector2f>,
+    left_trigger: xr::Action<f32>,
+    right_trigger: xr::Action<f32>,
+    left_grip: xr::Action<f32>,
+    right_grip: xr::Action<f32>,
+    /// A, B, X, Y, the menu button, the sticks pressed
+    buttons: [xr::Action<bool>; 7],
+}
+
+/// The controllers' state this frame, as a gamepad's: buttons (Horizon's `gamepad::Button` order of
+/// `Pad::BUTTONS`), sticks (x right, y up) and triggers.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct Pad {
+    pub a: bool,
+    pub b: bool,
+    pub x: bool,
+    pub y: bool,
+    pub menu: bool,
+    pub left_click: bool,
+    pub right_click: bool,
+    pub left_grip: bool,
+    pub right_grip: bool,
+    pub left_stick: [f32; 2],
+    pub right_stick: [f32; 2],
+    pub left_trigger: f32,
+    pub right_trigger: f32,
+}
+
+impl Actions {
+    fn new(instance: &xr::Instance) -> Result<Self> {
+        let set = instance
+            .create_action_set("gameplay", "Gameplay", 0)
+            .map_err(err("action set"))?;
+        let vec2 = |name: &str, shown: &str| set.create_action::<xr::Vector2f>(name, shown, &[]);
+        let value = |name: &str, shown: &str| set.create_action::<f32>(name, shown, &[]);
+        let button = |name: &str, shown: &str| set.create_action::<bool>(name, shown, &[]);
+        let actions = Self {
+            left_stick: vec2("move", "Move").map_err(err("action"))?,
+            right_stick: vec2("turn", "Turn").map_err(err("action"))?,
+            left_trigger: value("use", "Use").map_err(err("action"))?,
+            right_trigger: value("attack", "Attack").map_err(err("action"))?,
+            left_grip: value("left_grip", "Left grip").map_err(err("action"))?,
+            right_grip: value("right_grip", "Right grip").map_err(err("action"))?,
+            buttons: [
+                button("a", "A").map_err(err("action"))?,
+                button("b", "B").map_err(err("action"))?,
+                button("x", "X").map_err(err("action"))?,
+                button("y", "Y").map_err(err("action"))?,
+                button("menu", "Menu").map_err(err("action"))?,
+                button("left_click", "Left stick click").map_err(err("action"))?,
+                button("right_click", "Right stick click").map_err(err("action"))?,
+            ],
+            set,
+        };
+        let path = |p: &str| instance.string_to_path(p).map_err(err("path"));
+        let a = &actions;
+        let touch = [
+            xr::Binding::new(&a.left_stick, path("/user/hand/left/input/thumbstick")?),
+            xr::Binding::new(&a.right_stick, path("/user/hand/right/input/thumbstick")?),
+            xr::Binding::new(&a.left_trigger, path("/user/hand/left/input/trigger/value")?),
+            xr::Binding::new(&a.right_trigger, path("/user/hand/right/input/trigger/value")?),
+            xr::Binding::new(&a.left_grip, path("/user/hand/left/input/squeeze/value")?),
+            xr::Binding::new(&a.right_grip, path("/user/hand/right/input/squeeze/value")?),
+            xr::Binding::new(&a.buttons[0], path("/user/hand/right/input/a/click")?),
+            xr::Binding::new(&a.buttons[1], path("/user/hand/right/input/b/click")?),
+            xr::Binding::new(&a.buttons[2], path("/user/hand/left/input/x/click")?),
+            xr::Binding::new(&a.buttons[3], path("/user/hand/left/input/y/click")?),
+            xr::Binding::new(&a.buttons[4], path("/user/hand/left/input/menu/click")?),
+            xr::Binding::new(&a.buttons[5], path("/user/hand/left/input/thumbstick/click")?),
+            xr::Binding::new(&a.buttons[6], path("/user/hand/right/input/thumbstick/click")?),
+        ];
+        instance
+            .suggest_interaction_profile_bindings(
+                path("/interaction_profiles/oculus/touch_controller")?,
+                &touch,
+            )
+            .map_err(err("Touch bindings"))?;
+        // Any runtime has this one: the triggers as select, the menu button.
+        let simple = [
+            xr::Binding::new(&a.left_trigger, path("/user/hand/left/input/select/click")?),
+            xr::Binding::new(&a.right_trigger, path("/user/hand/right/input/select/click")?),
+            xr::Binding::new(&a.buttons[4], path("/user/hand/left/input/menu/click")?),
+        ];
+        if let Err(e) = instance.suggest_interaction_profile_bindings(
+            path("/interaction_profiles/khr/simple_controller")?,
+            &simple,
+        ) {
+            log::warn!("XR: no simple controller bindings: {e}");
+        }
+        Ok(actions)
+    }
+
+    /// The controllers now (`sync` first).
+    fn read(&self, session: &xr::Session<xr::Vulkan>) -> Pad {
+        let none = xr::Path::NULL;
+        let stick = |action: &xr::Action<xr::Vector2f>| {
+            action
+                .state(session, none)
+                .map(|s| [s.current_state.x, s.current_state.y])
+                .unwrap_or_default()
+        };
+        let value = |action: &xr::Action<f32>| {
+            action.state(session, none).map(|s| s.current_state).unwrap_or(0.0)
+        };
+        let button = |i: usize| {
+            self.buttons[i]
+                .state(session, none)
+                .map(|s| s.current_state)
+                .unwrap_or(false)
+        };
+        Pad {
+            a: button(0),
+            b: button(1),
+            x: button(2),
+            y: button(3),
+            menu: button(4),
+            left_click: button(5),
+            right_click: button(6),
+            left_grip: value(&self.left_grip) > 0.5,
+            right_grip: value(&self.right_grip) > 0.5,
+            left_stick: stick(&self.left_stick),
+            right_stick: stick(&self.right_stick),
+            left_trigger: value(&self.left_trigger),
+            right_trigger: value(&self.right_trigger),
+        }
+    }
+}
+
 struct Session {
     session: xr::Session<xr::Vulkan>,
     waiter: xr::FrameWaiter,
@@ -70,6 +202,10 @@ struct Session {
     running: bool,
     /// The frame begun and not ended yet: its display time and views.
     open: Option<(xr::Time, Vec<xr::View>)>,
+    actions: Actions,
+    /// Input reaches the game (the session has focus: not under the system's menu).
+    focused: bool,
+    pad: Pad,
 }
 
 pub struct Xr {
@@ -298,6 +434,10 @@ impl Xr {
         let space = session
             .create_reference_space(xr::ReferenceSpaceType::LOCAL, xr::Posef::IDENTITY)
             .map_err(err("space"))?;
+        let actions = Actions::new(&self.instance)?;
+        session
+            .attach_action_sets(&[&actions.set])
+            .map_err(err("attach actions"))?;
         let views = self
             .instance
             .enumerate_view_configuration_views(self.system, VIEWS)
@@ -354,6 +494,9 @@ impl Xr {
             format,
             running: false,
             open: None,
+            actions,
+            focused: false,
+            pad: Pad::default(),
         });
         Ok(())
     }
@@ -383,6 +526,10 @@ impl Xr {
                             self.status = Status::Exit;
                         }
                         _ => {}
+                    }
+                    s.focused = change.state() == xr::SessionState::FOCUSED;
+                    if !s.focused {
+                        s.pad = Pad::default();
                     }
                 }
                 xr::Event::InstanceLossPending(_) => self.status = Status::Exit,
@@ -418,6 +565,12 @@ impl Xr {
             .session
             .locate_views(VIEWS, state.predicted_display_time, &s.space)
             .map_err(err("views"))?;
+        if s.focused {
+            s.session
+                .sync_actions(&[(&s.actions.set).into()])
+                .map_err(err("controllers"))?;
+            s.pad = s.actions.read(&s.session);
+        }
         for chain in &mut s.swapchains {
             let index = chain.handle.acquire_image().map_err(err("acquire"))?;
             chain
@@ -447,6 +600,11 @@ impl Xr {
         };
         s.open = Some((state.predicted_display_time, views));
         Ok(Some(frame))
+    }
+
+    /// The controllers as of the last `begin_frame` (at rest while the session has no focus).
+    pub fn pad(&self) -> Pad {
+        self.session.as_ref().map(|s| s.pad).unwrap_or_default()
     }
 
     /// The image of `eye` (0 left, 1 right) to draw this frame into.
@@ -618,5 +776,32 @@ impl horizon_client_render::xr::Headset for Xr {
 
     fn exiting(&self) -> bool {
         self.status == Status::Exit
+    }
+
+    fn pad(&self) -> horizon_client_render::gamepad::PadState {
+        use horizon_client_render::gamepad::{Button, PadState};
+        let pad = Xr::pad(self);
+        let mut state = PadState {
+            buttons: 0,
+            left: pad.left_stick,
+            right: pad.right_stick,
+            triggers: [pad.left_trigger, pad.right_trigger],
+        };
+        // a pad's layout: A and B on the right as its south and east, X and Y on the left as its
+        // west and north, the grips as its bumpers, the menu button its start
+        for (button, down) in [
+            (Button::South, pad.a),
+            (Button::East, pad.b),
+            (Button::West, pad.x),
+            (Button::North, pad.y),
+            (Button::Start, pad.menu),
+            (Button::LeftStick, pad.left_click),
+            (Button::RightStick, pad.right_click),
+            (Button::LeftBumper, pad.left_grip),
+            (Button::RightBumper, pad.right_grip),
+        ] {
+            state.set(button, down);
+        }
+        state
     }
 }

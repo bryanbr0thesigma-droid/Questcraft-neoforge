@@ -53,4 +53,14 @@ edit(game / "game.rs", """                    if self.title.is_none() {
                     }
                     if self.title.is_none() {
                         horizon_client::spans::time("update_world", || self.update_world());""")
+# the controllers: a gamepad merged into the one the game reads
+edit(game / "game/pad.rs", """            Some(state) => state,
+            None => self.pad.read(),
+        };""", """            Some(state) => state,
+            // A headset's controllers (QuestCraft): a gamepad of their own, with any other
+            None => {
+                let hardware = self.pad.read();
+                horizon_client_render::xr::pad().map_or(hardware, |pad| hardware.merge(&pad))
+            }
+        };""")
 print("patched", game)

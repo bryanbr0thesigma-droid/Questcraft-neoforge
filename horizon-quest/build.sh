@@ -25,6 +25,8 @@ RUST="+${RUST_TOOLCHAIN:-1.100.0}"
 ANDROID_HOME="${ANDROID_HOME:-/tmp/claude-0/android-sdk}"
 ANDROID_NDK_HOME="${ANDROID_NDK_HOME:-$(ls -d "$ANDROID_HOME"/ndk/* | sort -V | tail -1)}"
 export ANDROID_HOME ANDROID_NDK_HOME
+# Horizon's `fast` profile keeps an incremental cache, gigabytes for a crate this size: not here
+export CARGO_INCREMENTAL=0
 
 src="$WORK/horizon"
 

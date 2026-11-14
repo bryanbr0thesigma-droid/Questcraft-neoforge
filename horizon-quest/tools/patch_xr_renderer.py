@@ -169,7 +169,13 @@ edit(gfx, """    /// Whether the device's loss callback has fired. A surface rec
     /// that eye's view at the eyes' size and copies it into the eye's image. Nothing is drawn
     /// while the headset shows none.
     fn render_headset(&mut self, frame: &Frame) -> Result<bool> {
-        let begun = crate::xr::headset().ok_or("no headset")?.begin_frame()?;
+        let begun = {
+            let mut headset = crate::xr::headset().ok_or("no headset")?;
+            let begun = headset.begin_frame()?;
+            // the controllers, for the game's pad (`xr::pad`)
+            crate::xr::set_pad(headset.pad());
+            begun
+        };
         let Some(headset_frame) = begun else {
             if let Some(copies) = self.take_section_copies() {
                 self.queue.submit([copies]);

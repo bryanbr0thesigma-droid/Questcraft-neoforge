@@ -56,6 +56,27 @@ pub trait Headset: Send {
     fn end_frame(&mut self) -> Result<(), String>;
     /// Whether the runtime asked the game to end.
     fn exiting(&self) -> bool;
+    /// The controllers as a gamepad, as of the last `begin_frame` (at rest without any).
+    fn pad(&self) -> crate::gamepad::PadState {
+        crate::gamepad::PadState::default()
+    }
+}
+
+/// The controllers as of the headset's last frame, for the game's pad (`pad`).
+static PAD: Mutex<crate::gamepad::PadState> = Mutex::new(crate::gamepad::PadState {
+    buttons: 0,
+    left: [0.0; 2],
+    right: [0.0; 2],
+    triggers: [0.0; 2],
+});
+
+/// The headset's controllers as a gamepad, merged into the game's pad; none without a headset.
+pub fn pad() -> Option<crate::gamepad::PadState> {
+    active().then(|| *PAD.lock().unwrap_or_else(PoisonError::into_inner))
+}
+
+pub(crate) fn set_pad(state: crate::gamepad::PadState) {
+    *PAD.lock().unwrap_or_else(PoisonError::into_inner) = state;
 }
 
 type Start = Box<dyn FnOnce() -> Result<Box<dyn Headset>, String> + Send>;
