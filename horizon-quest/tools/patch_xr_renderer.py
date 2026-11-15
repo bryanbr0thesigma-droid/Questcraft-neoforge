@@ -331,6 +331,9 @@ edit(gfx, """    /// Whether the device's loss callback has fired. A surface rec
                 }
             }
         }
+        // The frame's drawing finished before it is handed over: the headset's compositor showed only
+        // the frames whose drawing was waited for (the ones read back for the log), black otherwise
+        let _ = self.device.poll(wgpu::PollType::wait_indefinitely());
         crate::xr::headset().ok_or("no headset")?.end_frame()?;
         self.xr_frames += 1;
         Ok(drawn)

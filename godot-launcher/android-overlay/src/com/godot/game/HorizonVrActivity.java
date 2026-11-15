@@ -21,7 +21,7 @@ public class HorizonVrActivity extends HorizonActivity {
 
     /** How long to wait at most for the launcher's process to end, and then for the runtime to let its session go. */
     private static final long LAUNCHER_GONE_MS = 5000;
-    private static final long SESSION_GONE_MS = 500;
+    private static final long SESSION_GONE_MS = 2000;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -61,7 +61,8 @@ public class HorizonVrActivity extends HorizonActivity {
             waited = true;
             SystemClock.sleep(50);
         }
-        if (waited) SystemClock.sleep(SESSION_GONE_MS);
+        // and the headset's runtime to let its session go (the Java game starts its own much later)
+        SystemClock.sleep(SESSION_GONE_MS);
         Log.i("QuestCraftHorizon", waited ? "Started once the launcher had ended" : "The launcher had already ended");
     }
 }
