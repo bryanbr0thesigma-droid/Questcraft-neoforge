@@ -239,6 +239,34 @@ edit(gfx, """    /// Whether the device's loss callback has fired. A surface rec
             }
             let target = crate::xr::headset().and_then(|h| h.eye_texture(index));
             if let (Some(source), Some(target)) = (&self.offscreen, target) {
+                // The controllers and the laser over the frame, in a submission of their own: the
+                // eye's image is handled as it always was (copied into, then left as OpenXR wants)
+                if self.xr_overlay.as_ref().is_none_or(|o| o.format() != source.format()) {
+                    self.xr_overlay = Some(crate::xr::Overlay::new(&self.device, source.format()));
+                }
+                let vertices = crate::xr::overlay(eye);
+                if let (Some(overlay), false) = (&self.xr_overlay, vertices.is_empty()) {
+                    let mut encoder = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                        label: Some("Horizon headset overlay"),
+                    });
+                    let view = source.create_view(&wgpu::TextureViewDescriptor::default());
+                    let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                        label: Some("Horizon headset overlay"),
+                        color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                            view: &view,
+                            depth_slice: None,
+                            resolve_target: None,
+                            ops: wgpu::Operations {
+                                load: wgpu::LoadOp::Load,
+                                store: wgpu::StoreOp::Store,
+                            },
+                        })],
+                        ..Default::default()
+                    });
+                    overlay.draw(&self.queue, &mut pass, &vertices);
+                    drop(pass);
+                    self.queue.submit([encoder.finish()]);
+                }
                 let mut encoder = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
                     label: Some("Horizon headset eye"),
                 });
@@ -266,33 +294,41 @@ edit(gfx, """    /// Whether the device's loss callback has fired. A surface rec
                         label: Some("Horizon headset eye"),
                     });
                 }
-                // The controllers and the laser over the picture, in a pass that also leaves the
-                // image as OpenXR takes it back: a colour attachment (Vulkan's
-                // COLOR_ATTACHMENT_OPTIMAL), not as the copy left it (a headset's compositor shows
-                // nothing otherwise)
-                if self.xr_overlay.as_ref().is_none_or(|o| o.format() != target.format()) {
-                    self.xr_overlay = Some(crate::xr::Overlay::new(&self.device, target.format()));
-                }
-                let vertices = crate::xr::overlay(eye);
+                // OpenXR takes the image back as a colour attachment (Vulkan's
+                // COLOR_ATTACHMENT_OPTIMAL), not as the copy left it: a pass that keeps it as it is
+                // leaves it so (a headset's compositor shows nothing otherwise)
                 let view = target.create_view(&wgpu::TextureViewDescriptor::default());
-                let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                    label: Some("Horizon headset eye layout"),
-                    color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                        view: &view,
-                        depth_slice: None,
-                        resolve_target: None,
-                        ops: wgpu::Operations {
-                            load: wgpu::LoadOp::Load,
-                            store: wgpu::StoreOp::Store,
-                        },
-                    })],
-                    ..Default::default()
-                });
-                if let Some(overlay) = &self.xr_overlay {
-                    overlay.draw(&self.queue, &mut pass, &vertices);
-                }
-                drop(pass);
+                let layout = |encoder: &mut wgpu::CommandEncoder| {
+                    drop(encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                        label: Some("Horizon headset eye layout"),
+                        color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                            view: &view,
+                            depth_slice: None,
+                            resolve_target: None,
+                            ops: wgpu::Operations {
+                                load: wgpu::LoadOp::Load,
+                                store: wgpu::StoreOp::Store,
+                            },
+                        })],
+                        ..Default::default()
+                    }));
+                };
+                layout(&mut encoder);
                 self.queue.submit([encoder.finish()]);
+                // What the headset is handed in the end, at its middle and towards its corners,
+                // twice early on (the image left as OpenXR wants it again after)
+                if index == 0 && matches!(self.xr_frames, 60 | 600) {
+                    let handed: Vec<_> = [[0.5, 0.5], [0.25, 0.25], [0.75, 0.25], [0.25, 0.75], [0.75, 0.75]]
+                        .into_iter()
+                        .map(|at| crate::xr::pixel_at(&self.device, &self.queue, &target, at))
+                        .collect();
+                    log::info!("XR: frame {}: the eye's image handed over (middle, corners) {handed:?}", self.xr_frames);
+                    let mut encoder = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                        label: Some("Horizon headset eye layout"),
+                    });
+                    layout(&mut encoder);
+                    self.queue.submit([encoder.finish()]);
+                }
             }
         }
         crate::xr::headset().ok_or("no headset")?.end_frame()?;

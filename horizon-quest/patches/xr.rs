@@ -363,7 +363,16 @@ fn menu_input(ui: &mut Ui, triggers: [f32; 2], head: &Pose, size: [u32; 2]) {
             ui.away = None;
             panel
         }
-        None => place(),
+        None => {
+            let panel = place();
+            log::info!(
+                "XR: a menu at {:?}, the head at {:?} facing {:?}",
+                panel.center,
+                head.at(),
+                head.forward()
+            );
+            panel
+        }
     };
     ui.panel = Some(panel);
     // the other hand's trigger pulled: that hand points now
@@ -445,8 +454,12 @@ struct Out { @builtin(position) clip: vec4<f32>, @location(0) color: vec4<f32> }
     out.color = color;
     return out;
 }
+// The frame holds sRGB-encoded colour in an 8-bit linear format: encode the overlay's colours so.
+fn encode(c: f32) -> f32 {
+    return select(1.055 * pow(c, 1.0 / 2.4) - 0.055, c * 12.92, c <= 0.0031308);
+}
 @fragment fn fs(in: Out) -> @location(0) vec4<f32> {
-    return in.color;
+    return vec4(encode(in.color.r), encode(in.color.g), encode(in.color.b), in.color.a);
 }
 ";
 
@@ -738,6 +751,16 @@ pub(crate) fn middle_pixel(
     queue: &wgpu::Queue,
     texture: &wgpu::Texture,
 ) -> Option<[u8; 4]> {
+    pixel_at(device, queue, texture, [0.5, 0.5])
+}
+
+/// The pixel at `at` (0 to 1 across and down) of `texture`, as `middle_pixel`.
+pub(crate) fn pixel_at(
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+    texture: &wgpu::Texture,
+    at: [f32; 2],
+) -> Option<[u8; 4]> {
     let size = texture.size();
     let buffer = device.create_buffer(&wgpu::BufferDescriptor {
         label: Some("XR pixel"),
@@ -753,8 +776,8 @@ pub(crate) fn middle_pixel(
             texture,
             mip_level: 0,
             origin: wgpu::Origin3d {
-                x: size.width / 2,
-                y: size.height / 2,
+                x: ((size.width as f32 * at[0]) as u32).min(size.width.saturating_sub(1)),
+                y: ((size.height as f32 * at[1]) as u32).min(size.height.saturating_sub(1)),
                 z: 0,
             },
             aspect: wgpu::TextureAspect::All,
