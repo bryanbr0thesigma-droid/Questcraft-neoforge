@@ -212,6 +212,10 @@ edit(gfx, """    /// Whether the device's loss callback has fired. A surface rec
             self.resize(width, height);
         }
         let eyes = &headset_frame.eyes;
+        // Occlusion culling tests against the last frame's depth from the last frame's view, which
+        // for a headset is the other eye's: it hid the terrain on a Quest. Frustum culling with both
+        // eyes' view (`xr_cull`) stays.
+        self.cull_on = false;
         // the game looks where the head does (it reads `xr::head`); the world turns with the body
         crate::xr::set_head(&eyes[0]);
         let body = crate::xr::body_yaw();
@@ -339,6 +343,11 @@ edit(gfx, """    /// Whether the device's loss callback has fired. A surface rec
         Ok(drawn)
     }
     /// Whether the device's loss callback has fired. A surface reconfigure""")
+# GPU culling's own occlusion test likewise: not for a headset's frames
+edit(gfx, """        let mut gpu_frame = self.gpu_culling.is_some()
+            && !frame.title""", """        let mut gpu_frame = self.gpu_culling.is_some()
+            && !crate::xr::active()
+            && !frame.title""")
 # --- the HUD and menus: a panel ahead in a headset (the HUD shader's `vr`: scale, then offset)
 hud_wgsl = render / "hud.wgsl"
 edit(hud_wgsl, """    end_portal: array<vec4<f32>, 3>,
