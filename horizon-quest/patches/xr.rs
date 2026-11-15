@@ -248,6 +248,10 @@ struct Ui {
     /// A trigger held as a menu closed stays out of the game until let go (a click on Back to
     /// Game is not a swing).
     hushed: [bool; 2],
+    /// What the main hand aims at while playing, in the tracking space (`set_target`).
+    target: Option<Vec3>,
+    /// The right stick turned the body a step and has not come back yet (snap turning).
+    snapped: bool,
 }
 
 static UI: Mutex<Ui> = Mutex::new(Ui {
@@ -264,6 +268,8 @@ static UI: Mutex<Ui> = Mutex::new(Ui {
     told_pointer: None,
     told_pressed: false,
     hushed: [false; 2],
+    target: None,
+    snapped: false,
 });
 
 fn ui() -> MutexGuard<'static, Ui> {
@@ -329,6 +335,7 @@ pub(crate) fn frame_input(
             pad.triggers = [0.0; 2];
         }
         _ => {
+            snap_turn(&mut ui, &mut pad);
             ui.panel = None;
             ui.hit = None;
             ui.pointer = None;
@@ -344,6 +351,20 @@ pub(crate) fn frame_input(
     }
     drop(ui);
     set_pad(pad);
+}
+
+/// Snap turning (Vivecraft's default way to turn): the right stick pushed across turns the body
+/// 30 degrees, once until it comes back; the game's own turning by the stick is left out.
+const SNAP_DEGREES: f32 = 30.0;
+fn snap_turn(ui: &mut Ui, pad: &mut crate::gamepad::PadState) {
+    let across = pad.right[0];
+    if ui.snapped {
+        ui.snapped = across.abs() > 0.35;
+    } else if across.abs() > 0.7 {
+        ui.snapped = true;
+        turn_body(SNAP_DEGREES * across.signum());
+    }
+    pad.right[0] = 0.0;
 }
 
 fn menu_input(ui: &mut Ui, triggers: [f32; 2], head: &Pose, size: [u32; 2]) {
@@ -566,6 +587,16 @@ pub(crate) fn overlay(eye: &Eye) -> Vec<OverlayVertex> {
     for (index, pose) in hands {
         controller(&mut triangle, &pose, index, seen_from);
     }
+    // where the main hand aims while playing: a dot facing the eye, the same size seen from anywhere
+    if let (false, Some(target)) = (ui.menu, ui.target) {
+        let toward = (target - seen_from).normalize_or_zero();
+        let right = toward.cross(Vec3::Y).try_normalize().unwrap_or(Vec3::X);
+        let up = right.cross(toward);
+        let size = target.distance(seen_from).max(0.1);
+        let middle = target - toward * 0.01;
+        disc_facing(&mut triangle, middle, right, up, size * 0.008, [0.0, 0.0, 0.0, 0.6]);
+        disc_facing(&mut triangle, middle - toward * 0.001, right, up, size * 0.005, [1.0, 1.0, 1.0, 0.9]);
+    }
     if let (true, Some(panel), Some(hand)) = (ui.menu, ui.panel, ui.hands[ui.hand]) {
         // the laser, to the dot where it meets the menu or fading out a little way off
         let from = hand.at();
@@ -636,10 +667,22 @@ fn disc(
     radius: f32,
     color: [f32; 4],
 ) {
+    disc_facing(triangle, middle, panel.right, panel.up, radius, color);
+}
+
+/// A round dot at `middle` in the plane of `right` and `up`.
+fn disc_facing(
+    triangle: &mut impl FnMut([Vec3; 3], [[f32; 4]; 3]),
+    middle: Vec3,
+    right: Vec3,
+    up: Vec3,
+    radius: f32,
+    color: [f32; 4],
+) {
     const SIDES: usize = 12;
     let rim = |i: usize| {
         let angle = i as f32 / SIDES as f32 * std::f32::consts::TAU;
-        middle + (panel.right * angle.cos() + panel.up * angle.sin()) * radius
+        middle + (right * angle.cos() + up * angle.sin()) * radius
     };
     for i in 0..SIDES {
         triangle([middle, rim(i), rim(i + 1)], [color; 3]);
@@ -691,12 +734,18 @@ struct Look {
     head: Option<[f32; 2]>,
     /// The body was set from the player's yaw once there was a head to subtract.
     aligned: bool,
+    /// Where the head is in the tracking space, and the place across the floor the player stands
+    /// on there (room scale): walking moves the player (`room_step`), the head's lean on top.
+    head_at: Option<Vec3>,
+    room: Vec3,
 }
 
 static LOOK: Mutex<Look> = Mutex::new(Look {
     body_yaw: 0.0,
     head: None,
     aligned: false,
+    head_at: None,
+    room: Vec3::ZERO,
 });
 
 fn look() -> MutexGuard<'static, Look> {
@@ -740,8 +789,77 @@ pub fn head_look(orientation: [f32; 4]) -> [f32; 2] {
     ]
 }
 
-pub(crate) fn set_head(eye: &Eye) {
-    look().head = Some(head_look(eye.orientation));
+pub(crate) fn set_head(eyes: &[Eye; 2]) {
+    let head = head_pose(eyes);
+    let mut look = look();
+    look.head = Some(head_look(head.orientation));
+    look.head_at = Some(head.at());
+}
+
+/// `eye` from where the player stands in the room (`room_step`): the camera is the player's eyes.
+pub fn room_eye(eye: &Eye) -> Eye {
+    let room = look().room;
+    Eye {
+        position: (Vec3::from(eye.position) - room).to_array(),
+        ..*eye
+    }
+}
+
+/// Room scale: how far the head has walked across the floor from where the player stands, in the
+/// world's axes (x, z), when it has (a millimetre or more): the game moves the player by as much
+/// as it can and says how far it went (`room_moved`). A jump of more than a metre (the headset
+/// recentred) is no walk: the player stays.
+pub fn room_step() -> Option<[f64; 2]> {
+    let mut look = look();
+    let head = look.head_at?;
+    let walked = Vec3::new(head.x - look.room.x, 0.0, head.z - look.room.z);
+    if walked.length_squared() > 1.0 {
+        look.room = Vec3::new(head.x, 0.0, head.z);
+        return None;
+    }
+    if walked.length_squared() < 1e-6 {
+        return None;
+    }
+    let step = facing(look.body_yaw) * walked;
+    Some([f64::from(step.x), f64::from(step.z)])
+}
+
+/// The player moved `moved` (the world's x and z) for the walk `room_step` gave.
+pub fn room_moved(moved: [f64; 2]) {
+    let mut look = look();
+    let back = facing(look.body_yaw).inverse() * Vec3::new(moved[0] as f32, 0.0, moved[1] as f32);
+    look.room += Vec3::new(back.x, 0.0, back.z);
+}
+
+/// The hand that aims, mines and uses (Vivecraft's main hand): the right.
+const MAIN_HAND: usize = 1;
+
+/// Where the main hand's controller points while playing (not in a menu), in the world's axes:
+/// its place from the player's eyes, and the way it points (unit). The game aims along it
+/// instead of the head's look.
+pub fn aim() -> Option<([f64; 3], [f64; 3])> {
+    let hand = {
+        let ui = ui();
+        if ui.menu {
+            return None;
+        }
+        ui.hands[MAIN_HAND]?
+    };
+    let look = look();
+    let turn = facing(look.body_yaw);
+    let from = turn * (hand.at() - look.room);
+    let toward = turn * hand.forward();
+    Some((from.to_array().map(f64::from), toward.to_array().map(f64::from)))
+}
+
+/// What the main hand aims at (`aim`), from the player's eyes in the world's axes, for the dot
+/// drawn there; `None` at nothing.
+pub fn set_target(target: Option<[f64; 3]>) {
+    let target = target.map(|t| {
+        let look = look();
+        facing(look.body_yaw).inverse() * Vec3::new(t[0] as f32, t[1] as f32, t[2] as f32) + look.room
+    });
+    ui().target = target;
 }
 
 /// The pixel at the middle of `texture` (8-bit RGBA or BGRA, as stored), read back and waited for:

@@ -9,6 +9,8 @@ through the game's own turn (`Entity.turn`'s), so aiming, the held lead and a bo
 
 The controllers are a gamepad merged into the game's, which counts it without the window's focus;
 the headset's session losing its focus pauses; in a menu the laser is the mouse (`headset_input`).
+While playing the main hand's controller aims (`aim`), walking in the room moves the player
+(`headset_room_and_aim`), and the right stick turns in steps (xr's snap turning).
 """
 import sys
 from pathlib import Path
@@ -130,4 +132,57 @@ edit(game / "game/options.rs", """    pub(super) fn framerate_limit(&self) -> i3
             return 260;
         }
 """)
+# The main hand's controller aims (Vivecraft's way): every pick (blocks, fluids, entities) runs
+# along `aim`, so mining, attacking, using and placing follow the controller
+edit(game / "game.rs", """        Some((self.eye_position()?, pick_view_vector(self.yaw, self.pitch)))""", """        let eye = self.eye_position()?;
+        // A headset (QuestCraft): from the main hand's controller, the way it points
+        if let Some((from, toward)) = horizon_client_render::xr::aim() {
+            return Some(([eye[0] + from[0], eye[1] + from[1], eye[2] + from[2]], toward));
+        }
+        Some((eye, pick_view_vector(self.yaw, self.pitch)))""")
+# no crosshair in the middle of the view: a dot where the controller aims (xr's overlay)
+edit(game / "game.rs", """            if self.camera_type.first_person()
+                && (!spectator || self.spectator_crosshair())""", """            if self.camera_type.first_person()
+                && !horizon_client_render::xr::active()
+                && (!spectator || self.spectator_crosshair())""")
+edit(game / "game.rs", """                    if horizon_client_render::xr::active() && self.title.is_none() {
+                        self.follow_headset();
+                    }""", """                    if horizon_client_render::xr::active() && self.title.is_none() {
+                        self.follow_headset();
+                        self.headset_room_and_aim();
+                    }""")
+edit(game / "game/perspective.rs", """    fn turn_player_by(&mut self, xo: f64, yo: f64) {""", """    /// A headset (QuestCraft): walking in the room moves the player as far as the world lets (an
+    /// ordinary move: walls stop it, steps lift it; not in a menu or riding), and the dot where the
+    /// controller aims goes where its pick lands.
+    pub(super) fn headset_room_and_aim(&mut self) {
+        use horizon_client_render::xr;
+        if let (Some(step), false, None) = (xr::room_step(), self.pad_in_menu(), self.riding) {
+            let entities = self.player_entity_collisions();
+            if let Some(player) = self.player.as_mut() {
+                let before = player.position;
+                let _ = horizon_client::motion::MotionWorld {
+                    entities: &entities,
+                    player: &mut *player,
+                    scene: &mut self.world,
+                    assets: &self.pack.assets,
+                    collision_binding: self.collision,
+                    resources: self.motion,
+                    health: &self.health_resources,
+                }
+                .shulker_box_push(horizon_core::geometry::Vec3::new(step[0], 0.0, step[1]));
+                let after = player.position;
+                // drawn where it went at once, not eased there over the tick
+                self.previous_position.x += after.x - before.x;
+                self.previous_position.y += after.y - before.y;
+                self.previous_position.z += after.z - before.z;
+                xr::room_moved([after.x - before.x, after.z - before.z]);
+            }
+        }
+        let target = self
+            .eye_position()
+            .zip(self.pick())
+            .map(|(eye, hit)| std::array::from_fn(|i| hit.point[i] - eye[i]));
+        xr::set_target(target);
+    }
+    fn turn_player_by(&mut self, xo: f64, yo: f64) {""")
 print("patched", game)

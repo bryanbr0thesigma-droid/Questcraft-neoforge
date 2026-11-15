@@ -217,14 +217,16 @@ edit(gfx, """    /// Whether the device's loss callback has fired. A surface rec
         // eyes' view (`xr_cull`) stays.
         self.cull_on = false;
         // the game looks where the head does (it reads `xr::head`); the world turns with the body
-        crate::xr::set_head(&eyes[0]);
+        crate::xr::set_head(eyes);
         let body = crate::xr::body_yaw();
-        self.xr_cull = Some(crate::xr::cull_view(eyes, body, headset_frame.size, frame.depth_far));
+        // the world from where the player stands in the room (room scale), the head's lean on top
+        let in_room = eyes.map(|eye| crate::xr::room_eye(&eye));
+        self.xr_cull = Some(crate::xr::cull_view(&in_room, body, headset_frame.size, frame.depth_far));
         let mut drawn = true;
         // the HUD on a panel ahead of the head, a menu on one put in the world
         let panel = crate::xr::hud_panel(eyes, headset_frame.size);
         for (index, eye) in eyes.iter().enumerate() {
-            self.xr_eye = Some(crate::xr::eye_view(eye, body, headset_frame.size, frame.depth_far));
+            self.xr_eye = Some(crate::xr::eye_view(&in_room[index], body, headset_frame.size, frame.depth_far));
             self.xr_panorama = Some(crate::xr::panorama_view(eye));
             self.hud.vr = panel.transform(eye).to_cols_array_2d();
             let result = self.draw_frame(frame, None, self.output);
