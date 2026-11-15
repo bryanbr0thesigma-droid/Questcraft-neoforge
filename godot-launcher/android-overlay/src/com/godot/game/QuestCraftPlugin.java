@@ -53,8 +53,9 @@ public class QuestCraftPlugin extends GodotPlugin {
         }
         getActivity().startActivity(intent);
         // This process holds an OpenXR session (Godot only ends it with the process) and a lot of memory, and the game
-        // needs both: end it. The game's activity starts the launcher again when the game ends.
-        new Handler(Looper.getMainLooper()).postDelayed(() -> Process.killProcess(Process.myPid()), 1500);
+        // needs both: end it, soon (Horizon's VR activity waits for it before starting its own session). The game's
+        // activity starts the launcher again when the game ends.
+        new Handler(Looper.getMainLooper()).postDelayed(() -> Process.killProcess(Process.myPid()), 500);
         return "";
     }
 
