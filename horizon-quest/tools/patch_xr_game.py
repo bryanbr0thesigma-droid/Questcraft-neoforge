@@ -7,8 +7,8 @@ In a headset turning (the mouse, a stick, the arrow keys) turns the body (`xr::t
 frame the player's yaw is the body's plus the head's turn and their pitch the head's (`follow_headset`),
 through the game's own turn (`Entity.turn`'s), so aiming, the held lead and a boat's limit follow.
 
-The controllers are a gamepad merged into the game's; the window has the focus while the headset's
-session does; in a menu the laser is the mouse (`headset_input`).
+The controllers are a gamepad merged into the game's, which counts it without the window's focus;
+the headset's session losing its focus pauses; in a menu the laser is the mouse (`headset_input`).
 """
 import sys
 from pathlib import Path
@@ -69,9 +69,10 @@ edit(game / "game/pad.rs", """            Some(state) => state,
 # The headset's focus is the window's, and in a menu its laser is the mouse (Vivecraft's way)
 edit(game / "game/pad.rs", """    /// Once per loop iteration: read the pads and act on button changes.
     pub(super) fn poll_pads(&mut self, event_loop: &dyn EventLoopCtl) {
-""", """    /// A headset (QuestCraft): the window has the focus while the headset's session does (an
-    /// immersive app's window never gets it, and the pad counts only with it), and in a menu
-    /// the controller's laser is the mouse over the menu's panel, its trigger the left button.
+""", """    /// A headset (QuestCraft): the headset's session losing its focus (the system's menu over the
+    /// game) is the window losing it, for pausing; in a menu the controller's laser is the mouse
+    /// over the menu's panel, its trigger the left button. The window itself is left as it is
+    /// (an immersive app's never gets the focus; the pad counts without it, `pad_has_window`).
     fn headset_input(&mut self, event_loop: &dyn EventLoopCtl) {
         use horizon_client_render::xr;
         use winit::{
@@ -82,9 +83,11 @@ edit(game / "game/pad.rs", """    /// Once per loop iteration: read the pads and
             return;
         };
         let origin = super::input_trace::InputOrigin::Game;
-        let focused = xr::focused();
-        if focused != self.focused {
-            self.handle_window_event(event_loop, id, WindowEvent::Focused(focused), origin);
+        // `pause_if_inactive` pauses a world half a second after the focus went
+        match (xr::focused(), self.focus_lost) {
+            (false, None) => self.focus_lost = Some(std::time::Instant::now()),
+            (true, Some(_)) => self.focus_lost = None,
+            _ => {}
         }
         // a screen, or a prompt over the world (a dialog, the pack prompt...): the pad's menus
         xr::set_menu(self.pad_in_menu());
@@ -112,6 +115,19 @@ edit(game / "game/pad.rs", """    /// Once per loop iteration: read the pads and
     pub(super) fn poll_pads(&mut self, event_loop: &dyn EventLoopCtl) {
         if horizon_client_render::xr::active() {
             self.headset_input(event_loop);
+        }
+""")
+# the pad counts in a headset without the window's focus
+edit(game / "game/pad.rs", """    pub(super) fn pad_has_window(&self) -> bool {
+        self.focused || self.settings.controller.play_in_background""", """    pub(super) fn pad_has_window(&self) -> bool {
+        self.focused
+            || self.settings.controller.play_in_background
+            || horizon_client_render::xr::active()""")
+# the headset paces the frames (its own rate, 72 or 90 a second): no menu limit of 60 on top
+edit(game / "game/options.rs", """    pub(super) fn framerate_limit(&self) -> i32 {
+""", """    pub(super) fn framerate_limit(&self) -> i32 {
+        if horizon_client_render::xr::active() {
+            return 260;
         }
 """)
 print("patched", game)

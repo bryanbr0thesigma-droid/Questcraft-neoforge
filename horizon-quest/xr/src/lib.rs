@@ -230,6 +230,13 @@ struct Session {
     /// A frame reached the headset.
     shown: bool,
     pad: Pad,
+    /// Frames waited for since the session ran, and when the first was: the rate, for the log.
+    frames: u64,
+    first_frame: Option<std::time::Instant>,
+    /// When the frame being drawn was waited for, and how long frames took from then to being
+    /// handed over (seconds, all of them): a frame that comes too late is not shown.
+    waited: Option<std::time::Instant>,
+    drawing: f64,
 }
 
 pub struct Xr {
@@ -534,6 +541,10 @@ impl Xr {
             focused: false,
             shown: false,
             pad: Pad::default(),
+            frames: 0,
+            first_frame: None,
+            waited: None,
+            drawing: 0.0,
         });
         Ok(())
     }
@@ -593,7 +604,22 @@ impl Xr {
         let blend = self.blend;
         let s = self.session.as_mut().ok_or("no session")?;
         let state = s.waiter.wait().map_err(err("wait"))?;
+        s.waited = Some(std::time::Instant::now());
         s.stream.begin().map_err(err("begin frame"))?;
+        // the game's rate against the headset's, twice early on
+        let first = *s.first_frame.get_or_insert_with(std::time::Instant::now);
+        s.frames += 1;
+        if matches!(s.frames, 300 | 3000) {
+            let seconds = first.elapsed().as_secs_f64();
+            log::info!(
+                "XR: {} frames in {seconds:.1} s ({:.1} a second; the headset shows one every {:.1} ms, rendering asked for: {}); a frame takes {:.1} ms from the wait to being handed over",
+                s.frames,
+                s.frames as f64 / seconds.max(0.001),
+                state.predicted_display_period.as_nanos() as f64 / 1e6,
+                state.should_render,
+                s.drawing * 1000.0 / (s.frames - 1).max(1) as f64
+            );
+        }
         if !state.should_render {
             s.stream
                 .end(state.predicted_display_time, blend, &[])
@@ -699,6 +725,9 @@ impl Xr {
         let Some((time, views)) = s.open.take() else {
             return Ok(());
         };
+        if let Some(waited) = s.waited.take() {
+            s.drawing += waited.elapsed().as_secs_f64();
+        }
         for chain in &mut s.swapchains {
             if chain.current.take().is_some() {
                 chain.handle.release_image().map_err(err("release"))?;
