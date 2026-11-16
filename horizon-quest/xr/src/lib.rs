@@ -237,6 +237,11 @@ struct Session {
     /// handed over (seconds, all of them): a frame that comes too late is not shown.
     waited: Option<std::time::Instant>,
     drawing: f64,
+    /// The runtime said the session can begin (READY) at this time; it begins once the game's
+    /// frames come steadily (`poll`): since when they have, and when the last asked.
+    ready: Option<std::time::Instant>,
+    steady_since: Option<std::time::Instant>,
+    last_asked: Option<std::time::Instant>,
 }
 
 pub struct Xr {
@@ -545,6 +550,9 @@ impl Xr {
             first_frame: None,
             waited: None,
             drawing: 0.0,
+            ready: None,
+            steady_since: None,
+            last_asked: None,
         });
         Ok(())
     }
@@ -564,10 +572,8 @@ impl Xr {
                     let Some(s) = &mut self.session else { continue };
                     log::info!("XR: session {:?}", change.state());
                     match change.state() {
-                        xr::SessionState::READY => {
-                            s.session.begin(VIEWS).map_err(err("begin"))?;
-                            s.running = true;
-                        }
+                        // begun below, once the game draws steadily
+                        xr::SessionState::READY => s.ready = Some(std::time::Instant::now()),
                         xr::SessionState::STOPPING => {
                             s.session.end().map_err(err("end"))?;
                             s.running = false;
@@ -584,6 +590,34 @@ impl Xr {
                 }
                 xr::Event::InstanceLossPending(_) => self.status = Status::Exit,
                 _ => {}
+            }
+        }
+        // The session begins once the game has asked for frames without a break (of more than
+        // 0.1 s) for a second, or 10 s after it could have: on a Quest, a first frame followed by
+        // a pause (the game still loading) could leave the headset black for as long as it ran.
+        if let Some(s) = &mut self.session {
+            let now = std::time::Instant::now();
+            let broke = s
+                .last_asked
+                .is_none_or(|last| now - last > std::time::Duration::from_millis(100));
+            s.last_asked = Some(now);
+            if broke {
+                s.steady_since = Some(now);
+            }
+            if let (Some(ready), false) = (s.ready, s.running) {
+                let steady = s
+                    .steady_since
+                    .is_some_and(|since| now - since >= std::time::Duration::from_secs(1));
+                if steady || now - ready >= std::time::Duration::from_secs(10) {
+                    s.session.begin(VIEWS).map_err(err("begin"))?;
+                    s.running = true;
+                    s.ready = None;
+                    log::info!(
+                        "XR: the session begun {:.1} s after it could ({})",
+                        (now - ready).as_secs_f32(),
+                        if steady { "the game drawing steadily" } else { "waited long enough" }
+                    );
+                }
             }
         }
         if self.status != Status::Exit {
